@@ -79,6 +79,7 @@ const roles = [
     <section class="hero">
       <div class="container hero-inner">
         <div class="hero-text">
+          <img src="/images/ArtsCouncil_logo.png" alt="Magna Arts Council" class="hero-logo" />
           <div class="hero-badge">Magna, Utah's Designated Local Arts Agency</div>
           <h1>Art is the<br /><em>Heart</em> of Magna</h1>
           <p class="hero-sub">
@@ -195,6 +196,14 @@ const roles = [
     grid-template-columns: 1fr 1fr;
     gap: 56px;
     align-items: center;
+  }
+
+  .hero-logo {
+    height: 80px;
+    width: auto;
+    display: block;
+    margin-bottom: 20px;
+    animation: fadeUp 0.5s ease both;
   }
 
   .hero-badge {

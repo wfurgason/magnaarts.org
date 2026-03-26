@@ -241,7 +241,7 @@ Preview URLs are generated for every branch and pull request.
 
 ### Content
 - [ ] Replace hardcoded event data with real Supabase queries
-- [ ] Add real logo / favicon
+- [x] Add real logo / favicon — `ArtsCouncil_logo.png` added to `Header.astro` (48px height, scales on mobile)
 - [ ] Add real photography / imagery
 - [ ] Write and publish About page content
 - [ ] Add real board member names and bios

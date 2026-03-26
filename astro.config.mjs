@@ -1,7 +1,9 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import vercel from '@astrojs/vercel';
 
 export default defineConfig({
-  site: 'https://wfurgason.github.io',
-  base: '/magnaarts.org',
+  output: 'server',
+  adapter: vercel(),
+  site: 'https://magnaarts.org',
 });

@@ -1,0 +1,97 @@
+---
+// Footer.astro
+---
+
+<footer>
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <span class="logo">Magna Arts Council</span>
+      <p>Magna, Utah's Designated Local Arts Agency</p>
+    </div>
+    <nav class="footer-nav" aria-label="Footer navigation">
+      <a href="/events">Events</a>
+      <a href="/programs">Programs</a>
+      <a href="/get-involved">Get Involved</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">
+    <div class="container">
+      © {new Date().getFullYear()} Magna Arts Council &nbsp;·&nbsp;
+      <a href="/privacy">Privacy</a> &nbsp;·&nbsp;
+      Powered by ZAP
+    </div>
+  </div>
+</footer>
+
+<style>
+  footer {
+    background: #0e1327;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 14px;
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 40px;
+    padding-top: 48px;
+    padding-bottom: 40px;
+  }
+
+  .logo {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--white);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .footer-brand p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .footer-nav {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .footer-nav a {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+    transition: color 0.2s;
+    letter-spacing: 0.03em;
+  }
+
+  .footer-nav a:hover { color: var(--gold-lt); }
+
+  .footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 16px 0;
+    font-size: 12px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .footer-bottom a {
+    color: rgba(255, 255, 255, 0.45);
+    transition: color 0.2s;
+  }
+  .footer-bottom a:hover { color: var(--gold-lt); }
+
+  @media (max-width: 640px) {
+    .footer-inner {
+      flex-direction: column;
+      gap: 24px;
+    }
+    .footer-nav { gap: 16px; }
+  }
+</style>

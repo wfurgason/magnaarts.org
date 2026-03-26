@@ -1,0 +1,131 @@
+/* ── MAGNA ARTS COUNCIL — Global Design Tokens & Resets ── */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
+:root {
+  /* Brand Colors */
+  --navy:       #1a2456;
+  --navy-dk:    #111833;
+  --gold:       #e8a020;
+  --gold-lt:    #f5b942;
+  --blue:       #2563b0;
+  --green:      #2d7a3a;
+  --red:        #b52626;
+  --amber:      #c87e0a;
+
+  /* Surface */
+  --cream:      #f7f5f0;
+  --white:      #ffffff;
+  --border:     #e2e0d8;
+
+  /* Text */
+  --text:       #1a1a2e;
+  --muted:      #5a5a7a;
+
+  /* Shadows */
+  --shadow-card:  0 2px 12px rgba(26, 36, 86, 0.10);
+  --shadow-hover: 0 8px 32px rgba(26, 36, 86, 0.18);
+
+  /* Shape */
+  --radius:     12px;
+  --radius-sm:  8px;
+
+  /* Type */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'DM Sans', system-ui, sans-serif;
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--white);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img, svg { display: block; max-width: 100%; }
+a { text-decoration: none; color: inherit; }
+
+/* ── Utilities ── */
+.container {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section {
+  padding: 64px 0;
+}
+
+/* ── Scroll Reveal ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-gold {
+  background: var(--gold);
+  color: var(--navy-dk);
+  border-color: var(--gold);
+}
+.btn-gold:hover {
+  background: var(--gold-lt);
+  border-color: var(--gold-lt);
+  transform: translateY(-1px);
+}
+
+.btn-white {
+  background: var(--white);
+  color: var(--navy);
+  border-color: var(--white);
+}
+.btn-white:hover {
+  background: transparent;
+  color: var(--white);
+}
+
+.btn-outline-white {
+  background: transparent;
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.btn-outline-white:hover {
+  border-color: var(--white);
+  background: rgba(255, 255, 255, 0.08);
+}

@@ -2,5 +2,6 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: 'https://magnaarts.org',
+  site: 'https://wfurgason.github.io',
+  base: '/magnaarts.org',
 });

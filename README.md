@@ -122,12 +122,15 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
 
 - [x] **Phase 1 — Public Site**
   - [x] Homepage (`/`)
-  - [ ] Events listing (`/events`)
-  - [ ] Event detail (`/events/[id]`)
-  - [ ] Programs (`/programs`)
-  - [ ] About (`/about`)
-  - [ ] Get Involved (`/get-involved`)
-  - [ ] Contact (`/contact`)
+  - [x] Events listing (`/events`) — refactored to `events/index.astro`, links to detail pages
+  - [x] Event detail (`/events/[id]`) — SSR dynamic route, prev/next nav, calendar link, park tips
+  - [x] Programs (`/programs`) — sticky jump nav, all 5 programs with real photos, at-a-glance cards
+  - [x] About (`/about`) — mission, programs, board, partners
+  - [x] Get Involved (`/get-involved`) — 4 ways, volunteer roles, propose flow
+  - [x] Contact (`/contact`) — contact form, phone/email/address, board note
+
+- [ ] **Phase 1.5 — Shared Data**
+  - [x] `src/data/events.ts` — single source of truth for all event data (used by listing + detail pages)
 
 - [ ] **Phase 2 — Proposal Wizard** (community-facing)
   - [ ] Multi-step proposal form (`/propose`)

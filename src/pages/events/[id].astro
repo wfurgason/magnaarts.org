@@ -1,0 +1,427 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import '../../styles/global.css';
+import { events, getEventById } from '../../data/events';
+
+const { id } = Astro.params;
+const event = getEventById(id!);
+
+// 404 if event not found
+if (!event) {
+  return Astro.redirect('/events');
+}
+
+// Find prev/next for navigation
+const idx  = events.findIndex((e) => e.id === id);
+const prev = idx > 0 ? events[idx - 1] : null;
+const next = idx < events.length - 1 ? events[idx + 1] : null;
+
+const typeLabel: Record<string, string> = {
+  concert: 'Concert',
+  film:    'Film',
+  festival:'Festival',
+  class:   'Art Class',
+  openmic: 'Open Mic',
+};
+
+const typeColor: Record<string, string> = {
+  concert:  'blue',
+  film:     'red',
+  festival: 'amber',
+  class:    'green',
+  openmic:  'green',
+};
+---
+
+<BaseLayout
+  title={`${event.title} — Magna Arts Council`}
+  description={event.description ?? `${event.title} at ${event.location} on ${event.day}.`}
+>
+  <Header />
+
+  <main>
+
+    <!-- ── EVENT HERO ── -->
+    <section class={`event-hero hero-${typeColor[event.type]}`}>
+      <div class="container hero-inner">
+        <div class="hero-left">
+          <div class="back-link-wrap">
+            <a href="/events" class="back-link">← All Events</a>
+          </div>
+          <div class={`type-badge badge-${typeColor[event.type]}`}>
+            {typeLabel[event.type]}
+          </div>
+          <h1>{event.title}</h1>
+          {event.subtitle && (
+            <div class="hero-subtitle">
+              {event.subtitleType === 'film' ? '🎬' : '🎵'} {event.subtitle}
+            </div>
+          )}
+          <div class="hero-meta">
+            <div class="meta-item">
+              <span class="meta-icon">🗓</span>
+              <span>{event.day}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon">🕗</span>
+              <span>{event.time}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-icon">📍</span>
+              <span>{event.location}</span>
+            </div>
+            {event.address && (
+              <div class="meta-item meta-address">
+                <span class="meta-icon">↳</span>
+                <a
+                  href={`https://maps.google.com?q=${encodeURIComponent(event.address)}`}
+                  target="_blank"
+                  rel="noopener"
+                  class="map-link"
+                >
+                  {event.address} (map)
+                </a>
+              </div>
+            )}
+          </div>
+          <div class="hero-actions">
+            <a
+              href={`https://www.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.isoDate.replace(/-/g,'')}T020000Z/${event.isoDate.replace(/-/g,'')}T055900Z&location=${encodeURIComponent(event.address ?? event.location)}`}
+              target="_blank"
+              rel="noopener"
+              class="btn btn-white"
+            >
+              + Add to Google Calendar
+            </a>
+          </div>
+        </div>
+
+        {event.image && (
+          <div class="hero-image-wrap">
+            <img src={event.image} alt={event.title} class="hero-image" />
+          </div>
+        )}
+      </div>
+    </section>
+
+    <!-- ── DESCRIPTION ── -->
+    {event.description && (
+      <section class="section desc-section reveal">
+        <div class="container desc-inner">
+          <div class="desc-body">
+            <h2>About This Event</h2>
+            <p>{event.description}</p>
+          </div>
+          <div class="desc-sidebar">
+            <div class="sidebar-card">
+              <h3>Event Details</h3>
+              <dl>
+                <dt>Date</dt>
+                <dd>{event.day}</dd>
+                <dt>Time</dt>
+                <dd>{event.time}</dd>
+                <dt>Location</dt>
+                <dd>{event.location}</dd>
+                {event.address && <><dt>Address</dt><dd>{event.address}</dd></>}
+                <dt>Admission</dt>
+                <dd>Free — all ages welcome</dd>
+              </dl>
+            </div>
+            <div class="sidebar-card attend-card">
+              <h3>Planning to Attend?</h3>
+              <p>Let the community know — it helps us secure sponsorship and plan for the season.</p>
+              <a href="/contact" class="btn btn-gold" style="width:100%;justify-content:center;">RSVP / Contact Us</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- ── PARK INFO ── -->
+    {(event.type === 'concert' || event.type === 'film') && (
+      <section class="park-info reveal">
+        <div class="container park-inner">
+          <span class="park-icon">🌳</span>
+          <div>
+            <strong>Tips for Attending</strong>
+            <p>Bring a blanket or lawn chairs. Parking is free on surrounding streets. Food vendors are on site most nights. All events are free and open to the public.</p>
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- ── PREV / NEXT ── -->
+    <section class="section nav-section">
+      <div class="container event-nav">
+        {prev ? (
+          <a href={`/events/${prev.id}`} class="nav-card nav-prev reveal">
+            <span class="nav-dir">← Previous</span>
+            <span class="nav-title">{prev.title}</span>
+            <span class="nav-date">{prev.day}</span>
+          </a>
+        ) : <div />}
+
+        <a href="/events" class="nav-all reveal">All Events</a>
+
+        {next ? (
+          <a href={`/events/${next.id}`} class="nav-card nav-next reveal">
+            <span class="nav-dir">Next →</span>
+            <span class="nav-title">{next.title}</span>
+            <span class="nav-date">{next.day}</span>
+          </a>
+        ) : <div />}
+      </div>
+    </section>
+
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+  /* ── EVENT HERO ── */
+  .event-hero {
+    padding: 64px 0 56px;
+    color: var(--white);
+  }
+
+  .hero-blue   { background: var(--blue); }
+  .hero-red    { background: var(--red); }
+  .hero-amber  { background: #a86300; }
+  .hero-green  { background: var(--green); }
+
+  .hero-inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 48px;
+    align-items: center;
+  }
+
+  .back-link-wrap { margin-bottom: 20px; }
+
+  .back-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 0.04em;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: var(--white); }
+
+  .type-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 100px;
+    margin-bottom: 16px;
+    background: rgba(255,255,255,0.2);
+    color: var(--white);
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+
+  .event-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 58px);
+    font-weight: 900;
+    line-height: 1.05;
+    margin-bottom: 10px;
+  }
+
+  .hero-subtitle {
+    font-size: 18px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 28px;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    color: rgba(255,255,255,0.9);
+  }
+
+  .meta-icon { font-size: 16px; flex-shrink: 0; }
+  .meta-address { opacity: 0.75; }
+
+  .map-link {
+    color: rgba(255,255,255,0.85);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .map-link:hover { color: var(--white); }
+
+  .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+
+  .hero-image-wrap {
+    width: 320px;
+    flex-shrink: 0;
+  }
+
+  .hero-image {
+    width: 100%;
+    border-radius: var(--radius);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    object-fit: cover;
+    aspect-ratio: 4/3;
+  }
+
+  /* ── DESCRIPTION ── */
+  .desc-section { background: var(--white); }
+
+  .desc-inner {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 48px;
+    align-items: start;
+  }
+
+  .desc-body h2 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 16px;
+  }
+
+  .desc-body p {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+
+  .sidebar-card {
+    background: var(--cream);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .sidebar-card h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 16px;
+  }
+
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; }
+
+  dt {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    align-self: start;
+    padding-top: 1px;
+  }
+
+  dd { font-size: 14px; color: var(--navy); line-height: 1.5; }
+
+  .attend-card { background: #fef9ec; border-color: #fde68a; }
+  .attend-card h3 { color: var(--amber); }
+  .attend-card p { font-size: 14px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+
+  /* ── PARK INFO ── */
+  .park-info {
+    background: #ecfdf5;
+    border-top: 1px solid #a7f3d0;
+    border-bottom: 1px solid #a7f3d0;
+    padding: 20px 0;
+  }
+
+  .park-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .park-icon { font-size: 28px; flex-shrink: 0; }
+
+  .park-inner strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 4px;
+  }
+
+  .park-inner p { font-size: 14px; color: #065f46; line-height: 1.6; }
+
+  /* ── PREV/NEXT NAV ── */
+  .nav-section { background: var(--cream); padding: 48px 0; }
+
+  .event-nav {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .nav-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: box-shadow 0.2s, transform 0.2s;
+    color: inherit;
+  }
+
+  .nav-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-3px); }
+
+  .nav-next { text-align: right; }
+
+  .nav-dir {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .nav-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .nav-date { font-size: 13px; color: var(--muted); }
+
+  .nav-all {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--blue);
+    text-align: center;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 860px) {
+    .hero-inner   { grid-template-columns: 1fr; }
+    .hero-image-wrap { display: none; }
+    .desc-inner   { grid-template-columns: 1fr; }
+    .event-nav    { grid-template-columns: 1fr 1fr; }
+    .nav-all      { display: none; }
+  }
+</style>

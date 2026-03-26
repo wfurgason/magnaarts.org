@@ -73,14 +73,14 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         </div>
 
         <!-- Status messages -->
-        <div id="form-success" class="status-banner status-success" hidden>
+        <div id="form-success" class="status-banner status-success" style="display:none">
           <span>🎉</span>
           <div>
             <strong>Application submitted!</strong>
             <p>Thanks for applying. We'll review your submission and be in touch within two weeks.</p>
           </div>
         </div>
-        <div id="form-error" class="status-banner status-error" hidden>
+        <div id="form-error" class="status-banner status-error" style="display:none">
           <span>⚠️</span>
           <div>
             <strong>Something went wrong.</strong>
@@ -315,6 +315,7 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
   <!-- ══ CLIENT-SIDE SCRIPT — inside BaseLayout so it's part of the document ══ -->
   <script define:vars={{ SUPABASE_URL, SUPABASE_KEY }}>
+    document.addEventListener('DOMContentLoaded', () => {
     // ── helpers ────────────────────────────────────────────────────────────
 
     async function supabaseInsert(table, payload) {
@@ -430,8 +431,8 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
       submitBtn.disabled    = true;
       submitBtn.textContent = 'Uploading…';
-      successEl.hidden      = true;
-      errorEl.hidden        = true;
+      successEl.style.display = 'none';
+      errorEl.style.display   = 'none';
 
       try {
         const fd       = new FormData(form);
@@ -484,25 +485,30 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         bioCount.textContent = '0';
         document.getElementById('photo-preview').hidden = true;
         document.getElementById('rider-preview').hidden = true;
-        successEl.hidden = false;
+        successEl.style.display = 'flex';
         successEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
         errorDetail.innerHTML = `${msg} — or email us at <a href="mailto:wfurgason@gmail.com">wfurgason@gmail.com</a>.`;
-        errorEl.hidden = false;
+        errorEl.style.display = 'flex';
         errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
       } finally {
         submitBtn.disabled    = false;
         submitBtn.textContent = 'Submit Application →';
       }
-    });
+    }); // end submit listener
+    }); // end DOMContentLoaded
   </script>
 
 </BaseLayout>
 
 <style>
+  /* ── GLOBAL HIDDEN FIX ── */
+  /* Prevents display:flex/.status-banner from overriding the HTML hidden attribute */
+  [hidden] { display: none !important; }
+
   /* ── PAGE HERO ── */
   .page-hero {
     background: var(--navy);

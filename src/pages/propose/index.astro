@@ -1,0 +1,582 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import '../../styles/global.css';
+---
+
+<BaseLayout
+  title="Propose an Event — Magna Arts Council"
+  description="Have an idea for a concert, class, film screening, or community event? Submit a proposal to the Magna Arts Council board."
+>
+  <Header />
+
+  <main>
+
+    <!-- ── PAGE HERO ── -->
+    <section class="page-hero">
+      <div class="container">
+        <div class="hero-badge">Get Involved</div>
+        <h1>Propose an Event</h1>
+        <p class="hero-sub">
+          Have an idea for a concert, class, film screening, or community arts event?
+          Tell us about it — the board reviews every proposal.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── FORM ── -->
+    <section class="section propose-section">
+      <div class="container propose-inner">
+
+        <!-- Progress indicator -->
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-step active" data-step="1">
+            <div class="step-dot">1</div>
+            <span class="step-label">About You</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="2">
+            <div class="step-dot">2</div>
+            <span class="step-label">Your Idea</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="3">
+            <div class="step-dot">3</div>
+            <span class="step-label">Details</span>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <form
+          class="propose-form"
+          id="proposeForm"
+          name="proposal"
+          method="POST"
+          action="/propose/confirmation"
+        >
+          <input type="hidden" name="form-name" value="proposal" />
+
+          <!-- ── STEP 1: About You ── -->
+          <div class="form-step active" id="step1">
+            <h2 class="step-title">About You</h2>
+            <p class="step-sub">So the board knows who's behind the idea.</p>
+
+            <div class="field-row two-col">
+              <div class="field">
+                <label for="firstName">First Name <span class="req">*</span></label>
+                <input type="text" id="firstName" name="firstName" required autocomplete="given-name" />
+              </div>
+              <div class="field">
+                <label for="lastName">Last Name <span class="req">*</span></label>
+                <input type="text" id="lastName" name="lastName" required autocomplete="family-name" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="email">Email Address <span class="req">*</span></label>
+              <input type="email" id="email" name="email" required autocomplete="email" />
+              <p class="field-hint">We'll send your confirmation here.</p>
+            </div>
+
+            <div class="field">
+              <label for="phone">Phone Number</label>
+              <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="(801) 555-0000" />
+            </div>
+
+            <div class="field">
+              <label for="connection">Your connection to Magna <span class="req">*</span></label>
+              <select id="connection" name="connection" required>
+                <option value="" disabled selected>Select one…</option>
+                <option value="resident">I live in Magna</option>
+                <option value="business">I own or work at a Magna business</option>
+                <option value="school">I work at a Magna school</option>
+                <option value="organization">I represent a local organization</option>
+                <option value="artist">I'm an artist or performer</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div class="step-nav">
+              <span></span>
+              <button type="button" class="btn btn-gold next-btn" data-next="2">Next: Your Idea →</button>
+            </div>
+          </div>
+
+          <!-- ── STEP 2: Your Idea ── -->
+          <div class="form-step" id="step2">
+            <h2 class="step-title">Your Idea</h2>
+            <p class="step-sub">Tell us what you have in mind.</p>
+
+            <div class="field">
+              <label for="eventType">Type of Event <span class="req">*</span></label>
+              <div class="type-grid">
+                <label class="type-card">
+                  <input type="radio" name="eventType" value="concert" required />
+                  <span class="type-icon">♪</span>
+                  <span class="type-label">Concert</span>
+                </label>
+                <label class="type-card">
+                  <input type="radio" name="eventType" value="class" />
+                  <span class="type-icon">✦</span>
+                  <span class="type-label">Art Class</span>
+                </label>
+                <label class="type-card">
+                  <input type="radio" name="eventType" value="film" />
+                  <span class="type-icon">▶</span>
+                  <span class="type-label">Film</span>
+                </label>
+                <label class="type-card">
+                  <input type="radio" name="eventType" value="festival" />
+                  <span class="type-icon">★</span>
+                  <span class="type-label">Festival</span>
+                </label>
+                <label class="type-card">
+                  <input type="radio" name="eventType" value="other" />
+                  <span class="type-icon">💡</span>
+                  <span class="type-label">Other</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="eventTitle">Working Title <span class="req">*</span></label>
+              <input type="text" id="eventTitle" name="eventTitle" required placeholder="e.g. Summer Jazz in the Park" />
+            </div>
+
+            <div class="field">
+              <label for="description">Describe your idea <span class="req">*</span></label>
+              <textarea
+                id="description"
+                name="description"
+                rows="5"
+                required
+                placeholder="What would happen? Who's involved? Why would the Magna community love it?"
+              ></textarea>
+            </div>
+
+            <div class="step-nav">
+              <button type="button" class="btn btn-back back-btn" data-back="1">← Back</button>
+              <button type="button" class="btn btn-gold next-btn" data-next="3">Next: Details →</button>
+            </div>
+          </div>
+
+          <!-- ── STEP 3: Details ── -->
+          <div class="form-step" id="step3">
+            <h2 class="step-title">Details</h2>
+            <p class="step-sub">As much or as little as you know right now — nothing here is final.</p>
+
+            <div class="field-row two-col">
+              <div class="field">
+                <label for="proposedDate">Proposed Date</label>
+                <input type="date" id="proposedDate" name="proposedDate" />
+              </div>
+              <div class="field">
+                <label for="proposedTime">Proposed Time</label>
+                <input type="time" id="proposedTime" name="proposedTime" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="location">Preferred Location</label>
+              <select id="location" name="location">
+                <option value="" selected>No preference / not sure yet</option>
+                <option value="pleasant-green-park">Pleasant Green Park</option>
+                <option value="empress-theater">Empress Theater</option>
+                <option value="magna-library">Magna Library</option>
+                <option value="senior-center">Magna Kennecott Senior Center</option>
+                <option value="other">Other (describe below)</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="attendance">Estimated Attendance</label>
+              <select id="attendance" name="attendance">
+                <option value="" selected>Not sure yet</option>
+                <option value="under-50">Under 50 people</option>
+                <option value="50-200">50–200 people</option>
+                <option value="200-500">200–500 people</option>
+                <option value="500-plus">500+ people</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="budget">Do you have a budget in mind?</label>
+              <input type="text" id="budget" name="budget" placeholder="e.g. $500, or 'no idea yet'" />
+              <p class="field-hint">The Arts Council provides funding for approved proposals. Just give us a rough sense.</p>
+            </div>
+
+            <div class="field">
+              <label for="anythingElse">Anything else we should know?</label>
+              <textarea
+                id="anythingElse"
+                name="anythingElse"
+                rows="3"
+                placeholder="Collaborators, special needs, timing constraints, questions for the board…"
+              ></textarea>
+            </div>
+
+            <div class="notice-box">
+              <p>
+                <strong>What happens next:</strong> The board reviews proposals at our monthly meeting.
+                You'll receive an email confirmation now, and a follow-up within 2–3 weeks
+                with the board's response.
+              </p>
+            </div>
+
+            <div class="step-nav">
+              <button type="button" class="btn btn-back back-btn" data-back="2">← Back</button>
+              <button type="submit" class="btn btn-gold submit-btn">Submit Proposal →</button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+  /* ── PAGE HERO ── */
+  .page-hero {
+    background: var(--navy);
+    color: var(--white);
+    padding: 60px 0 64px;
+    text-align: center;
+  }
+
+  .page-hero .hero-badge {
+    display: inline-block;
+    background: rgba(232, 160, 32, 0.18);
+    border: 1px solid rgba(232, 160, 32, 0.45);
+    color: var(--gold-lt);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 900;
+    margin-bottom: 16px;
+  }
+
+  .page-hero .hero-sub {
+    font-size: 17px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.78);
+    max-width: 560px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* ── LAYOUT ── */
+  .propose-section { background: var(--cream); }
+
+  .propose-inner {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 40px;
+  }
+
+  .progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .step-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--white);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s;
+  }
+
+  .progress-step.active .step-dot {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: var(--white);
+  }
+
+  .progress-step.done .step-dot {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--white);
+  }
+
+  .step-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .progress-step.active .step-label { color: var(--navy); }
+  .progress-step.done .step-label   { color: var(--gold); }
+
+  .progress-line {
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+    margin: 0 12px;
+    margin-bottom: 24px;
+    min-width: 48px;
+    transition: background 0.25s;
+  }
+
+  .progress-line.done { background: var(--gold); }
+
+  /* ── FORM CARD ── */
+  .propose-form {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    padding: 40px;
+  }
+
+  .form-step { display: none; }
+  .form-step.active { display: block; }
+
+  .step-title {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+
+  .step-sub {
+    font-size: 15px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  /* ── FIELDS ── */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+
+  .field-row.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  .req { color: var(--gold); }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="time"],
+  select,
+  textarea {
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--navy);
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(26, 36, 86, 0.08);
+  }
+
+  textarea { resize: vertical; min-height: 100px; }
+
+  .field-hint {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  /* ── EVENT TYPE GRID ── */
+  .type-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+
+  .type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    text-align: center;
+  }
+
+  .type-card input[type="radio"] { display: none; }
+
+  .type-card:has(input:checked) {
+    border-color: var(--navy);
+    background: #f0f3ff;
+  }
+
+  .type-icon {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .type-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── NOTICE BOX ── */
+  .notice-box {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+  }
+
+  .notice-box p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1e40af;
+    margin: 0;
+  }
+
+  /* ── NAV BUTTONS ── */
+  .step-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-back {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .btn-back:hover {
+    border-color: var(--navy);
+    color: var(--navy);
+  }
+
+  .submit-btn { font-size: 16px; padding: 14px 32px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .propose-form { padding: 28px 20px; }
+    .field-row.two-col { grid-template-columns: 1fr; }
+    .type-grid { grid-template-columns: repeat(3, 1fr); }
+    .progress-line { min-width: 24px; }
+  }
+</style>
+
+<script>
+  // Multi-step navigation
+  const form = document.getElementById('proposeForm');
+  const steps = document.querySelectorAll('.form-step');
+  const progressSteps = document.querySelectorAll('.progress-step');
+  const progressLines = document.querySelectorAll('.progress-line');
+
+  function goToStep(n: number) {
+    steps.forEach((s, i) => s.classList.toggle('active', i === n - 1));
+    progressSteps.forEach((s, i) => {
+      s.classList.toggle('active', i === n - 1);
+      s.classList.toggle('done', i < n - 1);
+    });
+    progressLines.forEach((l, i) => l.classList.toggle('done', i < n - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.querySelectorAll('.next-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = parseInt((btn as HTMLElement).dataset.next || '2');
+      // Basic validation: check required fields in current step
+      const currentStep = document.getElementById(`step${next - 1}`);
+      const invalid = currentStep?.querySelectorAll('[required]');
+      let allValid = true;
+      invalid?.forEach((el) => {
+        if (!(el as HTMLInputElement).checkValidity()) {
+          (el as HTMLInputElement).reportValidity();
+          allValid = false;
+        }
+      });
+      // Radio group validation
+      if (next === 3) {
+        const radios = document.querySelectorAll('input[name="eventType"]');
+        const checked = [...radios].some((r) => (r as HTMLInputElement).checked);
+        if (!checked) {
+          alert('Please select an event type.');
+          allValid = false;
+        }
+      }
+      if (allValid) goToStep(next);
+    });
+  });
+
+  document.querySelectorAll('.back-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const back = parseInt((btn as HTMLElement).dataset.back || '1');
+      goToStep(back);
+    });
+  });
+</script>

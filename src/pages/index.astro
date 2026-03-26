@@ -3,37 +3,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
+import { events as allEvents } from '../data/events';
 
-// Placeholder events — will come from Supabase in Phase 2
-const events = [
-  {
-    id: 1,
-    type: 'concert',
-    label: 'Concert',
-    title: 'Music in the Park',
-    date: 'June 14, 2025',
-    time: '7:00 PM',
-    location: 'Magna Copper Park',
-  },
-  {
-    id: 2,
-    type: 'film',
-    label: 'Film',
-    title: 'Movies in the Park',
-    date: 'June 14, 2025',
-    time: '9:00 PM',
-    location: 'Magna Copper Park',
-  },
-  {
-    id: 3,
-    type: 'class',
-    label: 'Class',
-    title: 'Monthly Art Class',
-    date: 'June 21, 2025',
-    time: '10:00 AM',
-    location: 'Magna Library',
-  },
-];
+// Show the next 3 upcoming events, sorted by date.
+// TODO: Replace with a Supabase query filtered to future events in Phase 2.
+const today = new Date().toISOString().slice(0, 10);
+const upcomingEvents = allEvents
+  .filter((e) => e.isoDate >= today)
+  .sort((a, b) => a.isoDate.localeCompare(b.isoDate))
+  .slice(0, 3);
 
 const roles = [
   {
@@ -120,12 +98,12 @@ const roles = [
           <a href="/events" class="all-link">All Events →</a>
         </div>
         <div class="events-grid">
-          {events.map((event, i) => (
+          {upcomingEvents.map((event, i) => (
             <article class={`event-card ${event.type} reveal`} style={`transition-delay:${i * 0.1}s`}>
-              <span class={`event-tag tag-${event.type}`}>{event.label}</span>
+              <span class={`event-tag tag-${event.type}`}>{event.tags[0]}</span>
               <h3>{event.title}</h3>
               <div class="event-meta">
-                <div class="meta-row"><span class="meta-icon">📅</span>{event.date}</div>
+                <div class="meta-row"><span class="meta-icon">📅</span>{event.day}</div>
                 <div class="meta-row"><span class="meta-icon">🕐</span>{event.time}</div>
                 <div class="meta-row"><span class="meta-icon">📍</span>{event.location}</div>
               </div>

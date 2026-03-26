@@ -129,12 +129,14 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [x] Get Involved (`/get-involved`) — 4 ways, volunteer roles, propose flow
   - [x] Contact (`/contact`) — contact form, phone/email/address, board note
 
-- [ ] **Phase 1.5 — Shared Data**
-  - [x] `src/data/events.ts` — single source of truth for all event data (used by listing + detail pages)
+- [x] **Phase 1.5 — Shared Data**
+  - [x] `src/data/events.ts` — single source of truth for all event data (used by homepage, listing, and detail pages)
 
-- [ ] **Phase 2 — Proposal Wizard** (community-facing)
-  - [ ] Multi-step proposal form (`/propose`)
-  - [ ] Confirmation + status page
+- [x] **Phase 2 — Proposal Wizard** (community-facing)
+  - [x] Multi-step proposal form (`/propose`) — 3 steps: About You, Your Idea, Details. UI only, Supabase wired up in Phase 3+.
+  - [x] Confirmation page (`/propose/confirmation`) — shows next steps, links back to events
+  - [ ] Email notification to board on submit (needs Supabase or form service)
+  - [ ] Save submission to Supabase `programs` table
 
 - [ ] **Phase 3 — Board Dashboard** (auth-protected, SSR)
   - [ ] Login (`/board/login`)

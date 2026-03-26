@@ -128,6 +128,17 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [x] About (`/about`) — mission, programs, board, partners
   - [x] Get Involved (`/get-involved`) — 4 ways, volunteer roles, propose flow
   - [x] Contact (`/contact`) — contact form, phone/email/address, board note
+  - [x] Call for Bands (`/call-for-bands`) — Supabase-backed application form with file uploads; see below
+
+- [x] **Phase 1.6 — Call for Bands Form**
+  - [x] Application form (`/call-for-bands`) — contact info, genre, member count, 300-char bio, website/music links, date availability
+  - [x] Promo photo upload → Supabase Storage bucket `band-promos` (public, 10 MB, JPG/PNG/WebP)
+  - [x] Tech rider upload → Supabase Storage bucket `band-tech-riders` (private, 5 MB, PDF)
+  - [x] Row insert into `band_applications` Supabase table with full RLS policy set
+  - [x] Migration SQL at `supabase/migrations/001_band_applications.sql`
+  - [ ] Wire `/call-for-bands` into Header nav under "Movie and Music in the Park"
+  - [ ] Email notification to board on new submission (Supabase Edge Function or webhook)
+  - [ ] Board dashboard review queue for applications (Phase 3)
 
 - [x] **Phase 1.5 — Shared Data**
   - [x] `src/data/events.ts` — single source of truth for all event data (used by homepage, listing, and detail pages)
@@ -187,6 +198,7 @@ Set `SUPABASE_SERVICE_ROLE_KEY` to Production + Preview only (never Development 
 
 | Table | Purpose |
 |---|---|
+| `band_applications` | Call-for-bands submissions; status: pending → reviewed → accepted/declined/waitlisted |
 | `programs` | Proposals and approved programs, workflow stage tracking |
 | `events` | Published events with date/time/location |
 | `attendance` | Intent-to-attend and actual attendance per event |

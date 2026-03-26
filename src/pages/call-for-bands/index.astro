@@ -3,6 +3,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
+
+const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 ---
 
 <BaseLayout
@@ -246,7 +249,7 @@ import '../../styles/global.css';
                 Promotional Photo <span class="req">*</span>
                 <span class="label-hint">(JPG or PNG, max 10 MB — used in event listings)</span>
               </label>
-              <div class="upload-zone" id="photo-zone" data-field="promo_photo">
+              <div class="upload-zone" id="photo-zone">
                 <input
                   type="file"
                   id="promo_photo"
@@ -271,7 +274,7 @@ import '../../styles/global.css';
                 Tech Rider
                 <span class="label-hint">(PDF, max 5 MB — your stage and sound requirements)</span>
               </label>
-              <div class="upload-zone" id="rider-zone" data-field="tech_rider">
+              <div class="upload-zone" id="rider-zone">
                 <input
                   type="file"
                   id="tech_rider"
@@ -309,189 +312,195 @@ import '../../styles/global.css';
   </main>
 
   <Footer />
-</BaseLayout>
 
-<!-- ══ CLIENT-SIDE: Supabase upload + form submit ══ -->
-<script>
-  // ── helpers ──────────────────────────────────────────────────────────────
-  const SUPABASE_URL  = import.meta.env.PUBLIC_SUPABASE_URL;
-  const SUPABASE_KEY  = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  <!-- ══ CLIENT-SIDE SCRIPT — inside BaseLayout so it's part of the document ══ -->
+  <script define:vars={{ SUPABASE_URL, SUPABASE_KEY }}>
+    // ── helpers ────────────────────────────────────────────────────────────
 
-  async function supabaseInsert(table: string, payload: Record<string, unknown>) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation',
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status}`);
-    }
-    return res.json();
-  }
-
-  async function supabaseUpload(bucket: string, path: string, file: File): Promise<string> {
-    console.log(`[upload] bucket=${bucket} path=${path} type=${file.type} size=${file.size}`);
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': file.type,
-        'x-upsert': 'true',
-      },
-      body: file,
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      console.error(`[upload] FAILED ${res.status} — raw response:`, errText);
-      let errMsg = `Upload failed: HTTP ${res.status}`;
-      try { errMsg = JSON.parse(errText).error || errMsg; } catch {}
-      throw new Error(errMsg);
-    }
-    return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
-  }
-
-  function slug(name: string) {
-    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  }
-
-  function uniquePrefix() {
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  }
-
-  // ── bio character counter ────────────────────────────────────────────────
-  const bioEl    = document.getElementById('bio') as HTMLTextAreaElement;
-  const bioCount = document.getElementById('bio-count') as HTMLElement;
-  bioEl.addEventListener('input', () => {
-    const n = bioEl.value.length;
-    bioCount.textContent = String(n);
-    bioCount.style.color = n >= 280 ? 'var(--red)' : n >= 240 ? 'var(--amber)' : '';
-  });
-
-  // ── drag-and-drop styling ────────────────────────────────────────────────
-  document.querySelectorAll<HTMLElement>('.upload-zone').forEach(zone => {
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-    zone.addEventListener('drop', e => {
-      e.preventDefault();
-      zone.classList.remove('drag-over');
-      const input = zone.querySelector<HTMLInputElement>('.upload-input');
-      if (input && e.dataTransfer?.files.length) {
-        const dt = new DataTransfer();
-        dt.items.add(e.dataTransfer.files[0]);
-        input.files = dt.files;
-        input.dispatchEvent(new Event('change'));
-      }
-    });
-  });
-
-  // ── upload preview ───────────────────────────────────────────────────────
-  function wirePreview(inputId: string, previewId: string, isImage: boolean) {
-    const input   = document.getElementById(inputId) as HTMLInputElement;
-    const preview = document.getElementById(previewId) as HTMLElement;
-    input.addEventListener('change', () => {
-      const file = input.files?.[0];
-      if (!file) { preview.hidden = true; return; }
-      preview.hidden = false;
-      if (isImage) {
-        const reader = new FileReader();
-        reader.onload = e => {
-          preview.innerHTML = `<img src="${e.target?.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
-        };
-        reader.readAsDataURL(file);
-      } else {
-        preview.innerHTML = `<span class="file-icon">📄</span><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
-      }
-    });
-  }
-
-  wirePreview('promo_photo', 'photo-preview', true);
-  wirePreview('tech_rider',  'rider-preview',  false);
-
-  // ── form submit ──────────────────────────────────────────────────────────
-  const form      = document.getElementById('band-form') as HTMLFormElement;
-  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
-  const successEl = document.getElementById('form-success') as HTMLElement;
-  const errorEl   = document.getElementById('form-error') as HTMLElement;
-  const errorDetail = document.getElementById('error-detail') as HTMLElement;
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!form.checkValidity()) { form.reportValidity(); return; }
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Uploading…';
-    successEl.hidden = true;
-    errorEl.hidden   = true;
-
-    try {
-      const fd = new FormData(form);
-      const bandName = fd.get('band_name') as string;
-      const prefix   = `${slug(bandName)}-${uniquePrefix()}`;
-
-      // ── upload promo photo ──
-      let promo_photo_url: string | null = null;
-      const photoFile = (document.getElementById('promo_photo') as HTMLInputElement).files?.[0];
-      if (photoFile) {
-        submitBtn.textContent = 'Uploading photo…';
-        const ext = photoFile.name.split('.').pop();
-        promo_photo_url = await supabaseUpload('band-promos', `${prefix}/promo.${ext}`, photoFile);
-      }
-
-      // ── upload tech rider ──
-      let tech_rider_url: string | null = null;
-      const riderFile = (document.getElementById('tech_rider') as HTMLInputElement).files?.[0];
-      if (riderFile) {
-        submitBtn.textContent = 'Uploading tech rider…';
-        tech_rider_url = await supabaseUpload('band-tech-riders', `${prefix}/rider.pdf`, riderFile);
-      }
-
-      // ── insert row ──
-      submitBtn.textContent = 'Saving application…';
-      await supabaseInsert('band_applications', {
-        band_name:        fd.get('band_name'),
-        contact_name:     fd.get('contact_name'),
-        contact_email:    fd.get('contact_email'),
-        contact_phone:    fd.get('contact_phone') || null,
-        genre:            fd.get('genre'),
-        member_count:     fd.get('member_count'),
-        bio:              fd.get('bio'),
-        website:          fd.get('website') || null,
-        music_link:       fd.get('music_link') || null,
-        set_length:       fd.get('set_length') || null,
-        performed_before: fd.get('performed_before') || null,
-        availability:     fd.get('availability') || null,
-        additional_notes: fd.get('additional_notes') || null,
-        promo_photo_url,
-        tech_rider_url,
-        status:           'pending',
-        submitted_at:     new Date().toISOString(),
+    async function supabaseInsert(table, payload) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(payload),
       });
-
-      form.reset();
-      bioCount.textContent = '0';
-      document.getElementById('photo-preview')!.hidden = true;
-      document.getElementById('rider-preview')!.hidden = true;
-      successEl.hidden = false;
-      successEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      errorDetail.innerHTML = `${msg} — or email us at <a href="mailto:wfurgason@gmail.com">wfurgason@gmail.com</a>.`;
-      errorEl.hidden = false;
-      errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit Application →';
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `HTTP ${res.status}`);
+      }
+      return res.json();
     }
-  });
-</script>
+
+    async function supabaseUpload(bucket, path, file) {
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': file.type,
+          'x-upsert': 'true',
+        },
+        body: file,
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.error(`[upload] FAILED ${res.status}:`, errText);
+        let errMsg = `Upload failed: HTTP ${res.status}`;
+        try { errMsg = JSON.parse(errText).error || errMsg; } catch (_) {}
+        throw new Error(errMsg);
+      }
+      return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+    }
+
+    function slugify(name) {
+      return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+
+    function uniquePrefix() {
+      return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    // ── bio character counter ──────────────────────────────────────────────
+
+    const bioEl    = document.getElementById('bio');
+    const bioCount = document.getElementById('bio-count');
+    bioEl.addEventListener('input', () => {
+      const n = bioEl.value.length;
+      bioCount.textContent = String(n);
+      bioCount.style.color = n >= 280 ? 'var(--red)' : n >= 240 ? 'var(--amber)' : '';
+    });
+
+    // ── drag-and-drop styling ──────────────────────────────────────────────
+
+    document.querySelectorAll('.upload-zone').forEach(zone => {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const input = zone.querySelector('.upload-input');
+        if (input && e.dataTransfer && e.dataTransfer.files.length) {
+          const dt = new DataTransfer();
+          dt.items.add(e.dataTransfer.files[0]);
+          input.files = dt.files;
+          input.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
+    // ── upload previews ────────────────────────────────────────────────────
+
+    function wirePreview(inputId, previewId, isImage) {
+      const input   = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (!file) { preview.hidden = true; return; }
+        preview.hidden = false;
+        if (isImage) {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            preview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+          };
+          reader.readAsDataURL(file);
+        } else {
+          preview.innerHTML = `<span class="file-icon">📄</span><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+        }
+      });
+    }
+
+    wirePreview('promo_photo', 'photo-preview', true);
+    wirePreview('tech_rider',  'rider-preview',  false);
+
+    // ── form submit ────────────────────────────────────────────────────────
+
+    const form        = document.getElementById('band-form');
+    const submitBtn   = document.getElementById('submit-btn');
+    const successEl   = document.getElementById('form-success');
+    const errorEl     = document.getElementById('form-error');
+    const errorDetail = document.getElementById('error-detail');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      submitBtn.disabled    = true;
+      submitBtn.textContent = 'Uploading…';
+      successEl.hidden      = true;
+      errorEl.hidden        = true;
+
+      try {
+        const fd       = new FormData(form);
+        const bandName = fd.get('band_name');
+        const prefix   = `${slugify(bandName)}-${uniquePrefix()}`;
+
+        // upload promo photo
+        let promo_photo_url = null;
+        const photoInput = document.getElementById('promo_photo');
+        const photoFile  = photoInput.files && photoInput.files[0];
+        if (photoFile) {
+          submitBtn.textContent = 'Uploading photo…';
+          const ext = photoFile.name.split('.').pop();
+          promo_photo_url = await supabaseUpload('band-promos', `${prefix}/promo.${ext}`, photoFile);
+        }
+
+        // upload tech rider
+        let tech_rider_url = null;
+        const riderInput = document.getElementById('tech_rider');
+        const riderFile  = riderInput.files && riderInput.files[0];
+        if (riderFile) {
+          submitBtn.textContent = 'Uploading tech rider…';
+          tech_rider_url = await supabaseUpload('band-tech-riders', `${prefix}/rider.pdf`, riderFile);
+        }
+
+        // insert row
+        submitBtn.textContent = 'Saving application…';
+        await supabaseInsert('band_applications', {
+          band_name:        fd.get('band_name'),
+          contact_name:     fd.get('contact_name'),
+          contact_email:    fd.get('contact_email'),
+          contact_phone:    fd.get('contact_phone') || null,
+          genre:            fd.get('genre'),
+          member_count:     fd.get('member_count'),
+          bio:              fd.get('bio'),
+          website:          fd.get('website') || null,
+          music_link:       fd.get('music_link') || null,
+          set_length:       fd.get('set_length') || null,
+          performed_before: fd.get('performed_before') || null,
+          availability:     fd.get('availability') || null,
+          additional_notes: fd.get('additional_notes') || null,
+          promo_photo_url,
+          tech_rider_url,
+          status:           'pending',
+          submitted_at:     new Date().toISOString(),
+        });
+
+        // success
+        form.reset();
+        bioCount.textContent = '0';
+        document.getElementById('photo-preview').hidden = true;
+        document.getElementById('rider-preview').hidden = true;
+        successEl.hidden = false;
+        successEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        errorDetail.innerHTML = `${msg} — or email us at <a href="mailto:wfurgason@gmail.com">wfurgason@gmail.com</a>.`;
+        errorEl.hidden = false;
+        errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      } finally {
+        submitBtn.disabled    = false;
+        submitBtn.textContent = 'Submit Application →';
+      }
+    });
+  </script>
+
+</BaseLayout>
 
 <style>
   /* ── PAGE HERO ── */
@@ -733,7 +742,6 @@ import '../../styles/global.css';
 
   .field textarea { resize: vertical; min-height: 90px; }
 
-  /* bio counter */
   .char-count {
     font-size: 12px;
     color: var(--muted);

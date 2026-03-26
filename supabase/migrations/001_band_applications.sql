@@ -1,7 +1,9 @@
 -- ============================================================
 -- Migration: Band Applications
 -- Run this in the Supabase SQL Editor for magnaarts.org
+-- Safe to re-run: uses IF NOT EXISTS / ON CONFLICT / DROP IF EXISTS
 -- ============================================================
+
 
 -- ── 1. TABLE ─────────────────────────────────────────────────
 
@@ -40,30 +42,29 @@ create table if not exists public.band_applications (
   reviewed_by      uuid references auth.users(id)
 );
 
--- Handy index for the board dashboard review queue
 create index if not exists band_applications_status_idx
   on public.band_applications (status, submitted_at desc);
 
 
--- ── 2. ROW-LEVEL SECURITY ────────────────────────────────────
+-- ── 2. RLS: band_applications table ──────────────────────────
 
 alter table public.band_applications enable row level security;
 
--- Public (anon key) can INSERT only — no reads, no updates
+drop policy if exists "Anyone can submit a band application" on public.band_applications;
 create policy "Anyone can submit a band application"
   on public.band_applications
   for insert
   to anon
   with check (true);
 
--- Authenticated board members can read all applications
+drop policy if exists "Board can read applications" on public.band_applications;
 create policy "Board can read applications"
   on public.band_applications
   for select
   to authenticated
   using (true);
 
--- Authenticated board members can update status / reviewer notes
+drop policy if exists "Board can update application status" on public.band_applications;
 create policy "Board can update application status"
   on public.band_applications
   for update
@@ -73,57 +74,84 @@ create policy "Board can update application status"
 
 
 -- ── 3. STORAGE BUCKETS ───────────────────────────────────────
--- Run these in the Supabase dashboard → Storage → New bucket,
--- OR execute via the REST API / Supabase CLI.
--- The SQL below uses the storage schema if available.
+--
+-- Both buckets use public = true so the anon INSERT/upsert path
+-- works without signed URLs. Tech riders remain access-controlled
+-- by the authenticated-only SELECT policy; the bucket "Public"
+-- toggle does not bypass RLS.
 
--- Bucket: band-promos (promotional photos)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'band-promos',
   'band-promos',
-  true,            -- public read (images shown on event pages)
-  10485760,        -- 10 MB
-  array['image/jpeg','image/png','image/webp']
+  true,
+  10485760,   -- 10 MB
+  array['image/jpeg', 'image/png', 'image/webp']
 )
-on conflict (id) do nothing;
+on conflict (id) do update set
+  public             = excluded.public,
+  file_size_limit    = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
--- Bucket: band-tech-riders (PDF tech riders — not public)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'band-tech-riders',
   'band-tech-riders',
-  false,           -- private — board only
-  5242880,         -- 5 MB
+  true,        -- public toggle ON; SELECT still locked to authenticated via RLS
+  5242880,     -- 5 MB
   array['application/pdf']
 )
-on conflict (id) do nothing;
+on conflict (id) do update set
+  public             = excluded.public,
+  file_size_limit    = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 
--- ── 4. STORAGE POLICIES ─────────────────────────────────────
+-- ── 4. STORAGE POLICIES: band-promos ─────────────────────────
+-- Note: RLS on storage.objects is managed by Supabase internally.
+-- Do NOT run ALTER TABLE storage.objects — you are not the owner.
 
--- Anyone (anon) can upload to band-promos
+drop policy if exists "Anon can upload promo photos" on storage.objects;
 create policy "Anon can upload promo photos"
   on storage.objects
   for insert
   to anon
   with check (bucket_id = 'band-promos');
 
--- Anyone (anon) can upload tech riders
-create policy "Anon can upload tech riders"
+drop policy if exists "Anon can upsert promo photos" on storage.objects;
+create policy "Anon can upsert promo photos"
   on storage.objects
-  for insert
+  for update
   to anon
-  with check (bucket_id = 'band-tech-riders');
+  using   (bucket_id = 'band-promos')
+  with check (bucket_id = 'band-promos');
 
--- Public read for promo photos (so they can be embedded in pages)
+drop policy if exists "Public can read promo photos" on storage.objects;
 create policy "Public can read promo photos"
   on storage.objects
   for select
   to public
   using (bucket_id = 'band-promos');
 
--- Authenticated board can read tech riders
+
+-- ── 5. STORAGE POLICIES: band-tech-riders ────────────────────
+
+drop policy if exists "Anon can upload tech riders" on storage.objects;
+create policy "Anon can upload tech riders"
+  on storage.objects
+  for insert
+  to anon
+  with check (bucket_id = 'band-tech-riders');
+
+drop policy if exists "Anon can upsert tech riders" on storage.objects;
+create policy "Anon can upsert tech riders"
+  on storage.objects
+  for update
+  to anon
+  using   (bucket_id = 'band-tech-riders')
+  with check (bucket_id = 'band-tech-riders');
+
+drop policy if exists "Board can read tech riders" on storage.objects;
 create policy "Board can read tech riders"
   on storage.objects
   for select

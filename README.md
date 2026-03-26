@@ -135,7 +135,7 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [x] Promo photo upload → Supabase Storage bucket `band-promos` (public, 10 MB, JPG/PNG/WebP)
   - [x] Tech rider upload → Supabase Storage bucket `band-tech-riders` (private, 5 MB, PDF)
   - [x] Row insert into `band_applications` Supabase table with full RLS policy set
-  - [x] Migration SQL at `supabase/migrations/001_band_applications.sql`
+  - [x] Migration SQL at `supabase/migrations/001_band_applications.sql` (rev 3 — idempotent; confirmed successful run in Supabase)
   - [ ] Wire `/call-for-bands` into Header nav under "Movie and Music in the Park"
   - [ ] Email notification to board on new submission (Supabase Edge Function or webhook)
   - [ ] Board dashboard review queue for applications (Phase 3)
@@ -199,6 +199,14 @@ Set `SUPABASE_SERVICE_ROLE_KEY` to Production + Preview only (never Development 
 | Table | Purpose |
 |---|---|
 | `band_applications` | Call-for-bands submissions; status: pending → reviewed → accepted/declined/waitlisted |
+
+### Supabase Storage Notes
+
+**Both storage buckets (`band-promos` and `band-tech-riders`) must have the "Public" toggle ON** in the Supabase dashboard, even though tech riders are access-controlled. The "Public" toggle affects how the API handles initial connections and URL generation — it does not bypass RLS `SELECT` policies. Tech riders remain private because only `authenticated` users have a `SELECT` policy; the anon role cannot read them regardless of bucket visibility.
+
+**Both buckets also need an `UPDATE` policy for `anon`** in addition to `INSERT`. When `x-upsert: true` is sent (or a filename collision occurs), Supabase treats the operation as an `UPDATE`. Without this policy, re-uploads of the same filename return 403 even though INSERT succeeds on first upload. The frontend already generates unique prefixes (`timestamp-random`) to avoid collisions, but the UPDATE policy is a belt-and-suspenders fix.
+
+If an upload returns **403** → RLS/bucket privacy issue. If it returns **400** → MIME type or file size limit issue.
 | `programs` | Proposals and approved programs, workflow stage tracking |
 | `events` | Published events with date/time/location |
 | `attendance` | Intent-to-attend and actual attendance per event |

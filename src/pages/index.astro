@@ -6,7 +6,6 @@ import '../styles/global.css';
 import { events as allEvents } from '../data/events';
 
 // Show the next 3 upcoming events, sorted by date.
-// TODO: Replace with a Supabase query filtered to future events in Phase 2.
 const today = new Date().toISOString().slice(0, 10);
 const upcomingEvents = allEvents
   .filter((e) => e.isoDate >= today)

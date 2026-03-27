@@ -4,8 +4,14 @@ import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
 
-const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
 ---
 
 <BaseLayout
@@ -180,11 +186,11 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
             <div class="field-row">
               <div class="field">
                 <label for="website">Website or Social Media Link</label>
-                <input type="url" id="website" name="website" placeholder="https://yourband.com" />
+                <input type="text" id="website" name="website" placeholder="https://yourband.com" />
               </div>
               <div class="field">
                 <label for="music_link">Music Sample Link</label>
-                <input type="url" id="music_link" name="music_link" placeholder="Spotify, YouTube, SoundCloud…" />
+                <input type="text" id="music_link" name="music_link" placeholder="Spotify, YouTube, SoundCloud…" />
               </div>
             </div>
           </fieldset>
@@ -313,49 +319,23 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
   <Footer />
 
+  <!-- Inject Firebase config from server-side env vars -->
+  <script define:vars={{ firebaseConfig }}>
+    window.__FIREBASE_CONFIG__ = firebaseConfig;
+  </script>
+
   <!-- ══ CLIENT-SIDE SCRIPT — inside BaseLayout so it's part of the document ══ -->
-  <script define:vars={{ SUPABASE_URL, SUPABASE_KEY }}>
-    document.addEventListener('DOMContentLoaded', () => {
+  <script type="module">
+    // ── Firebase setup ─────────────────────────────────────────────────────
+    import { initializeApp }        from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+    import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js';
+
+    const app     = initializeApp(window.__FIREBASE_CONFIG__);
+    const db      = getFirestore(app);
+    const storage = getStorage(app);
+
     // ── helpers ────────────────────────────────────────────────────────────
-
-    async function supabaseInsert(table, payload) {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation',
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `HTTP ${res.status}`);
-      }
-      return res.json();
-    }
-
-    async function supabaseUpload(bucket, path, file) {
-      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': file.type,
-          'x-upsert': 'true',
-        },
-        body: file,
-      });
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        console.error(`[upload] FAILED ${res.status}:`, errText);
-        let errMsg = `Upload failed: HTTP ${res.status}`;
-        try { errMsg = JSON.parse(errText).error || errMsg; } catch (_) {}
-        throw new Error(errMsg);
-      }
-      return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
-    }
 
     function slugify(name) {
       return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -363,6 +343,12 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
     function uniquePrefix() {
       return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    async function firebaseUpload(path, file) {
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      return getDownloadURL(storageRef);
     }
 
     // ── bio character counter ──────────────────────────────────────────────
@@ -446,21 +432,24 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         if (photoFile) {
           submitBtn.textContent = 'Uploading photo…';
           const ext = photoFile.name.split('.').pop();
-          promo_photo_url = await supabaseUpload('band-promos', `${prefix}/promo.${ext}`, photoFile);
+          promo_photo_url = await firebaseUpload(`band-promos/${prefix}/promo.${ext}`, photoFile);
         }
 
-        // upload tech rider
+        // upload tech rider — store path only (no public read needed)
         let tech_rider_url = null;
         const riderInput = document.getElementById('tech_rider');
         const riderFile  = riderInput.files && riderInput.files[0];
         if (riderFile) {
           submitBtn.textContent = 'Uploading tech rider…';
-          tech_rider_url = await supabaseUpload('band-tech-riders', `${prefix}/rider.pdf`, riderFile);
+          const riderPath = `band-tech-riders/${prefix}/rider.pdf`;
+          const riderRef  = ref(storage, riderPath);
+          await uploadBytes(riderRef, riderFile);
+          tech_rider_url = riderPath; // store path, not download URL
         }
 
-        // insert row
+        // save to Firestore
         submitBtn.textContent = 'Saving application…';
-        await supabaseInsert('band_applications', {
+        await addDoc(collection(db, 'band_applications'), {
           band_name:        fd.get('band_name'),
           contact_name:     fd.get('contact_name'),
           contact_email:    fd.get('contact_email'),
@@ -499,7 +488,6 @@ const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         submitBtn.textContent = 'Submit Application →';
       }
     }); // end submit listener
-    }); // end DOMContentLoaded
   </script>
 
 </BaseLayout>

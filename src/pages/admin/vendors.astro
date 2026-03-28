@@ -1,0 +1,214 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+const filterParam = Astro.url.searchParams.get('filter') || 'all';
+
+const snap = await adminDb.collection('vendor_applications')
+  .orderBy('submitted_at', 'desc')
+  .get();
+
+type Vendor = {
+  id: string;
+  contact_name: string;
+  company_name: string;
+  address: string;
+  city_zip: string;
+  phone: string;
+  email: string;
+  website?: string;
+  vendor_type: string;
+  selling: string;
+  description?: string;
+  needs_electricity: string;
+  needs_water: string;
+  additional_comments?: string;
+  waiver_agreed: boolean;
+  signature: string;
+  status: string;
+  submitted_at: string;
+};
+
+let vendors = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Vendor[];
+
+const filters = ['all', 'pending', 'approved', 'rejected'];
+
+if (filterParam !== 'all') {
+  vendors = vendors.filter(v => (v.status || 'pending') === filterParam);
+}
+
+const feeMap: Record<string, string> = {
+  'Individual Artist': '$25',
+  'Food Vendor': '$100',
+  'Retail / Franchise / non-profit': '$50',
+  'Political': '$75',
+};
+---
+
+<AdminLayout title="Vendor Applications" user={user}>
+  <div class="page-header">
+    <h1>Vendor Applications</h1>
+    <div class="filter-tabs">
+      {filters.map(f => (
+        <a
+          href={`/admin/vendors${f === 'all' ? '' : `?filter=${f}`}`}
+          class:list={['filter-tab', { active: filterParam === f }]}
+        >
+          {f.charAt(0).toUpperCase() + f.slice(1)}
+        </a>
+      ))}
+    </div>
+  </div>
+
+  {vendors.length === 0 ? (
+    <div class="empty-state">
+      <p>No vendor applications matching this filter.</p>
+      <p style="margin-top:8px;font-size:13px;">Applications come in through <a href="/vendor-application">/vendor-application</a>.</p>
+    </div>
+  ) : (
+    <div class="submission-list">
+      {vendors.map(v => (
+        <div class="submission-card" id={v.id}>
+          <div class="submission-header">
+            <div class="submission-title-group">
+              <div>
+                <h2 class="submission-name">{v.company_name}</h2>
+                <span class="submission-meta">
+                  {v.vendor_type}
+                  {feeMap[v.vendor_type] ? ` · ${feeMap[v.vendor_type]}` : ''}
+                  {v.needs_electricity === 'yes' ? ' · +$10 electric' : ''}
+                  {v.needs_water === 'yes' ? ' · +$10 water' : ''}
+                </span>
+              </div>
+            </div>
+            <span class={`badge badge-${v.status || 'pending'}`}>{v.status || 'pending'}</span>
+          </div>
+
+          <div class="submission-body">
+            <div class="detail-grid">
+              <div>
+                <div class="detail-label">Contact</div>
+                <div>{v.contact_name}</div>
+                <div><a href={`mailto:${v.email}`}>{v.email}</a></div>
+                <div>{v.phone}</div>
+              </div>
+              <div>
+                <div class="detail-label">Address</div>
+                <div>{v.address}</div>
+                <div>{v.city_zip}</div>
+              </div>
+              <div>
+                <div class="detail-label">Services / Utilities</div>
+                <div>Electricity: {v.needs_electricity === 'yes' ? '✓ Yes' : 'No'}</div>
+                <div>Water: {v.needs_water === 'yes' ? '✓ Yes' : 'No'}</div>
+              </div>
+              <div>
+                <div class="detail-label">Links</div>
+                {v.website && <div><a href={v.website} target="_blank" rel="noopener">Website ↗</a></div>}
+                <div style="font-size:12px;margin-top:4px;color:var(--muted);">
+                  Submitted {v.submitted_at ? new Date(v.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-bio">
+              <div class="detail-label">What They're Selling</div>
+              <p>{v.selling}</p>
+            </div>
+
+            {v.description && (
+              <div class="detail-bio">
+                <div class="detail-label">Public Website Description</div>
+                <p>{v.description}</p>
+              </div>
+            )}
+
+            {v.additional_comments && (
+              <div class="detail-bio">
+                <div class="detail-label">Additional Comments</div>
+                <p>{v.additional_comments}</p>
+              </div>
+            )}
+
+            <div class="waiver-notice">
+              <span>✓</span>
+              <span>Waiver agreed &amp; signed by <strong>{v.signature}</strong></span>
+            </div>
+          </div>
+
+          <div class="submission-actions">
+            {(v.status === 'pending') && (
+              <>
+                <button class="btn btn-success" data-action="approve" data-id={v.id} data-collection="vendor_applications">
+                  Approve
+                </button>
+                <button class="btn btn-danger" data-action="reject" data-id={v.id} data-collection="vendor_applications">
+                  Reject
+                </button>
+              </>
+            )}
+
+            {(v.status === 'approved') && (
+              <button class="btn btn-danger" data-action="reject" data-id={v.id} data-collection="vendor_applications">
+                Revoke Approval
+              </button>
+            )}
+
+            {(v.status === 'rejected') && (
+              <button class="btn btn-success" data-action="approve" data-id={v.id} data-collection="vendor_applications">
+                Re-approve
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <script>
+    document.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const el         = btn as HTMLButtonElement;
+        const action     = el.dataset.action!;
+        const id         = el.dataset.id!;
+        const collection = el.dataset.collection!;
+
+        const newStatus = action === 'approve' ? 'approved' : 'rejected';
+        if (!confirm(`Set this vendor to "${newStatus}"?`)) return;
+
+        el.disabled = true;
+        el.textContent = 'Updating…';
+
+        const res = await fetch('/api/admin/update-submission', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, collection, status: newStatus }),
+        });
+
+        if (res.ok) window.location.reload();
+        else {
+          alert('Update failed. Please try again.');
+          el.disabled    = false;
+          el.textContent = action === 'approve' ? 'Approve' : 'Reject';
+        }
+      });
+    });
+  </script>
+
+  <style>
+    .waiver-notice {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 13px;
+      color: #166534;
+      margin-top: 12px;
+    }
+  </style>
+
+</AdminLayout>

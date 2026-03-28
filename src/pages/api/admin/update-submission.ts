@@ -21,7 +21,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (!allowed.includes(collection)) {
       return new Response(JSON.stringify({ error: 'Invalid collection' }), { status: 400 });
     }
-    if (!['approved', 'rejected', 'pending'].includes(status)) {
+    const allowedStatuses = ['approved', 'rejected', 'pending', 'good_standing', 'deleted', 'assigned', 'waitlisted'];
+    if (!allowedStatuses.includes(status)) {
       return new Response(JSON.stringify({ error: 'Invalid status' }), { status: 400 });
     }
 

@@ -1,0 +1,5 @@
+---
+// Deliberately empty — events listing is handled by src/pages/events/index.astro
+// Astro automatically prefers the folder route, so this file is unused.
+// Do not add a redirect here — it causes an infinite loop.
+---

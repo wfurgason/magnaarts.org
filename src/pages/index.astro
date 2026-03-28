@@ -3,59 +3,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
-import { events as allEvents } from '../data/events';
-import { adminDb } from '../lib/firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
-
-// Try to pull the next 3 published events from Firestore first.
-// If Firestore has nothing upcoming, fall back to the static data/events.ts list.
-const today = new Date().toISOString().slice(0, 10);
-
-let upcomingEvents: any[] = [];
-
-try {
-  const now = Timestamp.now();
-  const snap = await adminDb.collection('events')
-    .where('status', '==', 'published')
-    .where('eventDate', '>=', now)
-    .orderBy('eventDate', 'asc')
-    .limit(3)
-    .get();
-
-  if (!snap.empty) {
-    // Normalize Firestore docs to the same shape the template expects
-    upcomingEvents = snap.docs.map(d => {
-      const data = d.data();
-      const date = data.eventDate.toDate();
-      return {
-        id: d.id,
-        type: 'concert',           // treated as generic for tag colour
-        title: data.title,
-        day: date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        time: data.eventTime,
-        location: data.venueName,
-        isoDate: date.toISOString().slice(0, 10),
-        tags: [data.genre || 'Event'],
-        // extra fields available in template if needed
-        bandName: data.bandName || null,
-        ticketUrl: data.ticketUrl || null,
-        rsvpUrl: data.rsvpUrl || null,
-        isFirestore: true,
-      };
-    });
-  }
-} catch (e) {
-  // Firestore unavailable (e.g. missing env vars in local dev) — use static list
-  console.error('Firestore Next Up fetch failed:', e);
-}
-
-// Fall back to static events if Firestore returned nothing
-if (upcomingEvents.length === 0) {
-  upcomingEvents = allEvents
-    .filter((e) => e.isoDate >= today)
-    .sort((a, b) => a.isoDate.localeCompare(b.isoDate))
-    .slice(0, 3);
-}
+// Firebase public config — events collection is publicly readable
+const firebaseConfig = {
+  apiKey:     import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:  import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+};
 
 const roles = [
   {
@@ -141,19 +94,11 @@ const roles = [
           <h2 class="section-title">Next Up</h2>
           <a href="/events" class="all-link">All Events →</a>
         </div>
-        <div class="events-grid">
-          {upcomingEvents.map((event, i) => (
-            <article class={`event-card ${event.type} reveal`} style={`transition-delay:${i * 0.1}s`}>
-              <span class={`event-tag tag-${event.type}`}>{event.tags[0]}</span>
-              <h3>{event.title}</h3>
-              <div class="event-meta">
-                <div class="meta-row"><span class="meta-icon">📅</span>{event.day}</div>
-                <div class="meta-row"><span class="meta-icon">🕐</span>{event.time}</div>
-                <div class="meta-row"><span class="meta-icon">📍</span>{event.location}</div>
-              </div>
-              <a href={event.isFirestore ? `/events` : `/events/${event.id}`} class="event-link">Learn More →</a>
-            </article>
-          ))}
+        <div class="events-grid" id="next-up-grid">
+          <!-- Populated by Firestore client-side script below -->
+          <div id="next-up-empty" style="display:none; grid-column:1/-1; text-align:center; padding:32px 0; color:var(--muted); font-size:15px;">
+            No upcoming events scheduled yet — check back soon!
+          </div>
         </div>
       </div>
     </section>
@@ -189,6 +134,61 @@ const roles = [
   </main>
 
   <Footer />
+
+  <script type="module" define:vars={{ firebaseConfig }}>
+    import { initializeApp, getApps }                                   from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collection, getDocs, orderBy, query, limit } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+    try {
+      const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
+
+      const q    = query(collection(db, 'events'), orderBy('eventDate', 'asc'), limit(10));
+      const snap = await getDocs(q);
+
+      const now      = new Date();
+      const upcoming = [];
+
+      snap.forEach(doc => {
+        const d       = doc.data();
+        const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
+        if (dateObj < now) return;
+        upcoming.push({
+          title:    d.title,
+          day:      dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          time:     d.eventTime || d.startTime || '',
+          location: d.venueName || d.venue || '',
+          genre:    d.genre || d.bandGenre || 'Concert',
+        });
+      });
+
+      const emptyEl = document.getElementById('next-up-empty');
+      if (upcoming.length === 0) {
+        emptyEl.style.display = 'block';
+      }
+
+      if (upcoming.length > 0) {
+        const grid = document.getElementById('next-up-grid');
+        const display = upcoming.slice(0, 3);
+        grid.innerHTML = display.map((e, i) => `
+          <article class="event-card concert reveal" style="transition-delay:${i * 0.1}s">
+            <span class="event-tag tag-concert">${e.genre}</span>
+            <h3>${e.title}</h3>
+            <div class="event-meta">
+              <div class="meta-row"><span class="meta-icon">📅</span>${e.day}</div>
+              <div class="meta-row"><span class="meta-icon">🕐</span>${e.time}</div>
+              <div class="meta-row"><span class="meta-icon">📍</span>${e.location}</div>
+            </div>
+            <a href="/events" class="event-link">Learn More →</a>
+          </article>
+        `).join('');
+      }
+    } catch (err) {
+      // Silently keep static fallback cards already rendered
+      console.warn('Could not load live events for Next Up:', err);
+    }
+  </script>
+
 </BaseLayout>
 
 <style>

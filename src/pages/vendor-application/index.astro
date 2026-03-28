@@ -1,0 +1,439 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import '../../styles/global.css';
+
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
+---
+
+<BaseLayout
+  title="Vendor Application — Magna Main Street Arts Festival"
+  description="Apply to be a vendor at the Magna Main Street Arts Festival. Art vendors, food vendors, retail, and more — submit your application here."
+>
+  <Header />
+
+  <main>
+
+    <!-- ── PAGE HERO ── -->
+    <section class="page-hero">
+      <div class="container">
+        <div class="hero-badge">Arts Festival · August 15, 2025</div>
+        <h1>Vendor Application</h1>
+        <p class="hero-sub">
+          Apply to participate in the Magna Main Street Arts Festival.
+          All applications are reviewed by the festival committee — submission does not guarantee acceptance.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── INFO STRIP ── -->
+    <section class="info-strip">
+      <div class="container info-strip-inner">
+        <div class="strip-item">
+          <span class="strip-icon">📍</span>
+          <div>
+            <div class="strip-label">Location</div>
+            <div class="strip-val">Historic Magna Main Street</div>
+          </div>
+        </div>
+        <div class="strip-item">
+          <span class="strip-icon">🗓</span>
+          <div>
+            <div class="strip-label">Date</div>
+            <div class="strip-val">Friday, August 15, 2025 · 10 AM – 6 PM</div>
+          </div>
+        </div>
+        <div class="strip-item">
+          <span class="strip-icon">📐</span>
+          <div>
+            <div class="strip-label">Booth Size</div>
+            <div class="strip-val">10 × 10 ft (Food Trucks vary)</div>
+          </div>
+        </div>
+        <div class="strip-item">
+          <span class="strip-icon">🎟</span>
+          <div>
+            <div class="strip-label">Admission</div>
+            <div class="strip-val">Free to the public</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TERMS SUMMARY ── -->
+    <section class="section terms-section reveal">
+      <div class="container terms-inner">
+        <h2>Before You Apply</h2>
+        <p>By submitting an application you agree to the following terms. Please read them carefully.</p>
+        <details class="terms-accordion">
+          <summary>View Vendor Terms &amp; Conditions</summary>
+          <div class="terms-body">
+            <p><strong>1. Application Process</strong><br />Submission does not guarantee acceptance. All applications are subject to review and approval by the festival committee.</p>
+            <p><strong>2. Vendor Categories</strong><br />
+              <em>Art Vendor</em> — Creates works of art from raw materials.<br />
+              <em>Retail Vendor</em> — Manufactures a product using licensed artwork or prefabricated components.<br />
+              <em>Food Vendor</em> — Prepares and/or sells food or beverages. Must comply with all applicable laws and hold current permits.<br />
+              <em>Political</em> — Provides information only.
+            </p>
+            <p><strong>3. Fees &amp; Payments</strong><br />Accepted vendors receive a PayPal invoice. Space is confirmed only after payment. Electricity ($10) and water ($10) are available but limited.</p>
+            <p><strong>4. Set-Up &amp; Breakdown</strong><br />Set up between 9–10 AM. Breakdown after 6 PM. No cars on the street after 10 AM or before 7 PM.</p>
+            <p><strong>5. Booth Requirements</strong><br />Vendors supply their own booth materials (awning, tables, chairs, displays, signage). Booths must be clean and organized. Specific locations may be requested but are not guaranteed.</p>
+            <p><strong>6. Product Restrictions</strong><br />All products must comply with local laws. Counterfeit or unauthorized merchandise is strictly prohibited and will result in immediate expulsion without refund.</p>
+            <p><strong>7. Insurance &amp; Liability</strong><br />Vendors must carry their own liability insurance. The festival organizers are not liable for any damages or injuries.</p>
+            <p><strong>8. Cancellation</strong><br />Registration fees are non-refundable under any circumstances. Written cancellation notice is appreciated (magnaartsfestival@gmail.com).</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ── APPLICATION FORM ── -->
+    <section class="section form-section">
+      <div class="container form-outer">
+
+        <div class="form-intro reveal">
+          <h2>Vendor Application</h2>
+          <p>Fill out all required fields and submit. We'll review your application and follow up with a PayPal invoice if accepted.</p>
+        </div>
+
+        <div id="form-success" class="status-banner status-success" style="display:none">
+          <span>🎉</span>
+          <div>
+            <strong>Application submitted!</strong>
+            <p>Thank you for applying. We'll review your submission and be in touch within two weeks.</p>
+          </div>
+        </div>
+        <div id="form-error" class="status-banner status-error" style="display:none">
+          <span>⚠️</span>
+          <div>
+            <strong>Something went wrong.</strong>
+            <p id="error-detail">Please try again or email us at <a href="mailto:magnaartsfestival@gmail.com">magnaartsfestival@gmail.com</a>.</p>
+          </div>
+        </div>
+
+        <form id="vendor-form" class="vendor-form reveal" novalidate>
+
+          <!-- ─── CONTACT INFO ─── -->
+          <fieldset class="form-group">
+            <legend class="group-legend">
+              <span class="legend-num">1</span> Contact Information
+            </legend>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="contact_name">Your Name <span class="req">*</span></label>
+                <input type="text" id="contact_name" name="contact_name" placeholder="Jane Smith" required />
+              </div>
+              <div class="field">
+                <label for="company_name">Company / Organization Name <span class="req">*</span></label>
+                <input type="text" id="company_name" name="company_name" placeholder="Smith's Handmade Art" required />
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="address">Street Address <span class="req">*</span></label>
+                <input type="text" id="address" name="address" placeholder="123 Main St" required />
+              </div>
+              <div class="field">
+                <label for="city_zip">City, Zip Code <span class="req">*</span></label>
+                <input type="text" id="city_zip" name="city_zip" placeholder="Magna, 84044" required />
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="phone">Phone Number <span class="req">*</span></label>
+                <input type="tel" id="phone" name="phone" placeholder="(801) 555-0100" required />
+              </div>
+              <div class="field">
+                <label for="email">Email Address <span class="req">*</span></label>
+                <input type="email" id="email" name="email" placeholder="vendor@example.com" required />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="website">Website (optional)</label>
+              <input type="text" id="website" name="website" placeholder="https://yoursite.com" />
+            </div>
+          </fieldset>
+
+          <!-- ─── VENDOR DETAILS ─── -->
+          <fieldset class="form-group">
+            <legend class="group-legend">
+              <span class="legend-num">2</span> Vendor Details
+            </legend>
+
+            <div class="field">
+              <label for="vendor_type">Vendor Category <span class="req">*</span></label>
+              <select id="vendor_type" name="vendor_type" required>
+                <option value="">Select a category…</option>
+                <option value="Individual Artist">Individual Artist — $25</option>
+                <option value="Food Vendor">Food Vendor — $100</option>
+                <option value="Retail / Franchise / non-profit">Retail / Franchise / Non-profit — $50</option>
+                <option value="Political">Political — $75</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="selling">What are you selling / offering? <span class="req">*</span></label>
+              <textarea id="selling" name="selling" rows="3"
+                placeholder="Describe your products, food items, or services."
+                required></textarea>
+            </div>
+
+            <div class="field">
+              <label for="description">Short Description for Festival Website
+                <span style="font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:6px;">(max 200 chars — shown publicly once approved)</span>
+              </label>
+              <textarea id="description" name="description" rows="2" maxlength="200"
+                placeholder="A short blurb that appears on our vendor list."></textarea>
+              <div class="char-count"><span id="desc-count">0</span> / 200</div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="needs_electricity">Electricity needed? (+$10) <span class="req">*</span></label>
+                <select id="needs_electricity" name="needs_electricity" required>
+                  <option value="">Select…</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="needs_water">Water access needed? (+$10) <span class="req">*</span></label>
+                <select id="needs_water" name="needs_water" required>
+                  <option value="">Select…</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="additional_comments">Additional Comments</label>
+              <textarea id="additional_comments" name="additional_comments" rows="2"
+                placeholder="Location requests, accessibility needs, etc."></textarea>
+            </div>
+          </fieldset>
+
+          <!-- ─── WAIVER ─── -->
+          <fieldset class="form-group">
+            <legend class="group-legend">
+              <span class="legend-num">3</span> Release &amp; Waiver
+            </legend>
+
+            <div class="waiver-text">
+              <p>By checking the box below, I agree to abide by the vendor rules and terms. I understand that all promotion must take place within my booth, that the Arts Council of Magna is not liable for damages or losses, and that registration fees are non-refundable under any circumstance.</p>
+            </div>
+
+            <div class="field waiver-field">
+              <label class="checkbox-label">
+                <input type="checkbox" id="waiver_agreed" name="waiver_agreed" required />
+                <span>I agree to the release and waiver <span class="req">*</span></span>
+              </label>
+              <div id="waiver-error" class="field-error" hidden>You must agree to the terms to submit.</div>
+            </div>
+
+            <div class="field">
+              <label for="signature">Signature — type your full name <span class="req">*</span></label>
+              <input type="text" id="signature" name="signature" placeholder="Jane Smith" required />
+            </div>
+          </fieldset>
+
+          <div class="form-footer">
+            <p class="form-disclaimer">
+              Submission does not guarantee acceptance. Accepted vendors will receive a PayPal invoice to confirm their spot.
+            </p>
+            <button type="submit" id="submit-btn" class="btn btn-gold submit-btn">
+              Submit Application →
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <Footer />
+
+  <script define:vars={{ firebaseConfig }}>
+    window.__FIREBASE_CONFIG__ = firebaseConfig;
+  </script>
+
+  <script type="module">
+    import { initializeApp }                    from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+    const app = initializeApp(window.__FIREBASE_CONFIG__);
+    const db  = getFirestore(app);
+
+    const descEl    = document.getElementById('description');
+    const descCount = document.getElementById('desc-count');
+    descEl.addEventListener('input', () => {
+      const n = descEl.value.length;
+      descCount.textContent = String(n);
+      descCount.style.color = n >= 180 ? 'var(--red)' : n >= 150 ? 'var(--amber)' : '';
+    });
+
+    const form        = document.getElementById('vendor-form');
+    const submitBtn   = document.getElementById('submit-btn');
+    const successEl   = document.getElementById('form-success');
+    const errorEl     = document.getElementById('form-error');
+    const errorDetail = document.getElementById('error-detail');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      const waiverCheck = document.getElementById('waiver_agreed');
+      const waiverError = document.getElementById('waiver-error');
+      if (!waiverCheck.checked) {
+        waiverError.hidden = false;
+        waiverCheck.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      waiverError.hidden = true;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting…';
+      successEl.style.display = 'none';
+      errorEl.style.display   = 'none';
+
+      try {
+        const fd = new FormData(form);
+        await addDoc(collection(db, 'vendor_applications'), {
+          contact_name:        fd.get('contact_name'),
+          company_name:        fd.get('company_name'),
+          address:             fd.get('address'),
+          city_zip:            fd.get('city_zip'),
+          phone:               fd.get('phone'),
+          email:               fd.get('email'),
+          website:             fd.get('website') || null,
+          vendor_type:         fd.get('vendor_type'),
+          selling:             fd.get('selling'),
+          description:         fd.get('description') || null,
+          needs_electricity:   fd.get('needs_electricity'),
+          needs_water:         fd.get('needs_water'),
+          additional_comments: fd.get('additional_comments') || null,
+          waiver_agreed:       true,
+          signature:           fd.get('signature'),
+          status:              'pending',
+          submitted_at:        new Date().toISOString(),
+        });
+
+        form.reset();
+        descCount.textContent = '0';
+        successEl.style.display = 'flex';
+        successEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        errorDetail.innerHTML = `${msg} — or email us at <a href="mailto:magnaartsfestival@gmail.com">magnaartsfestival@gmail.com</a>.`;
+        errorEl.style.display = 'flex';
+        errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } finally {
+        submitBtn.disabled    = false;
+        submitBtn.textContent = 'Submit Application →';
+      }
+    });
+  </script>
+
+</BaseLayout>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, #a86300 0%, #c87e0a 60%, #e8a020 100%);
+    color: var(--white);
+    padding: 72px 0 64px;
+    text-align: center;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: var(--white);
+    font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 6px 14px; border-radius: 100px; margin-bottom: 20px;
+  }
+  .page-hero h1 { font-family: var(--font-display); font-size: clamp(36px,5vw,56px); font-weight: 900; line-height: 1.1; margin-bottom: 16px; }
+  .hero-sub { font-size: 17px; font-weight: 300; color: rgba(255,255,255,0.85); max-width: 560px; margin: 0 auto; line-height: 1.65; }
+
+  .info-strip { background: var(--navy); color: var(--white); padding: 24px 0; }
+  .info-strip-inner { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; }
+  .strip-item { display: flex; align-items: center; gap: 12px; }
+  .strip-icon { font-size: 22px; }
+  .strip-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 2px; }
+  .strip-val { font-size: 14px; font-weight: 600; }
+
+  .terms-section { background: var(--cream); }
+  .terms-inner { max-width: 760px; margin: 0 auto; }
+  .terms-inner h2 { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+  .terms-inner > p { font-size: 15px; color: var(--muted); margin-bottom: 20px; }
+  .terms-accordion { border: 1px solid var(--border); border-radius: var(--radius); background: var(--white); overflow: hidden; }
+  .terms-accordion summary { padding: 16px 20px; font-size: 14px; font-weight: 700; color: var(--navy); cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+  .terms-accordion summary::-webkit-details-marker { display: none; }
+  .terms-accordion summary::after { content: '▾'; font-size: 12px; color: var(--muted); }
+  .terms-accordion[open] summary::after { content: '▴'; }
+  .terms-body { padding: 0 20px 20px; border-top: 1px solid var(--border); }
+  .terms-body p { font-size: 13.5px; color: var(--muted); line-height: 1.7; margin-bottom: 12px; }
+
+  .form-section { background: var(--cream); }
+  .form-outer { max-width: 800px; margin: 0 auto; }
+  .form-intro { text-align: center; margin-bottom: 40px; }
+  .form-intro h2 { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--navy); margin-bottom: 10px; }
+  .form-intro p { font-size: 16px; color: var(--muted); line-height: 1.65; }
+
+  .status-banner { display: flex; align-items: flex-start; gap: 16px; padding: 20px 24px; border-radius: var(--radius); margin-bottom: 32px; font-size: 15px; line-height: 1.55; }
+  .status-banner > span { font-size: 24px; flex-shrink: 0; }
+  .status-banner strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  .status-banner p { margin: 0; }
+  .status-banner a { color: inherit; font-weight: 600; }
+  .status-success { background: #d1fae5; border: 1.5px solid #6ee7b7; color: #065f46; }
+  .status-error   { background: #fee2e2; border: 1.5px solid #fca5a5; color: #991b1b; }
+
+  .vendor-form { display: flex; flex-direction: column; gap: 32px; }
+  .form-group { background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 32px; margin: 0; }
+  .group-legend { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 24px; padding: 0; float: none; }
+  .legend-num { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; background: #c87e0a; color: var(--white); border-radius: 50%; font-size: 13px; font-weight: 700; font-family: var(--font-body); flex-shrink: 0; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .field-row:last-child { margin-bottom: 0; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 12px; font-weight: 700; color: var(--navy); letter-spacing: 0.05em; text-transform: uppercase; }
+  .req { color: var(--red); }
+  .field input, .field select, .field textarea { font-family: var(--font-body); font-size: 15px; color: var(--text); background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 11px 14px; transition: border-color 0.2s, box-shadow 0.2s; outline: none; width: 100%; box-sizing: border-box; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: #c87e0a; box-shadow: 0 0 0 3px rgba(200,126,10,0.12); }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .char-count { font-size: 12px; color: var(--muted); text-align: right; }
+
+  .waiver-text { background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-sm); padding: 16px 20px; margin-bottom: 20px; }
+  .waiver-text p { font-size: 13px; color: #78350f; line-height: 1.65; margin: 0; }
+  .waiver-field { margin-bottom: 16px; }
+  .checkbox-label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 14px; color: var(--navy); }
+  .checkbox-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: #c87e0a; flex-shrink: 0; margin-top: 1px; cursor: pointer; }
+  .field-error { font-size: 12px; color: var(--red); font-weight: 600; margin-top: 4px; }
+  [hidden] { display: none !important; }
+
+  .form-footer { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding-top: 8px; }
+  .form-disclaimer { flex: 1; font-size: 13px; color: var(--muted); line-height: 1.55; margin: 0; min-width: 200px; }
+  .submit-btn { font-size: 16px; padding: 15px 36px; white-space: nowrap; }
+  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  @media (max-width: 680px) {
+    .field-row { grid-template-columns: 1fr; }
+    .form-group { padding: 20px 16px; }
+    .info-strip-inner { gap: 20px; }
+    .form-footer { flex-direction: column; align-items: flex-start; }
+    .submit-btn { width: 100%; text-align: center; }
+  }
+</style>

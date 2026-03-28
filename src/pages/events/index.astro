@@ -3,46 +3,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
-import { events } from '../../data/events';
-import { adminDb } from '../../lib/firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
 
-// Fetch published events from Firestore
-let firestoreEvents: any[] = [];
-try {
-  const now = Timestamp.now();
-  const snap = await adminDb.collection('events')
-    .where('status', '==', 'published')
-    .where('eventDate', '>=', now)
-    .orderBy('eventDate', 'asc')
-    .get();
-
-  firestoreEvents = snap.docs.map(d => {
-    const data = d.data();
-    return {
-      id: d.id,
-      title: data.title,
-      date: data.eventDate.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      day: data.eventDate.toDate().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-      time: data.eventTime,
-      venueName: data.venueName,
-      venueAddress: data.venueAddress,
-      description: data.description,
-      posterUrl: data.posterUrl || null,
-      ticketUrl: data.ticketUrl || null,
-      rsvpUrl: data.rsvpUrl || null,
-      bandName: data.bandName || null,
-      genre: data.genre || null,
-      isoDate: data.eventDate.toDate().toISOString().slice(0, 10),
-    };
-  });
-} catch (e) {
-  // Firestore unavailable or no index yet — fall through silently
-  console.error('Firestore events fetch failed:', e);
-}
-
-const concerts  = events.filter((e) => e.type === 'concert' || e.type === 'film');
-const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'class' || e.type === 'openmic');
+// Published events are loaded client-side from Firestore (see <script> below).
+// The events collection has public read access so no Admin SDK needed.
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+};
 ---
 
 <BaseLayout
@@ -56,7 +24,6 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
     <!-- ── PAGE HERO ── -->
     <section class="page-hero">
       <div class="container">
-        <div class="hero-badge">2025 Season</div>
         <h1>Free Events for Everyone</h1>
         <p class="hero-sub">
           Every event is free and open to all. Bring a blanket, bring the family,
@@ -65,43 +32,20 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
       </div>
     </section>
 
-    <!-- ── FIRESTORE PUBLISHED EVENTS (shown when admin has published any) ── -->
-    {firestoreEvents.length > 0 && (
-      <section class="section published-events-section">
-        <div class="container">
-          <h2 class="section-title reveal">Upcoming Events</h2>
-          <div class="published-grid">
-            {firestoreEvents.map((e, i) => (
-              <article class="published-card reveal" style={`transition-delay:${i * 0.08}s`}>
-                {e.posterUrl && (
-                  <div class="published-poster">
-                    <img src={e.posterUrl} alt={e.title} />
-                  </div>
-                )}
-                <div class="published-body">
-                  <div class="published-date">{e.date} · {e.time}</div>
-                  <h3 class="published-title">{e.title}</h3>
-                  {e.bandName && <div class="published-band">{e.bandName}{e.genre ? ` · ${e.genre}` : ''}</div>}
-                  <div class="published-venue">📍 {e.venueName}, {e.venueAddress}</div>
-                  {e.description && <p class="published-desc">{e.description}</p>}
-                  <div class="published-links">
-                    {e.ticketUrl && <a href={e.ticketUrl} target="_blank" rel="noopener" class="btn btn-gold">Get Tickets</a>}
-                    {e.rsvpUrl && <a href={e.rsvpUrl} target="_blank" rel="noopener" class="btn btn-outline-navy">RSVP</a>}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-    )}
+    <!-- ── FIRESTORE PUBLISHED EVENTS — loaded client-side ── -->
+    <section class="section published-events-section" id="live-events-section" style="display:none">
+      <div class="container">
+        <h2 class="section-title">Upcoming Events</h2>
+        <div class="published-grid" id="live-events-grid"></div>
+      </div>
+    </section>
 
     <!-- ── SUMMER SERIES CALLOUT ── -->
     <section class="series-callout reveal">
       <div class="container series-inner">
         <div class="series-text">
           <h2>Music &amp; Movies in the Park</h2>
-          <p>Every Friday night June through August. Live music starts at 8 PM, movie follows at dusk on our 35-ft inflatable screen.</p>
+          <p>Most Friday nights June through August. Live music starts at 8 PM, movie follows at dusk on our 35-ft inflatable screen.</p>
           <div class="series-details">
             <span class="detail-pill">📍 Pleasant Green Park — 3250 S 8400 W, Magna</span>
             <span class="detail-pill">🗓 Every Friday · June – August</span>
@@ -111,48 +55,11 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
       </div>
     </section>
 
-    <!-- ── EVENTS LIST ── -->
-    <section class="section events-section">
-      <div class="container">
-        <h2 class="section-title reveal">Summer 2025 Schedule</h2>
-        <div class="events-list">
-          {concerts.map((e, i) => (
-            <a href={`/events/${e.id}`} class={`event-row event-${e.type} reveal`} style={`transition-delay:${i * 0.04}s`}>
-              <div class="event-date">{e.date}</div>
-              <div class="event-body">
-                <div class="event-title">{e.title}</div>
-                {e.subtitle && e.subtitleType === 'film' && (
-                  <div class="event-movie">🎬 {e.subtitle}</div>
-                )}
-                <div class="event-day">{e.day} · {e.time}</div>
-              </div>
-              <div class={`event-type-badge badge-${e.type}`}>
-                {e.type === 'concert' ? 'Concert + Film' : 'Film'}
-              </div>
-              <div class="event-arrow">→</div>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <!-- ── FESTIVAL ── -->
-    <section class="section festival-section">
-      <div class="container">
-        <h2 class="section-title reveal">Annual Events</h2>
-        <div class="festival-card reveal">
-          <div class="festival-body">
-            <div class="festival-badge">Festival</div>
-            <h3>Magna Main Street Arts Festival</h3>
-            <p>Our flagship annual event. 5,000–7,000 attendees, live music, a fine arts contest, street performers, and arts and food vendors on Historic Magna Main Street.</p>
-            <div class="festival-meta">
-              <span>📍 Historic Magna Main Street</span>
-              <span>🗓 August 2025</span>
-              <span>🎟 Free Admission</span>
-            </div>
-          </div>
-          <a href="/events/arts-festival-2025" class="btn btn-gold festival-btn">Event Details →</a>
-        </div>
+    <!-- ── EMPTY STATE (shown if no Firestore events) ── -->
+    <section class="section empty-state-section" id="no-events-section" style="display:none">
+      <div class="container" style="text-align:center; padding: 56px 0;">
+        <p style="font-size:17px; color:var(--muted);">No upcoming events scheduled yet — check back soon!</p>
+        <a href="/propose" class="btn btn-gold" style="margin-top:20px;">Propose an Event →</a>
       </div>
     </section>
 
@@ -197,6 +104,121 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
   </main>
 
   <Footer />
+
+  <script type="module" define:vars={{ firebaseConfig }}>
+    import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collection, getDocs, orderBy, query }      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+    function truncate(text, max) {
+      if (!text || text.length <= max) return { short: text || '', truncated: false };
+      return { short: text.slice(0, max).trimEnd(), truncated: true };
+    }
+
+    function mapsLink(address) {
+      return 'https://maps.google.com/?q=' + encodeURIComponent(address);
+    }
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
+
+      const q    = query(collection(db, 'events'), orderBy('eventDate', 'asc'));
+      const snap = await getDocs(q);
+
+      const now      = new Date();
+      const upcoming = [];
+
+      snap.forEach(doc => {
+        const d       = doc.data();
+        const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
+        if (dateObj < now) return; // skip past events — past events stay in admin only
+
+        upcoming.push({
+          id:           doc.id,
+          title:        d.title,
+          date:         dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          time:         d.eventTime || d.startTime || '',
+          venueName:    d.venueName || d.venue || '',
+          venueAddress: d.venueAddress || d.address || '',
+          description:  d.description || d.bandBio || '',
+          posterUrl:    d.posterUrl || d.photoUrl || null,
+          bandName:     d.bandName || null,
+          genre:        d.genre || d.bandGenre || null,
+          musicLink:    d.musicLink || d.bandMusicLink || null,
+          ticketUrl:    d.ticketUrl || null,
+          rsvpUrl:      d.rsvpUrl || null,
+        });
+      });
+
+      const noEventsSection = document.getElementById('no-events-section');
+      if (upcoming.length === 0) {
+        noEventsSection.style.display = 'block';
+      }
+
+      if (upcoming.length > 0) {
+        const section = document.getElementById('live-events-section');
+        const grid    = document.getElementById('live-events-grid');
+
+        grid.innerHTML = upcoming.map(e => {
+          const bio      = truncate(e.description, 150);
+          const fullAddr = [e.venueName, e.venueAddress].filter(Boolean).join(', ');
+
+          return `
+          <article class="published-card">
+
+            <!-- Band name + genre + Listen link above the photo -->
+            <div class="published-card-header">
+              <div class="published-header-text">
+                ${e.bandName ? `<div class="published-band-name">${e.bandName}</div>` : ''}
+                ${e.genre    ? `<div class="published-genre">${e.genre}</div>` : ''}
+              </div>
+              ${e.musicLink ? `<a href="${e.musicLink}" target="_blank" rel="noopener" class="listen-btn">🎵 Listen</a>` : ''}
+            </div>
+
+            <!-- Fixed-size photo box -->
+            <div class="published-poster">
+              ${e.posterUrl
+                ? `<img src="${e.posterUrl}" alt="${e.bandName || e.title}" />`
+                : `<div class="published-poster-placeholder">🎵</div>`
+              }
+            </div>
+
+            <!-- Card body -->
+            <div class="published-body">
+              <div class="published-date">${e.date}${e.time ? ' · ' + e.time : ''}</div>
+              <h3 class="published-title">${e.title}</h3>
+              ${fullAddr ? `<div class="published-venue">📍 <a href="${mapsLink(fullAddr)}" target="_blank" rel="noopener">${fullAddr}</a></div>` : ''}
+              ${e.description ? `
+                <div class="published-bio">
+                  <div class="published-bio-label">About the Band</div>
+                  <p class="published-desc">${bio.short}${bio.truncated ? `<span class="bio-ellipsis">… <a href="#" class="bio-more-link" data-full="${e.description.replace(/"/g,'&quot;')}">more</a></span>` : ''}</p>
+                </div>` : ''}
+              ${(e.ticketUrl || e.rsvpUrl) ? `
+              <div class="published-links">
+                ${e.ticketUrl ? `<a href="${e.ticketUrl}" target="_blank" rel="noopener" class="btn btn-gold">Get Tickets</a>` : ''}
+                ${e.rsvpUrl   ? `<a href="${e.rsvpUrl}"   target="_blank" rel="noopener" class="btn btn-outline-navy">RSVP</a>` : ''}
+              </div>` : ''}
+            </div>
+
+          </article>`;
+        }).join('');
+
+        // Wire up ...more links
+        grid.querySelectorAll('.bio-more-link').forEach(link => {
+          link.addEventListener('click', ev => {
+            ev.preventDefault();
+            const p = link.closest('p');
+            p.innerHTML = link.dataset.full;
+          });
+        });
+
+        section.style.display = 'block';
+      }
+    } catch (err) {
+      console.warn('Could not load live events:', err);
+    }
+  </script>
+
 </BaseLayout>
 
 <style>
@@ -205,10 +227,11 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
 
   .published-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 24px;
   }
 
+  /* Card shell */
   .published-card {
     background: var(--white);
     border-radius: var(--radius);
@@ -219,90 +242,162 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
     flex-direction: column;
     transition: box-shadow 0.22s, transform 0.22s;
   }
-
   .published-card:hover {
     box-shadow: var(--shadow-hover);
     transform: translateY(-4px);
   }
 
-  .published-poster img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    display: block;
-  }
-
-  .published-body {
-    padding: 24px;
+  /* ── Header: band name + genre on left, Listen on right ── */
+  .published-card-header {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--navy);
+    flex-shrink: 0;
+  }
+  .published-header-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+  .published-band-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .published-genre {
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.6);
   }
 
-  .published-date {
+  /* Listen button — top right of header */
+  .listen-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     font-size: 12px;
     font-weight: 700;
+    white-space: nowrap;
+    color: var(--gold-lt);
+    border: 1.5px solid var(--gold);
+    border-radius: 100px;
+    padding: 5px 12px;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .listen-btn:hover {
+    background: var(--gold);
+    color: var(--white);
+  }
+
+  /* ── Photo: ALWAYS exactly 260px tall, full width, cropped ── */
+  .published-poster {
+    width: 100%;
+    height: 260px;        /* fixed — never changes */
+    flex-shrink: 0;       /* never squish */
+    overflow: hidden;
+    background: var(--cream);
+    display: block;
+  }
+  .published-poster img {
+    display: block;
+    width: 100%;
+    height: 260px;        /* same fixed value repeated for iron-clad enforcement */
+    object-fit: cover;    /* crop to fill, never stretch */
+    object-position: center top;
+  }
+  .published-poster-placeholder {
+    width: 100%;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    color: var(--border);
+  }
+
+  /* ── Card body ── */
+  .published-body {
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  .published-date {
+    font-size: 11px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.09em;
     color: var(--blue);
   }
 
+  /* Event title smaller and muted */
   .published-title {
     font-family: var(--font-display);
-    font-size: 22px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--navy);
-    line-height: 1.2;
-  }
-
-  .published-band {
-    font-size: 13px;
-    color: var(--muted);
-    font-weight: 500;
+    line-height: 1.3;
+    margin: 0;
   }
 
   .published-venue {
     font-size: 13px;
     color: var(--muted);
+    margin-top: 2px;
   }
+  .published-venue a { color: var(--blue); text-decoration: underline; }
+  .published-venue a:hover { color: var(--navy); }
 
+  /* Bio */
+  .published-bio { margin-top: 8px; }
+  .published-bio-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
   .published-desc {
     font-size: 14px;
     color: var(--muted);
     line-height: 1.6;
-    flex: 1;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    margin: 0;
   }
+  .bio-ellipsis { color: var(--muted); }
+  .bio-more-link { color: var(--blue); font-weight: 600; text-decoration: none; }
+  .bio-more-link:hover { text-decoration: underline; }
 
+  /* Bottom action links */
   .published-links {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
-    margin-top: 8px;
+    margin-top: 12px;
   }
-
   .btn-outline-navy {
     display: inline-flex;
     align-items: center;
     font-family: var(--font-body);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
-    padding: 12px 24px;
+    padding: 10px 20px;
     border-radius: var(--radius-sm);
     border: 2px solid var(--navy);
     color: var(--navy);
     background: transparent;
-    cursor: pointer;
+    text-decoration: none;
     transition: all 0.2s ease;
   }
-
-  .btn-outline-navy:hover {
-    background: var(--navy);
-    color: var(--white);
-  }
+  .btn-outline-navy:hover { background: var(--navy); color: var(--white); }
 
   /* ── PAGE HERO ── */
   .page-hero {
@@ -569,5 +664,6 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
     .cta-inner { flex-direction: column; align-items: flex-start; }
     .series-details { flex-direction: column; }
     .published-grid { grid-template-columns: 1fr; }
+    .published-poster { height: 220px; }
   }
 </style>

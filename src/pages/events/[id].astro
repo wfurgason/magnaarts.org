@@ -5,6 +5,12 @@ import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
 import { events, getEventById } from '../../data/events';
 
+const firebaseConfig = {
+  apiKey:    import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+};
+
 const { id } = Astro.params;
 const event = getEventById(id!);
 
@@ -139,6 +145,47 @@ const typeColor: Record<string, string> = {
       </section>
     )}
 
+    <!-- ── FESTIVAL EXTRAS (music schedule + vendors) ── -->
+    {event.id === 'arts-festival-2025' && (
+      <section class="section festival-extras">
+        <div class="container festival-extras-inner">
+
+          <!-- Music Schedule -->
+          <div class="fest-col reveal">
+            <h2 class="fest-heading">Music Schedule</h2>
+            <div class="music-schedule">
+              <div class="schedule-row">
+                <div class="schedule-time">12:00 PM</div>
+                <div class="schedule-performer">TBA</div>
+              </div>
+              <div class="schedule-row">
+                <div class="schedule-time">2:00 PM</div>
+                <div class="schedule-performer">TBA</div>
+              </div>
+              <div class="schedule-row">
+                <div class="schedule-time">4:00 PM</div>
+                <div class="schedule-performer">TBA</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vendor List (dynamic from Firestore) -->
+          <div class="fest-col reveal">
+            <h2 class="fest-heading">Participating Vendors</h2>
+            <div id="vendor-list-wrap">
+              <div id="vendor-loading" class="vendor-loading">Loading vendors…</div>
+              <div id="vendor-list" class="vendor-list" style="display:none"></div>
+              <div id="vendor-empty" class="vendor-empty" style="display:none">
+                Vendor announcements coming soon! <a href="/vendor-application">Apply to be a vendor →</a>
+              </div>
+            </div>
+            <a href="/vendor-application" class="vendor-apply-link">Apply to be a vendor →</a>
+          </div>
+
+        </div>
+      </section>
+    )}
+
     <!-- ── PARK INFO ── -->
     {(event.type === 'concert' || event.type === 'film') && (
       <section class="park-info reveal">
@@ -178,6 +225,58 @@ const typeColor: Record<string, string> = {
   </main>
 
   <Footer />
+
+  {event.id === 'arts-festival-2025' && (
+    <script type="module" define:vars={{ firebaseConfig }}>
+      import { initializeApp }                              from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+      import { getFirestore, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+      const app = initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
+
+      const q    = query(
+        collection(db, 'vendor_applications'),
+        where('status', '==', 'approved'),
+        orderBy('vendor_name', 'asc')
+      );
+
+      const loadingEl = document.getElementById('vendor-loading');
+      const listEl    = document.getElementById('vendor-list');
+      const emptyEl   = document.getElementById('vendor-empty');
+
+      try {
+        const snap = await getDocs(q);
+        loadingEl.style.display = 'none';
+
+        if (snap.empty) {
+          emptyEl.style.display = 'block';
+        } else {
+          const typeIcon = { 'Individual Artist': '🎨', 'Food Vendor': '🌮', 'Retail / Franchise / non-profit': '🛒', 'Political': '📜' };
+          listEl.innerHTML = snap.docs.map(d => {
+            const v    = d.data();
+            const icon = typeIcon[v.vendor_type] || '✓';
+            return `
+              <div class="vendor-item">
+                <span class="vendor-type-icon">${icon}</span>
+                <div class="vendor-item-body">
+                  <div class="vendor-item-name">${v.vendor_name || v.contact_name}</div>
+                  ${v.vendor_type ? `<div class="vendor-item-type">${v.vendor_type}</div>` : ''}
+                  ${v.description ? `<div class="vendor-item-desc">${v.description}</div>` : ''}
+                  ${v.website ? `<a href="${v.website}" target="_blank" rel="noopener" class="vendor-item-link">Visit ↗</a>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+          listEl.style.display = 'block';
+        }
+      } catch (err) {
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+        console.warn('Could not load vendors:', err);
+      }
+    </script>
+  )}
+
 </BaseLayout>
 
 <style>
@@ -416,6 +515,120 @@ const typeColor: Record<string, string> = {
     white-space: nowrap;
   }
 
+  /* ── FESTIVAL EXTRAS ── */
+  .festival-extras { background: var(--cream); }
+
+  .festival-extras-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: start;
+  }
+
+  .fest-heading {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--amber);
+  }
+
+  /* Music Schedule */
+  .music-schedule { display: flex; flex-direction: column; gap: 2px; }
+
+  .schedule-row {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  .schedule-time {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--amber);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .schedule-performer {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  /* Vendor List */
+  .vendor-loading { font-size: 14px; color: var(--muted); padding: 16px 0; }
+
+  .vendor-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+
+  .vendor-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+  }
+
+  .vendor-type-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+
+  .vendor-item-body { display: flex; flex-direction: column; gap: 2px; }
+
+  .vendor-item-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .vendor-item-type {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .vendor-item-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+
+  .vendor-item-link {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--blue);
+    margin-top: 4px;
+  }
+
+  .vendor-empty {
+    font-size: 14px;
+    color: var(--muted);
+    padding: 8px 0 16px;
+    line-height: 1.6;
+  }
+  .vendor-empty a { color: var(--blue); font-weight: 600; }
+
+  .vendor-apply-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--amber);
+    transition: gap 0.2s;
+  }
+  .vendor-apply-link:hover { gap: 8px; }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 860px) {
     .hero-inner   { grid-template-columns: 1fr; }
@@ -423,5 +636,6 @@ const typeColor: Record<string, string> = {
     .desc-inner   { grid-template-columns: 1fr; }
     .event-nav    { grid-template-columns: 1fr 1fr; }
     .nav-all      { display: none; }
+    .festival-extras-inner { grid-template-columns: 1fr; }
   }
 </style>

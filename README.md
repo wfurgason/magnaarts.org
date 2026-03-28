@@ -218,7 +218,7 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [x] Call for Bands (`/call-for-bands`) — Firebase-backed application form with file uploads; see below
 
 - [x] **Phase 1.5 — Shared Data**
-  - [x] `src/data/events.ts` — single source of truth for all event data (used by homepage, listing, and detail pages)
+  - [x] `src/data/events.ts` — single source of truth for 2025 season event data; used by the admin past-events archive; **no longer imported by public-facing pages** (public site is 100% Firestore-driven as of March 2026)
 
 - [x] **Phase 1.6 — Call for Bands Form**
   - [x] Application form (`/call-for-bands`) — contact info, genre, member count, 300-char bio, website/music links, date availability
@@ -320,9 +320,10 @@ Never commit `FIREBASE_PRIVATE_KEY` or `FIREBASE_CLIENT_EMAIL` to git.
 ## Data Notes
 
 ### Current state
-- Public-facing events are sourced from `src/data/events.ts` (hardcoded array)
-- Marked with `// TODO: replace with Firestore query` comments
+- Public-facing events are sourced **exclusively from Firestore** (`events` collection) — no static fallback
+- Homepage and `/events` both show a friendly empty-state message if Firestore has no upcoming events
 - Admin dashboard reads live from Firestore
+- `src/data/events.ts` is retained as seed data for the Past Events Archive in `/admin/events`
 
 ---
 

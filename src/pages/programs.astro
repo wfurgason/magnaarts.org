@@ -4,28 +4,32 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 
+const firebaseConfig = {
+  apiKey:    import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+};
+
 const programs = [
   {
     id: 'music-movies',
     icon: '♪',
     color: 'blue',
     title: 'Music & Movies in the Park',
-    tagline: 'Every Friday · June–August · Free',
+    tagline: 'Most Fridays · June–August · Free',
     image: '/images/concerts/Creature Vs.1.png',
     body: [
-      'Our flagship summer series brings live music and a free movie to Pleasant Green Park every Friday night from June through August.',
+      'Our flagship summer series brings live music and a free movie to Pleasant Green Park most Friday nights from June through August.',
       'Each evening starts with a live band at 8 PM, followed by a movie on our 35-ft inflatable screen at dusk. Over 300 people attend each event — 14 musical acts presented each summer.',
       'Salt Lake County Parks and Recreation waives park rental fees, making the entire series free and open to all.',
     ],
     details: [
       { label: 'Location', value: 'Pleasant Green Park, 3250 S 8400 W, Magna' },
-      { label: 'When', value: 'Every Friday, June – August, 8:00 PM' },
+      { label: 'When', value: 'Most Fridays, June – August, 8:00 PM' },
       { label: 'Admission', value: 'Free' },
       { label: 'Attendance', value: '300+ per event' },
       { label: 'Acts per season', value: '14 musical acts' },
     ],
-    link: '/events',
-    linkLabel: 'See the 2025 Schedule →',
   },
   {
     id: 'festival',
@@ -162,6 +166,17 @@ const programs = [
               <p class="program-body">{para}</p>
             ))}
             <a href={p.link} class={`program-link link-${p.color}`}>{p.linkLabel}</a>
+
+          {p.id === 'music-movies' && (
+            <div class="events-glance">
+              <h3 class="glance-heading">Events at a Glance</h3>
+              <div id="glance-loading" class="glance-loading">Loading schedule…</div>
+              <ul id="glance-list" class="glance-list" style="display:none"></ul>
+              <div id="glance-empty" class="glance-empty" style="display:none">
+                Season schedule coming soon — <a href="/events">check the events page</a> for updates.
+              </div>
+            </div>
+          )}
           </div>
 
           <div class="program-sidebar reveal">
@@ -201,6 +216,55 @@ const programs = [
   </main>
 
   <Footer />
+
+  <script type="module" define:vars={{ firebaseConfig }}>
+    import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collection, getDocs, orderBy, query }      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+    const loadingEl = document.getElementById('glance-loading');
+    const listEl    = document.getElementById('glance-list');
+    const emptyEl   = document.getElementById('glance-empty');
+    if (!listEl) return; // not on this page
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
+      const q   = query(collection(db, 'events'), orderBy('eventDate', 'asc'));
+      const snap = await getDocs(q);
+
+      const now = new Date();
+      const upcoming = [];
+      snap.forEach(doc => {
+        const d = doc.data();
+        const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
+        if (dateObj < now) return;
+        upcoming.push({
+          id:    doc.id,
+          date:  dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          title: d.title || d.bandName || 'TBA',
+        });
+      });
+
+      loadingEl.style.display = 'none';
+
+      if (upcoming.length === 0) {
+        emptyEl.style.display = 'block';
+      } else {
+        listEl.innerHTML = upcoming.map(e => `
+          <li class="glance-item">
+            <span class="glance-date">${e.date}</span>
+            <a href="/events" class="glance-title">${e.title}</a>
+          </li>
+        `).join('');
+        listEl.style.display = 'block';
+      }
+    } catch (err) {
+      loadingEl.style.display = 'none';
+      emptyEl.style.display = 'block';
+      console.warn('Could not load events for glance list:', err);
+    }
+  </script>
+
 </BaseLayout>
 
 <style>
@@ -419,4 +483,62 @@ const programs = [
   @media (max-width: 600px) {
     .pnav-item span:last-child { display: none; }
   }
+
+  /* ── EVENTS AT A GLANCE ── */
+  .events-glance {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .glance-heading {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 12px;
+  }
+
+  .glance-loading, .glance-empty {
+    font-size: 13px;
+    color: var(--muted);
+    padding: 4px 0;
+  }
+  .glance-empty a { color: var(--blue); }
+
+  .glance-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .glance-item {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    transition: background 0.12s;
+  }
+  .glance-item:hover { background: var(--cream); }
+
+  .glance-date {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--blue);
+    white-space: nowrap;
+    min-width: 52px;
+  }
+
+  .glance-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--navy);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .glance-title:hover { color: var(--blue); text-decoration: underline; }
 </style>

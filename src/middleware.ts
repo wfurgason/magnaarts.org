@@ -1,5 +1,4 @@
 import { defineMiddleware } from 'astro:middleware';
-import { adminAuth } from './lib/firebase-admin';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
@@ -16,6 +15,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     try {
+      // Import lazily so Firebase Admin only initializes on /admin/* routes,
+      // not on every public page like /events
+      const { adminAuth } = await import('./lib/firebase-admin');
       const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
       // Attach user to locals for use in pages
       context.locals.user = decoded;

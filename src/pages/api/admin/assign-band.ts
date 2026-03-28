@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { adminAuth, adminDb } from '../../../lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   // Verify session
@@ -169,8 +169,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       const batch = adminDb.batch();
 
       // Write to public events collection (use shellId as the event doc ID for easy cross-reference)
-      // Parse the date string into a real Date for Firestore querying
-      const eventDateObj = new Date(s.date + 'T19:00:00');
+      // Use a proper Firestore Timestamp so orderBy('eventDate') works correctly
+      const eventDateObj = Timestamp.fromDate(new Date(s.date + 'T19:00:00'));
 
       const eventRef = adminDb.collection('events').doc(shellId);
       batch.set(eventRef, {

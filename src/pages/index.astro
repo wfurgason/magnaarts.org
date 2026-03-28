@@ -4,13 +4,58 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 import { events as allEvents } from '../data/events';
+import { adminDb } from '../lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
-// Show the next 3 upcoming events, sorted by date.
+// Try to pull the next 3 published events from Firestore first.
+// If Firestore has nothing upcoming, fall back to the static data/events.ts list.
 const today = new Date().toISOString().slice(0, 10);
-const upcomingEvents = allEvents
-  .filter((e) => e.isoDate >= today)
-  .sort((a, b) => a.isoDate.localeCompare(b.isoDate))
-  .slice(0, 3);
+
+let upcomingEvents: any[] = [];
+
+try {
+  const now = Timestamp.now();
+  const snap = await adminDb.collection('events')
+    .where('status', '==', 'published')
+    .where('eventDate', '>=', now)
+    .orderBy('eventDate', 'asc')
+    .limit(3)
+    .get();
+
+  if (!snap.empty) {
+    // Normalize Firestore docs to the same shape the template expects
+    upcomingEvents = snap.docs.map(d => {
+      const data = d.data();
+      const date = data.eventDate.toDate();
+      return {
+        id: d.id,
+        type: 'concert',           // treated as generic for tag colour
+        title: data.title,
+        day: date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        time: data.eventTime,
+        location: data.venueName,
+        isoDate: date.toISOString().slice(0, 10),
+        tags: [data.genre || 'Event'],
+        // extra fields available in template if needed
+        bandName: data.bandName || null,
+        ticketUrl: data.ticketUrl || null,
+        rsvpUrl: data.rsvpUrl || null,
+        isFirestore: true,
+      };
+    });
+  }
+} catch (e) {
+  // Firestore unavailable (e.g. missing env vars in local dev) — use static list
+  console.error('Firestore Next Up fetch failed:', e);
+}
+
+// Fall back to static events if Firestore returned nothing
+if (upcomingEvents.length === 0) {
+  upcomingEvents = allEvents
+    .filter((e) => e.isoDate >= today)
+    .sort((a, b) => a.isoDate.localeCompare(b.isoDate))
+    .slice(0, 3);
+}
 
 const roles = [
   {
@@ -106,7 +151,7 @@ const roles = [
                 <div class="meta-row"><span class="meta-icon">🕐</span>{event.time}</div>
                 <div class="meta-row"><span class="meta-icon">📍</span>{event.location}</div>
               </div>
-              <a href={`/events/${event.id}`} class="event-link">Learn More →</a>
+              <a href={event.isFirestore ? `/events` : `/events/${event.id}`} class="event-link">Learn More →</a>
             </article>
           ))}
         </div>

@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Public events — anyone can read, only server SDK can write ──
+    match /events/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── Band applications — public can create (submit form), only server reads/writes ──
+    match /band_applications/{doc} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
+    // ── Program submissions — public can create (submit form), only server reads/writes ──
+    match /program_submissions/{doc} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
+    // ── Admin users — no client-side access at all ──
+    match /admin_users/{doc} {
+      allow read, write: if false;
+    }
+  }
+}

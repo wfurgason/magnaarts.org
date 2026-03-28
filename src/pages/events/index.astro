@@ -4,6 +4,42 @@ import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
 import { events } from '../../data/events';
+import { adminDb } from '../../lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
+
+// Fetch published events from Firestore
+let firestoreEvents: any[] = [];
+try {
+  const now = Timestamp.now();
+  const snap = await adminDb.collection('events')
+    .where('status', '==', 'published')
+    .where('eventDate', '>=', now)
+    .orderBy('eventDate', 'asc')
+    .get();
+
+  firestoreEvents = snap.docs.map(d => {
+    const data = d.data();
+    return {
+      id: d.id,
+      title: data.title,
+      date: data.eventDate.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      day: data.eventDate.toDate().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      time: data.eventTime,
+      venueName: data.venueName,
+      venueAddress: data.venueAddress,
+      description: data.description,
+      posterUrl: data.posterUrl || null,
+      ticketUrl: data.ticketUrl || null,
+      rsvpUrl: data.rsvpUrl || null,
+      bandName: data.bandName || null,
+      genre: data.genre || null,
+      isoDate: data.eventDate.toDate().toISOString().slice(0, 10),
+    };
+  });
+} catch (e) {
+  // Firestore unavailable or no index yet — fall through silently
+  console.error('Firestore events fetch failed:', e);
+}
 
 const concerts  = events.filter((e) => e.type === 'concert' || e.type === 'film');
 const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'class' || e.type === 'openmic');
@@ -28,6 +64,37 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
         </p>
       </div>
     </section>
+
+    <!-- ── FIRESTORE PUBLISHED EVENTS (shown when admin has published any) ── -->
+    {firestoreEvents.length > 0 && (
+      <section class="section published-events-section">
+        <div class="container">
+          <h2 class="section-title reveal">Upcoming Events</h2>
+          <div class="published-grid">
+            {firestoreEvents.map((e, i) => (
+              <article class="published-card reveal" style={`transition-delay:${i * 0.08}s`}>
+                {e.posterUrl && (
+                  <div class="published-poster">
+                    <img src={e.posterUrl} alt={e.title} />
+                  </div>
+                )}
+                <div class="published-body">
+                  <div class="published-date">{e.date} · {e.time}</div>
+                  <h3 class="published-title">{e.title}</h3>
+                  {e.bandName && <div class="published-band">{e.bandName}{e.genre ? ` · ${e.genre}` : ''}</div>}
+                  <div class="published-venue">📍 {e.venueName}, {e.venueAddress}</div>
+                  {e.description && <p class="published-desc">{e.description}</p>}
+                  <div class="published-links">
+                    {e.ticketUrl && <a href={e.ticketUrl} target="_blank" rel="noopener" class="btn btn-gold">Get Tickets</a>}
+                    {e.rsvpUrl && <a href={e.rsvpUrl} target="_blank" rel="noopener" class="btn btn-outline-navy">RSVP</a>}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
 
     <!-- ── SUMMER SERIES CALLOUT ── -->
     <section class="series-callout reveal">
@@ -133,6 +200,111 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
 </BaseLayout>
 
 <style>
+  /* ── Published Events from Admin ── */
+  .published-events-section { background: var(--cream); }
+
+  .published-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+  }
+
+  .published-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.22s, transform 0.22s;
+  }
+
+  .published-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-4px);
+  }
+
+  .published-poster img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .published-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .published-date {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--blue);
+  }
+
+  .published-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.2;
+  }
+
+  .published-band {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .published-venue {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .published-desc {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .published-links {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .btn-outline-navy {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 12px 24px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--navy);
+    color: var(--navy);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-outline-navy:hover {
+    background: var(--navy);
+    color: var(--white);
+  }
+
+  /* ── PAGE HERO ── */
   .page-hero {
     background: var(--navy);
     color: var(--white);
@@ -396,5 +568,6 @@ const yearRound = events.filter((e) => e.type === 'festival' || e.type === 'clas
     .festival-card { flex-direction: column; align-items: flex-start; }
     .cta-inner { flex-direction: column; align-items: flex-start; }
     .series-details { flex-direction: column; }
+    .published-grid { grid-template-columns: 1fr; }
   }
 </style>

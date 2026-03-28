@@ -55,8 +55,8 @@ const firebaseConfig = {
         <div class="strip-item">
           <span class="strip-icon">📅</span>
           <div>
-            <div class="strip-label">Season</div>
-            <div class="strip-val">Summer (dates TBD)</div>
+            <div class="strip-label">2026 Season</div>
+            <div class="strip-val">June 12 – August 7</div>
           </div>
         </div>
         <div class="strip-item">
@@ -223,13 +223,20 @@ const firebaseConfig = {
             </div>
 
             <div class="field">
-              <label for="availability">Date Availability / Notes</label>
-              <textarea
-                id="availability"
-                name="availability"
-                rows="3"
-                placeholder="Any dates you're unavailable this summer, or specific dates you'd prefer? Let us know here."
-              ></textarea>
+              <label>
+                Available Dates <span class="req">*</span>
+                <span class="label-hint">(select all that work — minimum 2 required)</span>
+              </label>
+              <div class="date-checkboxes" id="date-checkboxes">
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-06-12" /> Fri, June 12, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-06-19" /> Fri, June 19, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-06-26" /> Fri, June 26, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-07-10" /> Fri, July 10, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-07-17" /> Fri, July 17, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-07-31" /> Fri, July 31, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-08-07" /> Fri, August 7, 2026</label>
+              </div>
+              <div id="date-error" class="field-error" hidden>Please select at least 2 available dates.</div>
             </div>
 
             <div class="field">
@@ -415,6 +422,16 @@ const firebaseConfig = {
       e.preventDefault();
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
+      // Require at least 2 date selections
+      const checkedDates = form.querySelectorAll('input[name="available_dates"]:checked');
+      const dateError = document.getElementById('date-error');
+      if (checkedDates.length < 2) {
+        dateError.hidden = false;
+        document.getElementById('date-checkboxes').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      dateError.hidden = true;
+
       submitBtn.disabled    = true;
       submitBtn.textContent = 'Uploading…';
       successEl.style.display = 'none';
@@ -461,7 +478,7 @@ const firebaseConfig = {
           music_link:       fd.get('music_link') || null,
           set_length:       fd.get('set_length') || null,
           performed_before: fd.get('performed_before') || null,
-          availability:     fd.get('availability') || null,
+          available_dates:  Array.from(form.querySelectorAll('input[name="available_dates"]:checked')).map(cb => cb.value),
           additional_notes: fd.get('additional_notes') || null,
           promo_photo_url,
           tech_rider_url,
@@ -842,6 +859,52 @@ const firebaseConfig = {
   .submit-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  /* ── DATE CHECKBOXES ── */
+  .date-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    padding: 4px 0;
+  }
+
+  .date-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--navy);
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .date-check:has(input:checked) {
+    border-color: var(--blue);
+    background: #eff6ff;
+    color: var(--blue);
+  }
+
+  .date-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--blue);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .field-error {
+    font-size: 12px;
+    color: var(--red);
+    font-weight: 600;
+    margin-top: 6px;
   }
 
   /* ── RESPONSIVE ── */

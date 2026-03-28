@@ -1,0 +1,280 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+const filterParam = Astro.url.searchParams.get('filter') || 'all';
+
+const snap = await adminDb.collection('program_submissions')
+  .orderBy('submittedAt', 'desc')
+  .get();
+
+type Program = Record<string, any> & { id: string; status: string };
+
+let programs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Program[];
+if (filterParam !== 'all') {
+  programs = programs.filter(p => (p.status || 'pending') === filterParam);
+}
+
+const filters = ['all', 'pending', 'approved', 'rejected', 'published'];
+
+// Helper: get a display title from whatever the field is called
+function getTitle(p: Program): string {
+  return p.program_title || p.title || p.program_name || '(untitled)';
+}
+---
+
+<AdminLayout title="Program Proposals" user={user}>
+  <div class="page-header">
+    <h1>Program Proposals</h1>
+    <div class="filter-tabs">
+      {filters.map(f => (
+        <a
+          href={`/admin/programs${f === 'all' ? '' : `?filter=${f}`}`}
+          class:list={['filter-tab', { active: filterParam === f }]}
+        >
+          {f.charAt(0).toUpperCase() + f.slice(1)}
+        </a>
+      ))}
+    </div>
+  </div>
+
+  {programs.length === 0 ? (
+    <div class="empty-state">
+      <p>No proposals matching this filter.</p>
+    </div>
+  ) : (
+    <div class="submission-list">
+      {programs.map(prog => (
+        <div class="submission-card" id={prog.id}>
+          <div class="submission-header">
+            <div>
+              <h2 class="submission-name">{getTitle(prog)}</h2>
+              <span class="submission-meta">{prog.organization_name || prog.organization || ''}</span>
+            </div>
+            <span class={`badge badge-${prog.status || 'pending'}`}>{prog.status || 'pending'}</span>
+          </div>
+
+          <div class="submission-body">
+            <div class="detail-grid">
+              <div>
+                <div class="detail-label">Contact</div>
+                <div>{prog.contact_name}</div>
+                <div><a href={`mailto:${prog.contact_email}`}>{prog.contact_email}</a></div>
+                <div>{prog.contact_phone}</div>
+              </div>
+              {prog.proposed_date && (
+                <div>
+                  <div class="detail-label">Proposed Date</div>
+                  <div>{prog.proposed_date}</div>
+                </div>
+              )}
+              {prog.proposed_venue && (
+                <div>
+                  <div class="detail-label">Proposed Venue</div>
+                  <div>{prog.proposed_venue}</div>
+                </div>
+              )}
+              {prog.target_audience && (
+                <div>
+                  <div class="detail-label">Target Audience</div>
+                  <div>{prog.target_audience}</div>
+                </div>
+              )}
+            </div>
+
+            {(prog.description || prog.program_description) && (
+              <div class="detail-bio">
+                <div class="detail-label">Description</div>
+                <p>{prog.description || prog.program_description}</p>
+              </div>
+            )}
+            {prog.technical_requirements && (
+              <div class="detail-bio">
+                <div class="detail-label">Technical Requirements</div>
+                <p>{prog.technical_requirements}</p>
+              </div>
+            )}
+            {prog.additional_notes && (
+              <div class="detail-bio">
+                <div class="detail-label">Additional Notes</div>
+                <p>{prog.additional_notes}</p>
+              </div>
+            )}
+          </div>
+
+          {prog.status !== 'published' && (
+            <div class="submission-actions">
+              {prog.status !== 'approved' && (
+                <button class="btn btn-success" data-action="approve" data-id={prog.id} data-collection="program_submissions">
+                  Approve
+                </button>
+              )}
+              {prog.status !== 'rejected' && (
+                <button class="btn btn-danger" data-action="reject" data-id={prog.id} data-collection="program_submissions">
+                  Reject
+                </button>
+              )}
+              {prog.status === 'approved' && (
+                <button
+                  class="btn btn-primary"
+                  data-action="publish"
+                  data-id={prog.id}
+                  data-prog={JSON.stringify({
+                    title: getTitle(prog),
+                    description: prog.description || prog.program_description || '',
+                    proposed_date: prog.proposed_date || '',
+                    proposed_venue: prog.proposed_venue || '',
+                  })}
+                >
+                  Publish as Event
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+
+  <!-- Publish Modal -->
+  <div id="publish-modal" class="modal-backdrop" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Publish Event</h2>
+        <button id="modal-close" class="modal-close">✕</button>
+      </div>
+      <form id="publish-form" novalidate>
+        <input type="hidden" id="pub-submission-id" />
+        <div class="form-row">
+          <div class="field-group">
+            <label for="pub-title">Event Title *</label>
+            <input type="text" id="pub-title" required />
+          </div>
+        </div>
+        <div class="form-row two-col">
+          <div class="field-group">
+            <label for="pub-date">Date *</label>
+            <input type="date" id="pub-date" required />
+          </div>
+          <div class="field-group">
+            <label for="pub-time">Time *</label>
+            <input type="text" id="pub-time" placeholder="7:00 PM" required />
+          </div>
+        </div>
+        <div class="form-row two-col">
+          <div class="field-group">
+            <label for="pub-venue">Venue Name *</label>
+            <input type="text" id="pub-venue" required />
+          </div>
+          <div class="field-group">
+            <label for="pub-address">Venue Address *</label>
+            <input type="text" id="pub-address" required />
+          </div>
+        </div>
+        <div class="form-row two-col">
+          <div class="field-group">
+            <label for="pub-ticket">Ticket URL</label>
+            <input type="url" id="pub-ticket" placeholder="https://..." />
+          </div>
+          <div class="field-group">
+            <label for="pub-rsvp">RSVP URL</label>
+            <input type="url" id="pub-rsvp" placeholder="https://..." />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field-group">
+            <label for="pub-poster">Event Poster URL</label>
+            <input type="url" id="pub-poster" placeholder="https://..." />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field-group">
+            <label for="pub-desc">Event Description *</label>
+            <textarea id="pub-desc" rows="4" required></textarea>
+          </div>
+        </div>
+        <div id="pub-error" class="error-msg" hidden></div>
+        <div class="modal-actions">
+          <button type="button" id="modal-cancel" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="pub-submit">Publish Event</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('[data-action="approve"], [data-action="reject"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const el = btn as HTMLButtonElement;
+        const status = el.dataset.action === 'approve' ? 'approved' : 'rejected';
+        el.disabled = true;
+        const res = await fetch('/api/admin/update-submission', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: el.dataset.id, collection: el.dataset.collection, status }),
+        });
+        if (res.ok) window.location.reload();
+        else { alert('Action failed.'); el.disabled = false; }
+      });
+    });
+
+    const modal = document.getElementById('publish-modal')!;
+    const form = document.getElementById('publish-form') as HTMLFormElement;
+
+    document.querySelectorAll('[data-action="publish"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const el = btn as HTMLButtonElement;
+        const prog = JSON.parse(el.dataset.prog || '{}');
+        (document.getElementById('pub-submission-id') as HTMLInputElement).value = el.dataset.id!;
+        (document.getElementById('pub-title') as HTMLInputElement).value = prog.title || '';
+        (document.getElementById('pub-desc') as HTMLTextAreaElement).value = prog.description || '';
+        if (prog.proposed_date) (document.getElementById('pub-date') as HTMLInputElement).value = prog.proposed_date;
+        if (prog.proposed_venue) (document.getElementById('pub-venue') as HTMLInputElement).value = prog.proposed_venue;
+        modal.hidden = false;
+      });
+    });
+
+    const closeModal = () => { modal.hidden = true; form.reset(); };
+    document.getElementById('modal-close')?.addEventListener('click', closeModal);
+    document.getElementById('modal-cancel')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('pub-submit') as HTMLButtonElement;
+      const errEl = document.getElementById('pub-error')!;
+      errEl.hidden = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Publishing…';
+
+      const res = await fetch('/api/admin/publish-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: (document.getElementById('pub-submission-id') as HTMLInputElement).value,
+          submissionType: 'program',
+          title: (document.getElementById('pub-title') as HTMLInputElement).value,
+          eventDate: (document.getElementById('pub-date') as HTMLInputElement).value,
+          eventTime: (document.getElementById('pub-time') as HTMLInputElement).value,
+          venueName: (document.getElementById('pub-venue') as HTMLInputElement).value,
+          venueAddress: (document.getElementById('pub-address') as HTMLInputElement).value,
+          ticketUrl: (document.getElementById('pub-ticket') as HTMLInputElement).value,
+          rsvpUrl: (document.getElementById('pub-rsvp') as HTMLInputElement).value,
+          posterUrl: (document.getElementById('pub-poster') as HTMLInputElement).value,
+          description: (document.getElementById('pub-desc') as HTMLTextAreaElement).value,
+        }),
+      });
+
+      if (res.ok) {
+        window.location.href = '/admin/events';
+      } else {
+        const { error } = await res.json();
+        errEl.textContent = error || 'Publish failed.';
+        errEl.hidden = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Publish Event';
+      }
+    });
+  </script>
+</AdminLayout>

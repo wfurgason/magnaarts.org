@@ -1,0 +1,140 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+
+const snap = await adminDb.collection('events')
+  .orderBy('eventDate', 'asc')
+  .get();
+
+type Event = {
+  id: string;
+  title: string;
+  eventDate: any;
+  eventTime: string;
+  venueName: string;
+  venueAddress: string;
+  ticketUrl?: string;
+  rsvpUrl?: string;
+  posterUrl?: string;
+  description: string;
+  bandName?: string;
+  genre?: string;
+  submissionType: string;
+  publishedBy: string;
+  publishedAt: any;
+};
+
+const events = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Event[];
+
+function formatDate(ts: any): string {
+  if (!ts) return '—';
+  const date = ts.toDate ? ts.toDate() : new Date(ts);
+  return date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+const now = new Date();
+const upcoming = events.filter(e => {
+  const d = e.eventDate?.toDate ? e.eventDate.toDate() : new Date(e.eventDate);
+  return d >= now;
+});
+const past = events.filter(e => {
+  const d = e.eventDate?.toDate ? e.eventDate.toDate() : new Date(e.eventDate);
+  return d < now;
+});
+---
+
+<AdminLayout title="Published Events" user={user}>
+  <div class="page-header">
+    <h1>Published Events</h1>
+    <a href="https://magnaarts-org.vercel.app/events" target="_blank" rel="noopener" class="btn btn-ghost">
+      View Public Page ↗
+    </a>
+  </div>
+
+  {events.length === 0 ? (
+    <div class="empty-state">
+      <p>No events published yet. Approve a band or program submission, then click "Publish as Event."</p>
+    </div>
+  ) : (
+    <>
+      {upcoming.length > 0 && (
+        <section class="events-section">
+          <h2 class="section-title">Upcoming ({upcoming.length})</h2>
+          <div class="event-list">
+            {upcoming.map(event => (
+              <div class="event-card" id={event.id}>
+                <div class="event-card-inner">
+                  {event.posterUrl && (
+                    <img src={event.posterUrl} alt={event.title} class="event-poster" />
+                  )}
+                  <div class="event-info">
+                    <div class="event-date-badge">{formatDate(event.eventDate)} · {event.eventTime}</div>
+                    <h3 class="event-title">{event.title}</h3>
+                    {event.bandName && <div class="event-sub">{event.bandName} · {event.genre}</div>}
+                    <div class="event-venue">{event.venueName}, {event.venueAddress}</div>
+                    <p class="event-desc">{event.description}</p>
+                    <div class="event-links">
+                      {event.ticketUrl && <a href={event.ticketUrl} target="_blank" rel="noopener" class="link-sm">Tickets ↗</a>}
+                      {event.rsvpUrl && <a href={event.rsvpUrl} target="_blank" rel="noopener" class="link-sm">RSVP ↗</a>}
+                    </div>
+                    <div class="event-meta">Published by {event.publishedBy}</div>
+                  </div>
+                </div>
+                <div class="event-actions">
+                  <button class="btn btn-danger btn-sm" data-action="unpublish" data-id={event.id}>
+                    Unpublish
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {past.length > 0 && (
+        <section class="events-section">
+          <h2 class="section-title">Past Events ({past.length})</h2>
+          <div class="event-list event-list-past">
+            {past.map(event => (
+              <div class="event-card event-card-past" id={event.id}>
+                <div class="event-card-inner">
+                  <div class="event-info">
+                    <div class="event-date-badge">{formatDate(event.eventDate)} · {event.eventTime}</div>
+                    <h3 class="event-title">{event.title}</h3>
+                    {event.bandName && <div class="event-sub">{event.bandName}</div>}
+                    <div class="event-venue">{event.venueName}</div>
+                  </div>
+                </div>
+                <div class="event-actions">
+                  <button class="btn btn-danger btn-sm" data-action="unpublish" data-id={event.id}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  )}
+
+  <script>
+    document.querySelectorAll('[data-action="unpublish"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const el = btn as HTMLButtonElement;
+        if (!confirm('Unpublish this event? The submission will return to "approved" status.')) return;
+        el.disabled = true;
+        el.textContent = 'Removing…';
+        const res = await fetch('/api/admin/delete-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: el.dataset.id }),
+        });
+        if (res.ok) window.location.reload();
+        else { alert('Failed to unpublish.'); el.disabled = false; el.textContent = 'Unpublish'; }
+      });
+    });
+  </script>
+</AdminLayout>

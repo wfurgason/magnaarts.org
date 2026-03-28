@@ -1,0 +1,184 @@
+---
+import '../styles/admin.css';
+
+interface Props {
+  title: string;
+  user: { email?: string; customClaims?: { role?: string } };
+}
+const { title, user } = Astro.props;
+const isSuperAdmin = (user.customClaims as any)?.role === 'super_admin';
+const currentPath = Astro.url.pathname;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} — Magna Arts Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-body">
+
+  <aside class="admin-sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo-wrap">
+        <img src="/images/ArtsCouncil_logo.png" alt="Magna Arts Council" class="sidebar-logo" />
+      </div>
+      <div class="sidebar-brand-text">
+        <span class="brand-name">Magna Arts</span>
+        <span class="brand-sub">Board Portal</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard" class:list={['nav-link', { active: currentPath === '/admin/dashboard' }]}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/admin/bands" class:list={['nav-link', { active: currentPath.startsWith('/admin/bands') }]}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        Band Applications
+      </a>
+      <a href="/admin/programs" class:list={['nav-link', { active: currentPath.startsWith('/admin/programs') }]}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Program Proposals
+      </a>
+      <a href="/admin/seasons" class:list={['nav-link', { active: currentPath.startsWith('/admin/seasons') }]}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm1-13h-2v6l5.25 3.15.75-1.23-4-2.42z"/></svg>
+        Season Setup
+      </a>
+      <a href="/admin/events" class:list={['nav-link', { active: currentPath.startsWith('/admin/events') }]}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Published Events
+      </a>
+      {isSuperAdmin && (
+        <a href="/admin/users" class:list={['nav-link', { active: currentPath.startsWith('/admin/users') }]}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Board Members
+        </a>
+      )}
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="user-email">{user.email}</span>
+      <button id="logout-btn" class="btn-logout">Sign Out</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <slot />
+  </main>
+
+  <script>
+    // Logout
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/admin';
+    });
+
+    // Bands page logic — only runs if the assign modal exists
+    var assignModal = document.getElementById('assign-modal');
+    if (assignModal) {
+      var currentBandId = '';
+      var currentAvailDates = [];
+      var assignWarning    = document.getElementById('assign-match-warning');
+      var assignError      = document.getElementById('assign-error');
+      var assignSubmit     = document.getElementById('assign-submit');
+      var assignBandNameEl = document.getElementById('assign-band-name');
+
+      function openAssign(bandId, bandName, availDates) {
+        currentBandId = bandId;
+        currentAvailDates = availDates;
+        if (assignBandNameEl) assignBandNameEl.textContent = bandName;
+        if (assignWarning) assignWarning.hidden = true;
+        if (assignError) assignError.hidden = true;
+        if (assignSubmit) assignSubmit.disabled = true;
+        assignModal.querySelectorAll('input[type="radio"]').forEach(function(r) { r.checked = false; });
+        assignModal.hidden = false;
+      }
+
+      function closeAssign() { assignModal.hidden = true; }
+
+      document.querySelectorAll('.assign-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var availDates = [];
+          try { availDates = JSON.parse(btn.dataset.available || '[]'); } catch(e) {}
+          openAssign(btn.dataset.bandId, btn.dataset.bandName, availDates);
+        });
+      });
+
+      document.getElementById('assign-close')?.addEventListener('click', closeAssign);
+      document.getElementById('assign-cancel')?.addEventListener('click', closeAssign);
+      assignModal.addEventListener('click', function(e) { if (e.target === assignModal) closeAssign(); });
+
+      assignModal.querySelectorAll('input[type="radio"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+          var opt = radio.closest('.shell-option');
+          var selectedDate = opt ? opt.getAttribute('data-date') : '';
+          if (assignSubmit) assignSubmit.disabled = false;
+          if (assignWarning) assignWarning.hidden = currentAvailDates.length === 0 || currentAvailDates.includes(selectedDate);
+        });
+      });
+
+      if (assignSubmit) {
+        assignSubmit.addEventListener('click', async function() {
+          var selected = assignModal.querySelector('input[name="shell"]:checked');
+          if (!currentBandId || !selected) {
+            if (assignError) {
+              assignError.textContent = !currentBandId ? 'Error: band ID missing.' : 'Please select a date.';
+              assignError.hidden = false;
+            }
+            return;
+          }
+          if (assignError) assignError.hidden = true;
+          assignSubmit.disabled = true;
+          assignSubmit.textContent = 'Assigning...';
+          var res = await fetch('/api/admin/assign-band', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'assign', bandId: currentBandId, shellId: selected.value }),
+          });
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            var data = await res.json();
+            if (assignError) { assignError.textContent = data.error || 'Assignment failed.'; assignError.hidden = false; }
+            assignSubmit.disabled = false;
+            assignSubmit.textContent = 'Assign Date';
+          }
+        });
+      }
+
+      document.querySelectorAll('[data-action="approve"], [data-action="reject"]').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+          var status = btn.dataset.action === 'approve' ? 'approved' : 'rejected';
+          btn.disabled = true;
+          var res = await fetch('/api/admin/update-submission', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: btn.dataset.id, collection: btn.dataset.collection, status: status }),
+          });
+          if (res.ok) window.location.reload();
+          else { alert('Action failed.'); btn.disabled = false; }
+        });
+      });
+
+      document.querySelectorAll('.unassign-btn').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+          if (!confirm('Remove date assignment for ' + (btn.dataset.bandName || 'this band') + '? The date will become available again.')) return;
+          btn.disabled = true;
+          var res = await fetch('/api/admin/assign-band', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'unassign', shellId: btn.dataset.shellId }),
+          });
+          if (res.ok) window.location.reload();
+          else { alert('Unassign failed.'); btn.disabled = false; }
+        });
+      });
+    }
+  </script>
+</body>
+</html>

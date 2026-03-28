@@ -1,0 +1,569 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+
+const user = Astro.locals.user;
+
+// ── Static template values (editable via the form below) ──────────────────
+const TEMPLATE_DEFAULTS = {
+  venue:     'Pleasant Green Park',
+  address:   '9000 W 2700 S, Magna, UT 84044',
+  startTime: '7:00 PM',
+  eventType: 'music_movie_in_park',
+};
+
+// ── Load existing seasons ─────────────────────────────────────────────────
+const seasonsSnap = await adminDb.collection('park_seasons').orderBy('year', 'desc').get();
+const seasons = seasonsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
+// ── Load all park event shells for display ────────────────────────────────
+const shellsSnap = await adminDb.collection('park_events')
+  .orderBy('date', 'asc')
+  .get();
+const allShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
+// ── POST: create or update a season ──────────────────────────────────────
+let flashMsg = '';
+let flashType = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('action')?.toString();
+
+  if (action === 'create_season') {
+    const year     = parseInt(form.get('year')?.toString() || '0');
+    const venue    = form.get('venue')?.toString() || TEMPLATE_DEFAULTS.venue;
+    const address  = form.get('address')?.toString() || TEMPLATE_DEFAULTS.address;
+    const start    = form.get('startTime')?.toString() || TEMPLATE_DEFAULTS.startTime;
+    const datesRaw = form.get('dates')?.toString() || '';
+
+    const dates = datesRaw
+      .split('\n')
+      .map(d => d.trim())
+      .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
+
+    if (!year || dates.length === 0) {
+      flashMsg  = 'Please enter a valid year and at least one date (YYYY-MM-DD format).';
+      flashType = 'error';
+    } else {
+      // Create or overwrite the season document
+      await adminDb.collection('park_seasons').doc(String(year)).set({
+        year,
+        venue,
+        address,
+        startTime: start,
+        dateCount: dates.length,
+        createdAt: FieldValue.serverTimestamp(),
+        createdBy: user?.email || 'admin',
+      });
+
+      // Create event shells (skip any date that already has a shell for this year)
+      const existingSnap = await adminDb.collection('park_events')
+        .where('season', '==', year)
+        .get();
+      const existingDates = new Set(existingSnap.docs.map(d => d.data().date));
+
+      const batch = adminDb.batch();
+      let created = 0;
+      for (const date of dates) {
+        if (existingDates.has(date)) continue;
+        const ref = adminDb.collection('park_events').doc();
+        // Format display date: "Friday, June 12, 2026"
+        const d = new Date(date + 'T12:00:00');
+        const display = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        batch.set(ref, {
+          season:      year,
+          date,
+          displayDate: display,
+          startTime:   start,
+          venue,
+          address,
+          eventType:   TEMPLATE_DEFAULTS.eventType,
+          status:      'shell',
+          bandId:      null,
+          bandName:    null,
+          bandConfirmed: false,
+          movie:       null,
+          movieToken:  null,
+          createdAt:   FieldValue.serverTimestamp(),
+        });
+        created++;
+      }
+      await batch.commit();
+
+      flashMsg  = `Season ${year} set up with ${dates.length} dates. ${created} new event shell(s) created.`;
+      flashType = 'success';
+    }
+  }
+
+  if (action === 'delete_shell') {
+    const shellId = form.get('shellId')?.toString();
+    if (shellId) {
+      await adminDb.collection('park_events').doc(shellId).delete();
+      flashMsg  = 'Event shell deleted.';
+      flashType = 'success';
+    }
+  }
+
+  if (action === 'update_shell') {
+    const shellId   = form.get('shellId')?.toString();
+    const venue     = form.get('venue')?.toString();
+    const address   = form.get('address')?.toString();
+    const startTime = form.get('startTime')?.toString();
+    if (shellId) {
+      await adminDb.collection('park_events').doc(shellId).update({ venue, address, startTime });
+      flashMsg  = 'Event shell updated.';
+      flashType = 'success';
+    }
+  }
+
+  // Redirect to clear POST on refresh
+  return Astro.redirect('/admin/seasons');
+}
+
+// Group shells by season year
+const shellsBySeason: Record<number, any[]> = {};
+for (const s of allShells) {
+  if (!shellsBySeason[s.season]) shellsBySeason[s.season] = [];
+  shellsBySeason[s.season].push(s);
+}
+---
+
+<AdminLayout title="Season Setup" user={user}>
+
+  <div class="page-header">
+    <h1>Season Setup</h1>
+    <p class="page-sub">Create and manage Music &amp; Movie in the Park event shells for each season.</p>
+  </div>
+
+  <!-- Flash message -->
+  {flashMsg && (
+    <div class={`flash flash-${flashType}`}>{flashMsg}</div>
+  )}
+
+  <!-- ── WIZARD: Create a new season ──────────────────────────────────── -->
+  <section class="card">
+    <h2 class="card-title">Set Up a New Season</h2>
+    <p class="card-sub">Enter the year, venue details, and one date per line. The wizard will generate an event shell for each date with the static template info pre-filled. Existing shells for dates that already exist will be skipped.</p>
+
+    <form method="POST" class="season-form">
+      <input type="hidden" name="action" value="create_season" />
+
+      <div class="form-row">
+        <div class="form-field">
+          <label for="year">Season Year <span class="req">*</span></label>
+          <input type="number" id="year" name="year" value="2026" min="2024" max="2040" required />
+        </div>
+        <div class="form-field">
+          <label for="startTime">Default Start Time <span class="req">*</span></label>
+          <input type="text" id="startTime" name="startTime" value={TEMPLATE_DEFAULTS.startTime} placeholder="7:00 PM" required />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label for="venue">Venue Name <span class="req">*</span></label>
+          <input type="text" id="venue" name="venue" value={TEMPLATE_DEFAULTS.venue} required />
+        </div>
+        <div class="form-field">
+          <label for="address">Address <span class="req">*</span></label>
+          <input type="text" id="address" name="address" value={TEMPLATE_DEFAULTS.address} required />
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="dates">
+          Event Dates <span class="req">*</span>
+          <span class="field-hint">One date per line in YYYY-MM-DD format</span>
+        </label>
+        <textarea
+          id="dates"
+          name="dates"
+          rows="9"
+          placeholder={"2026-06-12\n2026-06-19\n2026-06-26\n2026-07-10\n2026-07-17\n2026-07-31\n2026-08-07"}
+          spellcheck="false"
+        >{"2026-06-12\n2026-06-19\n2026-06-26\n2026-07-10\n2026-07-17\n2026-07-31\n2026-08-07"}</textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Generate Event Shells →</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ── EXISTING EVENT SHELLS ────────────────────────────────────────── -->
+  {Object.entries(shellsBySeason)
+    .sort(([a], [b]) => Number(b) - Number(a))
+    .map(([year, shells]) => (
+      <section class="card">
+        <div class="season-header">
+          <h2 class="card-title">{year} Season — {shells.length} Events</h2>
+        </div>
+
+        <table class="shells-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Start Time</th>
+              <th>Venue</th>
+              <th>Status</th>
+              <th>Band</th>
+              <th>Confirmed</th>
+              <th>Movie</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shells.map(shell => (
+              <tr id={`shell-${shell.id}`}>
+                <td class="date-cell">{shell.displayDate}</td>
+                <td>{shell.startTime}</td>
+                <td class="venue-cell">{shell.venue}</td>
+                <td>
+                  <span class={`badge badge-${shell.status}`}>{shell.status}</span>
+                </td>
+                <td>{shell.bandName || <span class="dim">—</span>}</td>
+                <td>
+                  {shell.bandName
+                    ? (shell.bandConfirmed
+                        ? <span class="check-yes">✓ Yes</span>
+                        : <span class="check-no">✗ Pending</span>)
+                    : <span class="dim">—</span>
+                  }
+                </td>
+                <td>
+                  {shell.movie
+                    ? <span class="check-yes">✓ {shell.movie}</span>
+                    : <span class="dim">—</span>
+                  }
+                </td>
+                <td class="actions-cell">
+                  {/* Edit always available */}
+                  <button
+                    class="btn-sm btn-outline"
+                    onclick={`openEditModal('${shell.id}', '${shell.venue}', '${shell.address}', '${shell.startTime}')`}
+                  >
+                    Edit
+                  </button>
+
+                  {/* Confirm: only show when band is assigned but not yet confirmed */}
+                  {shell.status === 'band_assigned' && (
+                    <button
+                      class="btn-sm btn-confirm action-btn"
+                      data-action="confirm"
+                      data-shell-id={shell.id}
+                      data-band-name={shell.bandName}
+                    >
+                      Mark Confirmed
+                    </button>
+                  )}
+
+                  {/* Unassign: show when band assigned but not yet published */}
+                  {(shell.status === 'band_assigned' || shell.status === 'confirmed') && (
+                    <button
+                      class="btn-sm btn-outline action-btn"
+                      data-action="unassign"
+                      data-shell-id={shell.id}
+                      data-band-name={shell.bandName}
+                    >
+                      Unassign
+                    </button>
+                  )}
+
+                  {/* Publish: only when confirmed */}
+                  {shell.status === 'confirmed' && (
+                    <button
+                      class="btn-sm btn-publish action-btn"
+                      data-action="publish"
+                      data-shell-id={shell.id}
+                      data-band-name={shell.bandName}
+                    >
+                      Publish ↗
+                    </button>
+                  )}
+
+                  {/* Unpublished shells can be deleted */}
+                  {shell.status === 'shell' && (
+                    <form method="POST" style="display:inline" onsubmit="return confirm('Delete this event shell? This cannot be undone.')">
+                      <input type="hidden" name="action" value="delete_shell" />
+                      <input type="hidden" name="shellId" value={shell.id} />
+                      <button type="submit" class="btn-sm btn-danger">Delete</button>
+                    </form>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    ))
+  }
+
+  {Object.keys(shellsBySeason).length === 0 && (
+    <div class="empty-state">
+      <p>No event shells yet. Use the wizard above to generate them for a season.</p>
+    </div>
+  )}
+
+  <!-- ── EDIT MODAL ──────────────────────────────────────────────────── -->
+  <div id="edit-modal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <h3>Edit Event Shell</h3>
+      <form method="POST" id="edit-form">
+        <input type="hidden" name="action" value="update_shell" />
+        <input type="hidden" name="shellId" id="edit-shell-id" />
+        <div class="form-field">
+          <label for="edit-venue">Venue</label>
+          <input type="text" id="edit-venue" name="venue" required />
+        </div>
+        <div class="form-field">
+          <label for="edit-address">Address</label>
+          <input type="text" id="edit-address" name="address" required />
+        </div>
+        <div class="form-field">
+          <label for="edit-startTime">Start Time</label>
+          <input type="text" id="edit-startTime" name="startTime" required />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</AdminLayout>
+
+<script>
+  // ── Season action buttons (confirm, unassign, publish) ──────────────────
+  document.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const el = btn as HTMLButtonElement;
+      const action    = el.dataset.action!;
+      const shellId   = el.dataset.shellId!;
+      const bandName  = el.dataset.bandName || 'this band';
+
+      const confirmMessages: Record<string, string> = {
+        confirm:  `Mark ${bandName} as confirmed for this date?`,
+        unassign: `Remove ${bandName} from this date? They will return to "approved" status.`,
+        publish:  `Publish this event to the public site?`,
+      };
+
+      if (!confirm(confirmMessages[action] || 'Are you sure?')) return;
+
+      el.disabled = true;
+      el.textContent = 'Working…';
+
+      const res = await fetch('/api/admin/assign-band', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, shellId }),
+      });
+
+      if (res.ok) {
+        if (action === 'publish') {
+          window.location.href = '/admin/events';
+        } else {
+          window.location.reload();
+        }
+      } else {
+        const { error } = await res.json();
+        alert(error || 'Action failed.');
+        el.disabled = false;
+        el.textContent = el.dataset.action === 'confirm' ? 'Mark Confirmed'
+          : el.dataset.action === 'unassign' ? 'Unassign'
+          : 'Publish ↗';
+      }
+    });
+  });
+
+  function openEditModal(id, venue, address, startTime) {
+    document.getElementById('edit-shell-id').value = id;
+    document.getElementById('edit-venue').value = venue;
+    document.getElementById('edit-address').value = address;
+    document.getElementById('edit-startTime').value = startTime;
+    document.getElementById('edit-modal').hidden = false;
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').hidden = true;
+  }
+
+  // Close modal on overlay click
+  document.getElementById('edit-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+  });
+</script>
+
+<style>
+  .page-header { margin-bottom: 32px; }
+  .page-header h1 { font-family: var(--font-display, serif); font-size: 28px; font-weight: 700; color: var(--navy, #1a2456); margin: 0 0 6px; }
+  .page-sub { color: var(--muted, #5a5a7a); font-size: 15px; margin: 0; }
+
+  .flash {
+    padding: 14px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+  .flash-success { background: #d1fae5; border: 1.5px solid #6ee7b7; color: #065f46; }
+  .flash-error   { background: #fee2e2; border: 1.5px solid #fca5a5; color: #991b1b; }
+
+  .card {
+    background: var(--white, #fff);
+    border: 1.5px solid var(--border, #e5e5e5);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 32px;
+  }
+
+  .card-title {
+    font-family: var(--font-display, serif);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy, #1a2456);
+    margin: 0 0 6px;
+  }
+
+  .card-sub { color: var(--muted, #5a5a7a); font-size: 14px; margin: 0 0 24px; line-height: 1.55; }
+
+  .season-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+
+  /* Form */
+  .season-form { display: flex; flex-direction: column; gap: 16px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-field { display: flex; flex-direction: column; gap: 6px; }
+  .form-field label { font-size: 12px; font-weight: 700; color: var(--navy, #1a2456); text-transform: uppercase; letter-spacing: 0.05em; }
+  .field-hint { font-size: 11px; font-weight: 400; color: var(--muted, #5a5a7a); text-transform: none; letter-spacing: 0; margin-left: 6px; }
+  .req { color: var(--red, #b52626); }
+  .form-field input,
+  .form-field textarea {
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text, #1a1a1a);
+    border: 1.5px solid var(--border, #e5e5e5);
+    border-radius: 6px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .form-field input:focus,
+  .form-field textarea:focus { border-color: var(--blue, #2563b0); box-shadow: 0 0 0 3px rgba(37,99,176,0.1); }
+  .form-field textarea { resize: vertical; font-family: monospace; font-size: 13px; }
+  .form-actions { padding-top: 4px; }
+
+  /* Table */
+  .shells-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .shells-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted, #5a5a7a);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border, #e5e5e5);
+  }
+  .shells-table td {
+    padding: 12px 12px;
+    border-bottom: 1px solid var(--border, #e5e5e5);
+    vertical-align: middle;
+  }
+  .shells-table tr:last-child td { border-bottom: none; }
+  .date-cell { font-weight: 600; color: var(--navy, #1a2456); white-space: nowrap; }
+  .venue-cell { color: var(--muted, #5a5a7a); }
+  .dim { color: var(--muted, #5a5a7a); opacity: 0.5; }
+  .check-yes { color: #059669; font-weight: 600; }
+  .check-no  { color: var(--red, #b52626); font-weight: 600; font-size: 12px; }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .badge-shell           { background: #f1f5f9; color: #64748b; }
+  .badge-band_assigned   { background: #fef3c7; color: #92400e; }
+  .badge-confirmed       { background: #d1fae5; color: #065f46; }
+  .badge-published       { background: #dbeafe; color: #1e40af; }
+
+  /* Action buttons */
+  .actions-cell { white-space: nowrap; display: flex; gap: 8px; align-items: center; }
+  .btn-sm {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: opacity 0.15s;
+  }
+  .btn-sm:hover { opacity: 0.8; }
+  .btn-outline  { background: transparent; border-color: var(--border, #e5e5e5); color: var(--navy, #1a2456); }
+  .btn-danger    { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+  .btn-confirm   { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+  .btn-publish   { background: var(--navy, #1a2456); border-color: var(--navy, #1a2456); color: #fff; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1.5px solid transparent; transition: opacity 0.15s; text-decoration: none; }
+  .btn-primary { background: var(--navy, #1a2456); color: #fff; }
+  .btn-primary:hover { opacity: 0.85; }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px;
+    color: var(--muted, #5a5a7a);
+    background: var(--white, #fff);
+    border: 1.5px dashed var(--border, #e5e5e5);
+    border-radius: 12px;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-overlay[hidden] { display: none; }
+  .modal-box {
+    background: var(--white, #fff);
+    border-radius: 12px;
+    padding: 32px;
+    width: 480px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .modal-box h3 {
+    font-family: var(--font-display, serif);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy, #1a2456);
+    margin: 0;
+  }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 8px;
+  }
+
+  @media (max-width: 768px) {
+    .form-row { grid-template-columns: 1fr; }
+    .shells-table { font-size: 12px; }
+    .card { padding: 20px 16px; }
+  }
+</style>

@@ -5,17 +5,32 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 const user = Astro.locals.user;
 
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
+
 // ── Load existing shells ──────────────────────────────────────────────────
-const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap] = await Promise.all([
+const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, vendorSnap] = await Promise.all([
   adminDb.collection('park_seasons').orderBy('year', 'desc').get(),
   adminDb.collection('park_events').orderBy('date', 'asc').get(),
   adminDb.collection('open_mic_events').orderBy('date', 'asc').get(),
   adminDb.collection('art_night_events').orderBy('date', 'asc').get(),
+  adminDb.collection('festival_events').orderBy('date', 'asc').get(),
+  adminDb.collection('band_applications').where('status', 'in', ['approved', 'waitlisted']).orderBy('band_name', 'asc').get(),
+  adminDb.collection('vendor_applications').where('status', 'in', ['approved', 'paid']).get(),
 ]);
 
 const allShells         = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const allOpenMicShells  = openMicSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const allArtNightShells = artNightSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const allFestivalShells = festivalSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const approvedBands     = approvedBandsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const approvedVendorCount = vendorSnap.size;
 
 // ── POST handling ─────────────────────────────────────────────────────────
 let flashMsg  = '';
@@ -37,7 +52,7 @@ if (Astro.request.method === 'POST') {
     const dates = datesRaw.split('\n').map(d => d.trim()).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
 
     if (!year || dates.length === 0) {
-      flashMsg  = 'Please enter a valid year and at least one date (YYYY-MM-DD format).';
+      flashMsg  = 'Please enter a valid year and at least one date.';
       flashType = 'error';
     } else if (seriesType === 'open_mic') {
       const omTitle    = form.get('omTitle')?.toString() || 'Open Mic Night';
@@ -90,8 +105,40 @@ if (Astro.request.method === 'POST') {
       flashMsg  = `Group Art Night: ${created} new shell(s) created (${dates.length} dates total).`;
       flashType = 'success';
 
+    } else if (seriesType === 'arts_festival') {
+      const afTitle = form.get('afTitle')?.toString() || 'Magna Main Street Arts Festival';
+      const afDesc  = form.get('afDescription')?.toString() || '';
+
+      if (dates.length !== 1) {
+        flashMsg  = 'Please select exactly one date for the Arts Festival.';
+        flashType = 'error';
+      } else {
+        const date    = dates[0];
+        const d       = new Date(date + 'T12:00:00');
+        const display = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        // Use the year from the selected date
+        const festYear = d.getFullYear();
+        // Check for existing shell for this year
+        const existing = await adminDb.collection('festival_events').where('season', '==', festYear).get();
+        if (!existing.empty) {
+          flashMsg  = `A festival shell for ${festYear} already exists. Delete it first to recreate.`;
+          flashType = 'error';
+        } else {
+          const ref = adminDb.collection('festival_events').doc(`arts-festival-${festYear}`);
+          await ref.set({
+            season: festYear, date, displayDate: display, startTime: start,
+            venue, address, title: afTitle, description: afDesc,
+            eventType: 'arts_festival', status: 'shell',
+            image: '/images/festival/mmsaf.png',
+            createdAt: FieldValue.serverTimestamp(),
+          });
+          flashMsg  = `Arts Festival shell created for ${display}.`;
+          flashType = 'success';
+        }
+      }
+
     } else {
-      // Music & Movies in the Park (original flow)
+      // Music & Movies in the Park
       await adminDb.collection('park_seasons').doc(String(year)).set({
         year, venue, address, startTime: start, dateCount: dates.length,
         createdAt: FieldValue.serverTimestamp(), createdBy: user?.email || 'admin',
@@ -126,6 +173,67 @@ if (Astro.request.method === 'POST') {
     if (shellId) {
       await adminDb.collection(col).doc(shellId).delete();
       flashMsg  = 'Event shell deleted.';
+      flashType = 'success';
+    }
+  }
+
+  // ── Assign a band to a festival slot ────────────────────────────────────
+  if (action === 'assign_festival_band') {
+    const shellId  = form.get('shellId')?.toString();
+    const slot     = parseInt(form.get('slot')?.toString() || '0');
+    const bandId   = form.get('bandId')?.toString();
+    const bandName = form.get('bandName')?.toString();
+    const slotTime = form.get('slotTime')?.toString() || '';
+    if (shellId && slot && bandId) {
+      const shellRef  = adminDb.collection('festival_events').doc(shellId);
+      const shellSnap = await shellRef.get();
+      const bands: any[] = shellSnap.data()?.bands || [
+        { slot: 1, time: '', bandId: null, bandName: null, confirmed: false },
+        { slot: 2, time: '', bandId: null, bandName: null, confirmed: false },
+        { slot: 3, time: '', bandId: null, bandName: null, confirmed: false },
+      ];
+      const idx = bands.findIndex((b: any) => b.slot === slot);
+      if (idx >= 0) {
+        bands[idx] = { slot, time: slotTime, bandId, bandName, confirmed: false };
+      } else {
+        bands.push({ slot, time: slotTime, bandId, bandName, confirmed: false });
+      }
+      await shellRef.update({ bands, status: 'planning' });
+      flashMsg  = `${bandName} assigned to Stage Slot ${slot}.`;
+      flashType = 'success';
+    }
+  }
+
+  // ── Unassign a band from a festival slot ───────────────────────────────
+  if (action === 'unassign_festival_band') {
+    const shellId = form.get('shellId')?.toString();
+    const slot    = parseInt(form.get('slot')?.toString() || '0');
+    if (shellId && slot) {
+      const shellRef  = adminDb.collection('festival_events').doc(shellId);
+      const shellSnap = await shellRef.get();
+      const bands: any[] = (shellSnap.data()?.bands || []).map((b: any) =>
+        b.slot === slot ? { slot, time: '', bandId: null, bandName: null, confirmed: false } : b
+      );
+      const allEmpty = bands.every((b: any) => !b.bandId);
+      await shellRef.update({ bands, status: allEmpty ? 'shell' : 'planning' });
+      flashMsg  = `Slot ${slot} cleared.`;
+      flashType = 'success';
+    }
+  }
+
+  // ── Confirm a festival band slot ───────────────────────────────────────
+  if (action === 'confirm_festival_band') {
+    const shellId = form.get('shellId')?.toString();
+    const slot    = parseInt(form.get('slot')?.toString() || '0');
+    if (shellId && slot) {
+      const shellRef  = adminDb.collection('festival_events').doc(shellId);
+      const shellSnap = await shellRef.get();
+      const bands: any[] = (shellSnap.data()?.bands || []).map((b: any) =>
+        b.slot === slot ? { ...b, confirmed: true } : b
+      );
+      const allConfirmed = bands.filter((b: any) => b.bandId).every((b: any) => b.confirmed);
+      await shellRef.update({ bands, status: allConfirmed ? 'confirmed' : 'planning' });
+      flashMsg  = `Slot ${slot} confirmed.`;
       flashType = 'success';
     }
   }
@@ -166,10 +274,17 @@ for (const s of allArtNightShells) {
   artNightBySeason[s.season].push(s);
 }
 
+const festivalBySeason: Record<number, any[]> = {};
+for (const s of allFestivalShells) {
+  if (!festivalBySeason[s.season]) festivalBySeason[s.season] = [];
+  festivalBySeason[s.season].push(s);
+}
+
 const totalShells =
   Object.keys(shellsBySeason).length +
   Object.keys(openMicBySeason).length +
-  Object.keys(artNightBySeason).length;
+  Object.keys(artNightBySeason).length +
+  Object.keys(festivalBySeason).length;
 ---
 
 <AdminLayout title="Plan Events" user={user}>
@@ -184,10 +299,12 @@ const totalShells =
   <!-- ── WIZARD ────────────────────────────────────────────────────────── -->
   <section class="card">
     <h2 class="card-title">Set Up a New Event Series</h2>
-    <p class="card-sub">Choose an event, fill in the details, and enter one date per line. A shell will be created for each date.</p>
+    <p class="card-sub">Choose an event, fill in the details, and select dates from the calendar. A shell will be created for each selected date.</p>
 
     <form method="POST" class="season-form" id="season-form">
       <input type="hidden" name="action" value="create_season" />
+      <!-- Hidden dates field — written by the calendar JS -->
+      <textarea name="dates" id="dates-hidden" style="display:none" readonly></textarea>
 
       <!-- Event title dropdown -->
       <div class="form-field">
@@ -241,17 +358,53 @@ const totalShells =
             <label for="omTitle">Event Title</label>
             <input type="text" id="omTitle" name="omTitle" value="Open Mic Night" placeholder="Open Mic Night" />
           </div>
+
+          <!-- Image upload -->
           <div class="form-field">
-            <label for="omImageUrl">
-              Image URL
+            <label>
+              Event Image
               <span class="field-hint">One image used for all dates in this series</span>
             </label>
-            <input type="url" id="omImageUrl" name="omImageUrl" placeholder="https://…" />
+            <!-- Populated by JS after upload to Firebase Storage -->
+            <input type="hidden" id="omImageUrl" name="omImageUrl" />
+            <div class="upload-zone" id="om-image-zone">
+              <input
+                type="file"
+                id="om-image-input"
+                accept="image/jpeg,image/png,image/webp"
+                class="upload-input"
+              />
+              <label for="om-image-input" class="upload-label">
+                <span class="upload-icon">🖼️</span>
+                <span class="upload-text"><strong>Choose an image</strong> or drag and drop</span>
+                <span class="upload-hint">JPG, PNG or WebP · max 10 MB</span>
+              </label>
+              <div class="upload-preview" id="om-image-preview" hidden></div>
+            </div>
+            <div id="om-upload-status" class="upload-status" hidden></div>
           </div>
+
           <div class="form-field">
             <label for="omDescription">Description</label>
             <textarea id="omDescription" name="omDescription" rows="3"
               placeholder="Join us for an evening of music, poetry, and performance. All are welcome to perform or just enjoy the show."></textarea>
+          </div>
+        </div>
+
+        <!-- Arts Festival–specific fields -->
+        <div id="arts-festival-fields" class="event-extra-fields" style="display:none;">
+          <div class="form-field">
+            <label for="afTitle">Event Title</label>
+            <input type="text" id="afTitle" name="afTitle" value="Magna Main Street Arts Festival" />
+          </div>
+          <div class="form-field">
+            <label for="afDescription">Description <span class="field-hint">(shown on the public event page)</span></label>
+            <textarea id="afDescription" name="afDescription" rows="4"
+              placeholder="Our annual flagship event draws 5,000–7,000 people to Historic Magna Main Street for a full day of live music, a fine arts contest, street performers, and arts and food vendors. Free and open to all."></textarea>
+          </div>
+          <div class="info-callout">
+            <span>ℹ️</span>
+            <span>A single event shell will be created. After publishing, approved vendor applications will appear on the public festival page automatically.</span>
           </div>
         </div>
 
@@ -273,24 +426,29 @@ const totalShells =
           </div>
         </div>
 
+        <!-- ── DATE CALENDAR ─────────────────────────────────────────── -->
         <div class="form-field">
-          <label for="dates">
+          <label>
             Event Dates <span class="req">*</span>
-            <span class="field-hint">One date per line — YYYY-MM-DD format</span>
+            <span class="field-hint">Click dates to toggle them on/off</span>
           </label>
-          <textarea
-            id="dates"
-            name="dates"
-            rows="8"
-            placeholder={"2026-06-12\n2026-06-19\n2026-06-26\n2026-07-10"}
-            spellcheck="false"
-          ></textarea>
+
+          <!-- Selected date chips summary -->
+          <div id="selected-chips" class="selected-chips" hidden>
+            <span class="chips-label">Selected:</span>
+            <div id="chips-list" class="chips-list"></div>
+            <button type="button" id="clear-dates-btn" class="clear-dates-btn">Clear all</button>
+          </div>
+
+          <!-- 12-month scrollable calendar -->
+          <div id="cal-grid" class="cal-grid"></div>
         </div>
 
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Generate Event Shells →</button>
+          <button type="submit" id="submit-btn" class="btn btn-primary">Generate Event Shells →</button>
+          <span id="submit-status" class="submit-status" hidden></span>
         </div>
-      </div>
+      </div><!-- /main-form-body -->
     </form>
   </section>
 
@@ -409,6 +567,142 @@ const totalShells =
     </section>
   ))}
 
+  <!-- ── ARTS FESTIVAL ──────────────────────────────────────────────────── -->
+  {Object.entries(festivalBySeason).sort(([a],[b]) => Number(b)-Number(a)).map(([yr, shells]) => (
+    shells.map(shell => {
+      const bands: any[] = shell.bands || [
+        { slot: 1, time: '', bandId: null, bandName: null, confirmed: false },
+        { slot: 2, time: '', bandId: null, bandName: null, confirmed: false },
+        { slot: 3, time: '', bandId: null, bandName: null, confirmed: false },
+      ];
+      const canPublish = shell.status === 'confirmed' || (shell.status === 'planning' && bands.filter((b:any)=>b.bandId).every((b:any)=>b.confirmed));
+      return (
+        <section class="card fest-card" id={`festival-${shell.id}`}>
+
+          <!-- Header row -->
+          <div class="season-header">
+            <div>
+              <h2 class="card-title">★ Magna Main Street Arts Festival — {yr}</h2>
+              <p class="fest-meta">{shell.displayDate} &middot; {shell.startTime} &middot; {shell.venue}</p>
+            </div>
+            <div class="fest-header-actions">
+              <span class={`badge badge-${shell.status}`}>{shell.status}</span>
+              <button class="btn-sm btn-outline"
+                onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}',' ${(shell.address||'').replace(/'/g,"\\'")}',' ${shell.startTime}','festival_events')`}>
+                Edit Details
+              </button>
+              {shell.status !== 'published' && (
+                <button class={`btn-sm btn-publish festival-publish-btn${!canPublish ? ' btn-disabled' : ''}`}
+                  data-shell-id={shell.id}
+                  disabled={!canPublish}
+                  title={!canPublish ? 'Confirm all band slots before publishing' : 'Publish to public site'}>
+                  Publish ↗
+                </button>
+              )}
+              {shell.status === 'published' && (
+                <span class="badge badge-published">✓ Published</span>
+              )}
+              {shell.status === 'shell' && (
+                <form method="POST" style="display:inline" onsubmit="return confirm('Delete this festival shell?')">
+                  <input type="hidden" name="action" value="delete_shell" />
+                  <input type="hidden" name="shellId" value={shell.id} />
+                  <input type="hidden" name="collection" value="festival_events" />
+                  <button type="submit" class="btn-sm btn-danger">Delete</button>
+                </form>
+              )}
+            </div>
+          </div>
+
+          <!-- Description preview -->
+          {shell.description && (
+            <p class="fest-description">{shell.description}</p>
+          )}
+
+          <div class="fest-body">
+
+            <!-- ── MAIN STAGE BANDS ── -->
+            <div class="fest-section">
+              <h3 class="fest-section-heading">🎸 Main Stage Bands</h3>
+              <table class="shells-table">
+                <thead>
+                  <tr>
+                    <th>Slot</th><th>Time</th><th>Band</th><th>Status</th><th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bands.map((b: any) => (
+                    <tr>
+                      <td class="slot-cell">Slot {b.slot}</td>
+                      <td class="time-cell">{b.time || <span class="dim">—</span>}</td>
+                      <td class="band-cell">{b.bandName || <span class="dim">Unassigned</span>}</td>
+                      <td>
+                        {b.bandId
+                          ? (b.confirmed
+                            ? <span class="check-yes">✓ Confirmed</span>
+                            : <span class="check-no">✗ Pending</span>)
+                          : <span class="dim">—</span>}
+                      </td>
+                      <td class="actions-cell">
+                        {!b.bandId && (
+                          <button class="btn-sm btn-assign-fest"
+                            data-shell-id={shell.id}
+                            data-slot={b.slot}>
+                            Assign Band
+                          </button>
+                        )}
+                        {b.bandId && !b.confirmed && (
+                          <>
+                            <form method="POST" style="display:inline">
+                              <input type="hidden" name="action" value="confirm_festival_band" />
+                              <input type="hidden" name="shellId" value={shell.id} />
+                              <input type="hidden" name="slot" value={b.slot} />
+                              <button type="submit" class="btn-sm btn-confirm">Mark Confirmed</button>
+                            </form>
+                            <form method="POST" style="display:inline" onsubmit="return confirm('Remove this band from the slot?')">
+                              <input type="hidden" name="action" value="unassign_festival_band" />
+                              <input type="hidden" name="shellId" value={shell.id} />
+                              <input type="hidden" name="slot" value={b.slot} />
+                              <button type="submit" class="btn-sm btn-outline">Unassign</button>
+                            </form>
+                          </>
+                        )}
+                        {b.bandId && b.confirmed && (
+                          <form method="POST" style="display:inline" onsubmit="return confirm('Remove confirmed band from slot?')">
+                            <input type="hidden" name="action" value="unassign_festival_band" />
+                            <input type="hidden" name="shellId" value={shell.id} />
+                            <input type="hidden" name="slot" value={b.slot} />
+                            <button type="submit" class="btn-sm btn-outline">Unassign</button>
+                          </form>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- ── VENDORS SUMMARY ── -->
+            <div class="fest-section">
+              <h3 class="fest-section-heading">🛒 Vendors</h3>
+              <div class="vendor-summary-card">
+                <div class="vendor-summary-stat">
+                  <span class="vendor-stat-number">{approvedVendorCount}</span>
+                  <span class="vendor-stat-label">Approved &amp; Paid</span>
+                </div>
+                <div class="vendor-summary-actions">
+                  <a href="/admin/vendors" class="btn btn-outline btn">Manage Vendors ↗</a>
+                  <a href="/admin/vendors?filter=approved" class="btn-sm btn-outline">Pending Assignment</a>
+                </div>
+              </div>
+              <p class="vendor-hint">Booth space numbers are assigned on the Vendors page. Approved vendors automatically appear on the public festival page.</p>
+            </div>
+
+          </div>
+        </section>
+      );
+    })
+  ))}
+
   <!-- ── GROUP ART NIGHT ────────────────────────────────────────────────── -->
   {Object.entries(artNightBySeason).sort(([a],[b]) => Number(b)-Number(a)).map(([yr, shells]) => (
     <section class="card">
@@ -459,6 +753,32 @@ const totalShells =
     </div>
   )}
 
+  <!-- ── FESTIVAL BAND ASSIGN MODAL ────────────────────────────────── -->
+  <div id="fest-band-modal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <h3>🎸 Assign Band — Slot <span id="fest-modal-slot-label"></span></h3>
+      <form method="POST" id="fest-band-form">
+        <input type="hidden" name="action" value="assign_festival_band" />
+        <input type="hidden" name="shellId" id="fest-modal-shell-id" />
+        <input type="hidden" name="slot"    id="fest-modal-slot" />
+        <input type="hidden" name="bandId"  id="fest-modal-band-id" />
+        <input type="hidden" name="bandName" id="fest-modal-band-name" />
+        <div class="form-field">
+          <label for="fest-modal-time">Set Time <span class="field-hint">e.g. 12:00 PM</span></label>
+          <input type="text" id="fest-modal-time" name="slotTime" placeholder="12:00 PM" required />
+        </div>
+        <div class="form-field">
+          <label>Select Band</label>
+          <div id="fest-band-list" class="fest-band-list"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" id="fest-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="fest-modal-submit" disabled>Assign Band →</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ── EDIT MODAL ─────────────────────────────────────────────────────── -->
   <div id="edit-modal" class="modal-overlay" hidden>
     <div class="modal-box">
@@ -489,9 +809,21 @@ const totalShells =
 
 </AdminLayout>
 
-<script>
-  // ── Event type dropdown ───────────────────────────────────────────────
-  const EVENT_PRESETS: Record<string, { venue: string; address: string }> = {
+<!-- Inject Firebase config and approved bands -->
+<script define:vars={{ firebaseConfig, approvedBands }}>
+  window.__FIREBASE_CONFIG__ = firebaseConfig;
+  window.__APPROVED_BANDS__  = approvedBands;
+</script>
+
+<script type="module">
+  import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+  import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js';
+
+  const app     = getApps().length ? getApp() : initializeApp(window.__FIREBASE_CONFIG__);
+  const storage = getStorage(app);
+
+  // ── Event type dropdown ─────────────────────────────────────────────────
+  const EVENT_PRESETS = {
     music_in_park:   { venue: 'Pleasant Green Park',        address: '3250 S 8400 W, Magna, UT 84044' },
     open_mic:        { venue: 'Magna Library',               address: '2675 S 8950 W, Magna, UT 84044' },
     group_art_night: { venue: 'Magna Library',               address: '2675 S 8950 W, Magna, UT 84044' },
@@ -499,58 +831,251 @@ const totalShells =
     arts_festival:   { venue: 'Historic Magna Main Street',  address: '8900 W to 9180 W Magna Main St, Magna, UT 84044' },
     custom:          { venue: '',                            address: '' },
   };
-  const PLACEHOLDER_TYPES = new Set(['annual_seminar', 'arts_festival', 'custom']);
+  const PLACEHOLDER_TYPES = new Set(['annual_seminar', 'custom']);
 
-  const typeSelect    = document.getElementById('event-type-select') as HTMLSelectElement;
-  const mainFormBody  = document.getElementById('main-form-body')    as HTMLElement;
-  const placeholderEl = document.getElementById('placeholder-notice') as HTMLElement;
-  const omFields      = document.getElementById('open-mic-fields')   as HTMLElement;
-  const anFields      = document.getElementById('art-night-fields')  as HTMLElement;
-  const venueInput    = document.getElementById('venue')             as HTMLInputElement;
-  const addrInput     = document.getElementById('address')           as HTMLInputElement;
+  const typeSelect    = document.getElementById('event-type-select');
+  const mainFormBody  = document.getElementById('main-form-body');
+  const placeholderEl = document.getElementById('placeholder-notice');
+  const omFields      = document.getElementById('open-mic-fields');
+  const anFields      = document.getElementById('art-night-fields');
+  const afFields      = document.getElementById('arts-festival-fields');
+  const venueInput    = document.getElementById('venue');
+  const addrInput     = document.getElementById('address');
 
   typeSelect.addEventListener('change', () => {
     const val = typeSelect.value;
 
-    // Nothing selected
     if (!val) {
       mainFormBody.hidden  = true;
       placeholderEl.hidden = true;
       return;
     }
-
-    // Placeholder-only event types
     if (PLACEHOLDER_TYPES.has(val)) {
       mainFormBody.hidden  = true;
       placeholderEl.hidden = false;
       return;
     }
 
-    // Active event types — show form
     mainFormBody.hidden  = false;
     placeholderEl.hidden = true;
 
-    // Auto-fill venue / address (still editable)
     const preset = EVENT_PRESETS[val];
     if (preset) {
       venueInput.value = preset.venue;
       addrInput.value  = preset.address;
     }
 
-    // Show/hide event-specific field blocks
     omFields.style.display = val === 'open_mic'        ? 'flex' : 'none';
     anFields.style.display = val === 'group_art_night' ? 'flex' : 'none';
+    afFields.style.display = val === 'arts_festival'   ? 'flex' : 'none';
   });
 
-  // ── Music & Movies action buttons ─────────────────────────────────────
+  // ── Calendar ────────────────────────────────────────────────────────────
+  const yearInput   = document.getElementById('year');
+  const calGrid     = document.getElementById('cal-grid');
+  const datesHidden = document.getElementById('dates-hidden');
+  const chipsWrap   = document.getElementById('selected-chips');
+  const chipsList   = document.getElementById('chips-list');
+  const clearBtn    = document.getElementById('clear-dates-btn');
+
+  const MONTH_NAMES = ['January','February','March','April','May','June',
+                       'July','August','September','October','November','December'];
+  const DAY_ABBRS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+  let selectedDates = new Set();
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function dateKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
+
+  function buildCalendar(year) {
+    calGrid.innerHTML = '';
+    for (let m = 0; m < 12; m++) {
+      const monthEl = document.createElement('div');
+      monthEl.className = 'cal-month';
+
+      const heading = document.createElement('div');
+      heading.className = 'cal-month-heading';
+      heading.textContent = MONTH_NAMES[m];
+      monthEl.appendChild(heading);
+
+      const dowRow = document.createElement('div');
+      dowRow.className = 'cal-dow-row';
+      DAY_ABBRS.forEach(ab => {
+        const c = document.createElement('div');
+        c.className = 'cal-dow';
+        c.textContent = ab;
+        dowRow.appendChild(c);
+      });
+      monthEl.appendChild(dowRow);
+
+      const daysEl = document.createElement('div');
+      daysEl.className = 'cal-days';
+
+      const firstDow   = new Date(year, m, 1).getDay();
+      const daysInMonth = new Date(year, m+1, 0).getDate();
+
+      for (let i = 0; i < firstDow; i++) {
+        const blank = document.createElement('div');
+        blank.className = 'cal-day cal-blank';
+        daysEl.appendChild(blank);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key   = dateKey(year, m, d);
+        const dayEl = document.createElement('div');
+        dayEl.className = 'cal-day';
+        dayEl.textContent = d;
+        dayEl.dataset.date = key;
+        if (selectedDates.has(key)) dayEl.classList.add('cal-selected');
+
+        dayEl.addEventListener('click', () => {
+          if (selectedDates.has(key)) {
+            selectedDates.delete(key);
+            dayEl.classList.remove('cal-selected');
+          } else {
+            selectedDates.add(key);
+            dayEl.classList.add('cal-selected');
+          }
+          syncDates();
+        });
+
+        daysEl.appendChild(dayEl);
+      }
+
+      monthEl.appendChild(daysEl);
+      calGrid.appendChild(monthEl);
+    }
+  }
+
+  function syncDates() {
+    const sorted = Array.from(selectedDates).sort();
+    datesHidden.value = sorted.join('\n');
+
+    if (sorted.length === 0) {
+      chipsWrap.hidden = true;
+      chipsList.innerHTML = '';
+      return;
+    }
+
+    chipsWrap.hidden = false;
+    chipsList.innerHTML = '';
+    sorted.forEach(key => {
+      const [y, mo, d] = key.split('-').map(Number);
+      const label = new Date(y, mo-1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const chip = document.createElement('span');
+      chip.className = 'date-chip';
+      chip.innerHTML = `${label} <button type="button" class="chip-remove" data-date="${key}" aria-label="Remove ${label}">×</button>`;
+      chipsList.appendChild(chip);
+    });
+
+    chipsList.querySelectorAll('.chip-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.date;
+        selectedDates.delete(key);
+        const dayEl = calGrid.querySelector(`[data-date="${key}"]`);
+        if (dayEl) dayEl.classList.remove('cal-selected');
+        syncDates();
+      });
+    });
+  }
+
+  clearBtn.addEventListener('click', () => {
+    selectedDates.clear();
+    calGrid.querySelectorAll('.cal-selected').forEach(el => el.classList.remove('cal-selected'));
+    syncDates();
+  });
+
+  buildCalendar(parseInt(yearInput.value) || new Date().getFullYear());
+  yearInput.addEventListener('change', () => {
+    selectedDates.clear();
+    syncDates();
+    buildCalendar(parseInt(yearInput.value) || new Date().getFullYear());
+  });
+
+  // ── Open Mic image upload ───────────────────────────────────────────────
+  const omImageZone    = document.getElementById('om-image-zone');
+  const omImageInput   = document.getElementById('om-image-input');
+  const omImagePreview = document.getElementById('om-image-preview');
+  const omImageUrlEl   = document.getElementById('omImageUrl');
+  const omUploadStatus = document.getElementById('om-upload-status');
+
+  omImageZone.addEventListener('dragover', e => { e.preventDefault(); omImageZone.classList.add('drag-over'); });
+  omImageZone.addEventListener('dragleave', () => omImageZone.classList.remove('drag-over'));
+  omImageZone.addEventListener('drop', e => {
+    e.preventDefault();
+    omImageZone.classList.remove('drag-over');
+    if (e.dataTransfer?.files?.length) {
+      const dt = new DataTransfer();
+      dt.items.add(e.dataTransfer.files[0]);
+      omImageInput.files = dt.files;
+      omImageInput.dispatchEvent(new Event('change'));
+    }
+  });
+
+  omImageInput.addEventListener('change', () => {
+    const file = omImageInput.files?.[0];
+    if (!file) { omImagePreview.hidden = true; return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      omImagePreview.hidden = false;
+      omImagePreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+    };
+    reader.readAsDataURL(file);
+    omImageUrlEl.value = ''; // clear previously uploaded URL when new file chosen
+  });
+
+  // ── Form submit — upload image first if needed, then POST ───────────────
+  const seasonForm   = document.getElementById('season-form');
+  const submitBtn    = document.getElementById('submit-btn');
+  const submitStatus = document.getElementById('submit-status');
+
+  seasonForm.addEventListener('submit', async (e) => {
+    const isOpenMic = typeSelect.value === 'open_mic';
+    const file      = omImageInput.files?.[0];
+
+    // Validate dates for all active event types
+    if (mainFormBody && !mainFormBody.hidden && !datesHidden.value.trim()) {
+      e.preventDefault();
+      alert('Please select at least one date from the calendar.');
+      return;
+    }
+
+    // If Open Mic with a new file not yet uploaded, intercept and upload first
+    if (isOpenMic && file && !omImageUrlEl.value) {
+      e.preventDefault();
+
+      submitBtn.disabled = true;
+      submitStatus.hidden = false;
+      submitStatus.textContent = 'Uploading image…';
+
+      try {
+        const year = yearInput.value || '2026';
+        const ext  = file.name.split('.').pop();
+        const path = `open-mic-images/${year}/event-image.${ext}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        omImageUrlEl.value = url;
+
+        submitStatus.textContent = 'Saving…';
+        seasonForm.submit();
+      } catch (err) {
+        submitStatus.hidden = true;
+        submitBtn.disabled  = false;
+        alert('Image upload failed: ' + (err.message || 'Unknown error'));
+      }
+    }
+  });
+
+  // ── Music & Movies action buttons ───────────────────────────────────────
   document.querySelectorAll('.action-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const el       = btn as HTMLButtonElement;
-      const action   = el.dataset.action!;
-      const shellId  = el.dataset.shellId!;
+      const el       = btn;
+      const action   = el.dataset.action;
+      const shellId  = el.dataset.shellId;
       const bandName = el.dataset.bandName || 'this band';
 
-      const msgs: Record<string, string> = {
+      const msgs = {
         confirm:  `Mark ${bandName} as confirmed for this date?`,
         unassign: `Remove ${bandName} from this date? They will return to "approved" status.`,
         publish:  'Publish this event to the public site?',
@@ -579,11 +1104,11 @@ const totalShells =
     });
   });
 
-  // ── Open Mic publish buttons ──────────────────────────────────────────
+  // ── Open Mic publish buttons ────────────────────────────────────────────
   document.querySelectorAll('.om-publish-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const el      = btn as HTMLButtonElement;
-      const shellId = el.dataset.shellId!;
+      const el      = btn;
+      const shellId = el.dataset.shellId;
 
       if (!confirm('Publish this Open Mic Night event to the public site?')) return;
       el.disabled    = true;
@@ -606,31 +1131,107 @@ const totalShells =
     });
   });
 
-  // ── Edit modal ────────────────────────────────────────────────────────
-  const editModal = document.getElementById('edit-modal') as HTMLElement;
+  // ── Arts Festival publish buttons ────────────────────────────────────────
+  document.querySelectorAll('.festival-publish-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const el      = btn;
+      const shellId = el.dataset.shellId;
 
-  (window as any).openEditModal = function(
-    id: string, venue: string, address: string, startTime: string, collection: string
-  ) {
-    (document.getElementById('edit-shell-id')  as HTMLInputElement).value = id;
-    (document.getElementById('edit-venue')     as HTMLInputElement).value = venue;
-    (document.getElementById('edit-address')   as HTMLInputElement).value = address;
-    (document.getElementById('edit-startTime') as HTMLInputElement).value = startTime;
-    (document.getElementById('edit-collection')as HTMLInputElement).value = collection;
+      if (!confirm('Publish this Arts Festival event to the public site?')) return;
+      el.disabled    = true;
+      el.textContent = 'Publishing…';
+
+      try {
+        const res = await fetch('/api/admin/publish-festival', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ shellId }),
+        });
+
+        if (res.ok) {
+          window.location.href = '/admin/events';
+        } else {
+          const { error } = await res.json().catch(() => ({ error: 'Unknown error' }));
+          alert(error || 'Publish failed.');
+          el.disabled    = false;
+          el.textContent = 'Publish ↗';
+        }
+      } catch (err) {
+        alert('Publish failed: ' + (err.message || 'Unknown error'));
+        el.disabled    = false;
+        el.textContent = 'Publish ↗';
+      }
+    });
+  });
+
+  // ── Festival band assign modal ─────────────────────────────────────
+  const festModal       = document.getElementById('fest-band-modal');
+  const festSlotLabel   = document.getElementById('fest-modal-slot-label');
+  const festShellIdEl   = document.getElementById('fest-modal-shell-id');
+  const festSlotEl      = document.getElementById('fest-modal-slot');
+  const festBandIdEl    = document.getElementById('fest-modal-band-id');
+  const festBandNameEl  = document.getElementById('fest-modal-band-name');
+  const festBandList    = document.getElementById('fest-band-list');
+  const festSubmitBtn   = document.getElementById('fest-modal-submit');
+  const bands           = window.__APPROVED_BANDS__ || [];
+
+  document.querySelectorAll('.btn-assign-fest').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const shellId = btn.dataset.shellId;
+      const slot    = btn.dataset.slot;
+
+      festShellIdEl.value  = shellId;
+      festSlotEl.value     = slot;
+      festSlotLabel.textContent = slot;
+      festBandIdEl.value   = '';
+      festBandNameEl.value = '';
+      festSubmitBtn.disabled = true;
+      document.getElementById('fest-modal-time').value = '';
+
+      // Populate band list
+      if (bands.length === 0) {
+        festBandList.innerHTML = '<p class="dim" style="font-size:13px">No approved bands found. Approve bands on the Bands page first.</p>';
+      } else {
+        festBandList.innerHTML = bands.map(b => `
+          <label class="fest-band-option">
+            <input type="radio" name="fest-band-pick" value="${b.id}" data-name="${b.band_name || b.contact_name}" />
+            <span class="fest-band-option-name">${b.band_name || b.contact_name}</span>
+            ${b.genre ? `<span class="fest-band-option-genre">${b.genre}</span>` : ''}
+          </label>
+        `).join('');
+
+        festBandList.querySelectorAll('input[type=radio]').forEach(radio => {
+          radio.addEventListener('change', () => {
+            festBandIdEl.value   = radio.value;
+            festBandNameEl.value = radio.dataset.name;
+            festSubmitBtn.disabled = false;
+          });
+        });
+      }
+
+      festModal.hidden = false;
+    });
+  });
+
+  document.getElementById('fest-modal-cancel')?.addEventListener('click', () => { festModal.hidden = true; });
+  festModal.addEventListener('click', e => { if (e.target === festModal) festModal.hidden = true; });
+
+  // ── Edit modal ──────────────────────────────────────────────────────────
+  const editModal = document.getElementById('edit-modal');
+
+  window.openEditModal = function(id, venue, address, startTime, collection) {
+    document.getElementById('edit-shell-id').value   = id;
+    document.getElementById('edit-venue').value      = venue;
+    document.getElementById('edit-address').value    = address;
+    document.getElementById('edit-startTime').value  = startTime;
+    document.getElementById('edit-collection').value = collection;
     editModal.hidden = false;
   };
 
-  (window as any).closeEditModal = function() {
-    editModal.hidden = true;
-  };
+  window.closeEditModal = function() { editModal.hidden = true; };
 
-  document.getElementById('modal-cancel-btn')?.addEventListener('click', () => {
-    editModal.hidden = true;
-  });
-
-  editModal.addEventListener('click', function(e) {
-    if (e.target === this) editModal.hidden = true;
-  });
+  document.getElementById('modal-cancel-btn')?.addEventListener('click', () => { editModal.hidden = true; });
+  editModal.addEventListener('click', function(e) { if (e.target === this) editModal.hidden = true; });
 </script>
 
 <style>
@@ -638,32 +1239,21 @@ const totalShells =
   .page-header h1 { font-family: var(--font-display, serif); font-size: 28px; font-weight: 700; color: var(--navy, #1a2456); margin: 0 0 6px; }
   .page-sub { color: var(--muted, #5a5a7a); font-size: 15px; margin: 0; }
 
-  /* Flash */
   .flash { padding: 14px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 24px; }
   .flash-success { background: #d1fae5; border: 1.5px solid #6ee7b7; color: #065f46; }
   .flash-error   { background: #fee2e2; border: 1.5px solid #fca5a5; color: #991b1b; }
 
-  /* Cards */
   .card { background: var(--white, #fff); border: 1.5px solid var(--border, #e5e5e5); border-radius: 12px; padding: 28px 32px; margin-bottom: 32px; }
   .card-title { font-family: var(--font-display, serif); font-size: 20px; font-weight: 700; color: var(--navy, #1a2456); margin: 0 0 6px; }
   .card-sub { color: var(--muted, #5a5a7a); font-size: 14px; margin: 0 0 24px; line-height: 1.55; }
   .season-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 
-  /* Count badge */
   .count-badge {
-    display: inline-block;
-    font-family: var(--font-body, sans-serif);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--muted, #5a5a7a);
-    background: #f1f5f9;
-    border-radius: 100px;
-    padding: 2px 10px;
-    margin-left: 8px;
-    vertical-align: middle;
+    display: inline-block; font-family: var(--font-body, sans-serif); font-size: 12px; font-weight: 600;
+    color: var(--muted, #5a5a7a); background: #f1f5f9; border-radius: 100px;
+    padding: 2px 10px; margin-left: 8px; vertical-align: middle;
   }
 
-  /* Form */
   .season-form { display: flex; flex-direction: column; gap: 16px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-field { display: flex; flex-direction: column; gap: 6px; }
@@ -682,45 +1272,110 @@ const totalShells =
   .form-field textarea:focus,
   .form-field select:focus { border-color: var(--blue, #2563b0); box-shadow: 0 0 0 3px rgba(37,99,176,0.1); }
   .form-field textarea { resize: vertical; font-family: monospace; font-size: 13px; }
-  .form-actions { padding-top: 4px; }
+  .form-actions { padding-top: 4px; display: flex; align-items: center; gap: 16px; }
+  .submit-status { font-size: 13px; color: var(--muted, #5a5a7a); font-style: italic; }
 
-  /* Event-specific extra fields */
   .event-extra-fields { flex-direction: column; gap: 16px; padding: 20px; background: #f8faff; border: 1.5px solid #dbeafe; border-radius: 8px; }
 
-  /* Placeholder notice */
   .placeholder-notice {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 36px 24px;
-    background: #f8f9fa;
-    border: 1.5px dashed var(--border, #e5e5e5);
-    border-radius: 8px;
-    text-align: center;
-    color: var(--muted, #5a5a7a);
-    font-size: 14px;
-    line-height: 1.6;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 36px 24px; background: #f8f9fa; border: 1.5px dashed var(--border, #e5e5e5);
+    border-radius: 8px; text-align: center; color: var(--muted, #5a5a7a); font-size: 14px; line-height: 1.6;
   }
   .placeholder-notice strong { color: var(--navy, #1a2456); font-size: 15px; }
   .placeholder-notice p { margin: 0; }
   .placeholder-icon { font-size: 32px; }
 
-  /* Info callout */
   .info-callout {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px 16px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #1e40af;
-    line-height: 1.55;
+    display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px;
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px;
+    font-size: 13px; color: #1e40af; line-height: 1.55;
   }
 
-  /* Table */
+  /* ── Upload zone ── */
+  .upload-zone {
+    position: relative; border: 2px dashed var(--border, #e5e5e5);
+    border-radius: 8px; background: #f8faff;
+    transition: border-color 0.2s, background 0.2s; overflow: hidden;
+  }
+  .upload-zone.drag-over { border-color: var(--blue, #2563b0); background: #eff6ff; }
+  .upload-input {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    width: 100% !important; height: 100%; padding: 0 !important; border: none !important;
+  }
+  .upload-label {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 6px; padding: 28px 24px; cursor: pointer; text-align: center;
+  }
+  .upload-icon { font-size: 28px; }
+  .upload-text { font-size: 14px; color: var(--navy, #1a2456); }
+  .upload-text strong { color: var(--blue, #2563b0); }
+  .upload-hint { font-size: 12px; color: var(--muted, #5a5a7a); }
+  .upload-preview {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+    background: #fff; border-top: 1.5px solid var(--border, #e5e5e5);
+    font-size: 13px; color: var(--muted, #5a5a7a);
+  }
+  .upload-preview img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+  .upload-status { font-size: 12px; color: var(--blue, #2563b0); font-style: italic; margin-top: 4px; }
+
+  /* ── Calendar ── */
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    background: #f8faff;
+    border: 1.5px solid #dbeafe;
+    border-radius: 8px;
+    max-height: 640px;
+    overflow-y: auto;
+    margin-top: 8px;
+  }
+  .cal-month { display: flex; flex-direction: column; gap: 4px; }
+  .cal-month-heading {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--navy, #1a2456);
+    padding-bottom: 6px; border-bottom: 1.5px solid var(--border, #e5e5e5); margin-bottom: 4px;
+  }
+  .cal-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 2px; }
+  .cal-dow { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted, #5a5a7a); padding: 2px 0; }
+  .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500; border-radius: 4px; cursor: pointer;
+    color: var(--navy, #1a2456); transition: background 0.12s, color 0.12s; user-select: none;
+  }
+  .cal-day:hover:not(.cal-blank) { background: #dbeafe; }
+  .cal-day.cal-selected { background: var(--navy, #1a2456); color: #fff; font-weight: 700; }
+  .cal-blank { cursor: default; }
+
+  /* ── Selected date chips ── */
+  .selected-chips {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 10px 14px; background: #fff;
+    border: 1.5px solid var(--border, #e5e5e5); border-radius: 6px; margin-bottom: 8px;
+  }
+  .chips-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, #5a5a7a); white-space: nowrap; }
+  .chips-list { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+  .date-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #dbeafe; color: #1e40af; font-size: 12px; font-weight: 600;
+    padding: 3px 8px 3px 10px; border-radius: 100px;
+  }
+  .chip-remove {
+    background: none; border: none; cursor: pointer; font-size: 14px;
+    line-height: 1; color: #1e40af; padding: 0; display: flex; align-items: center;
+  }
+  .chip-remove:hover { color: var(--red, #b52626); }
+  .clear-dates-btn {
+    font-size: 11px; font-weight: 600; color: var(--muted, #5a5a7a);
+    background: none; border: none; cursor: pointer; padding: 2px 6px;
+    text-decoration: underline; white-space: nowrap;
+  }
+  .clear-dates-btn:hover { color: var(--red, #b52626); }
+
+  /* ── Shells table ── */
   .shells-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .shells-table th {
     text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase;
@@ -734,15 +1389,50 @@ const totalShells =
   .dim { color: var(--muted, #5a5a7a); opacity: 0.5; }
   .check-yes { color: #059669; font-weight: 600; }
   .check-no  { color: var(--red, #b52626); font-weight: 600; font-size: 12px; }
+  .desc-preview-cell { max-width: 220px; }
+  .desc-preview { font-size: 12px; color: var(--muted, #5a5a7a); line-height: 1.4; }
+  .link-sm { font-size: 12px; font-weight: 600; color: var(--blue, #2563b0); text-decoration: none; }
+  .link-sm:hover { text-decoration: underline; }
 
-  /* Badges */
+  /* ── Festival card ── */
+  .fest-card { border-top: 3px solid var(--amber, #c87e0a); }
+  .fest-meta { font-size: 13px; color: var(--muted, #5a5a7a); margin: 4px 0 0; }
+  .fest-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .fest-description { font-size: 14px; color: var(--muted, #5a5a7a); line-height: 1.65; margin: 0 0 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border, #e5e5e5); }
+  .fest-body { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+  @media (max-width: 900px) { .fest-body { grid-template-columns: 1fr; } }
+  .fest-section { display: flex; flex-direction: column; gap: 12px; }
+  .fest-section-heading { font-family: var(--font-display, serif); font-size: 16px; font-weight: 700; color: var(--navy, #1a2456); margin: 0 0 4px; padding-bottom: 8px; border-bottom: 2px solid var(--amber, #c87e0a); }
+  .slot-cell { font-weight: 700; color: var(--amber, #c87e0a); white-space: nowrap; }
+  .time-cell { color: var(--muted, #5a5a7a); font-size: 13px; white-space: nowrap; }
+  .band-cell { font-weight: 600; }
+  .btn-assign-fest { background: #fef3c7; border-color: #fde68a; color: #92400e; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; border: 1.5px solid; }
+  .btn-assign-fest:hover { background: #fde68a; }
+  .btn-disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Vendor summary */
+  .vendor-summary-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--cream, #f7f5f0); border: 1.5px solid var(--border, #e5e5e5); border-radius: 8px; padding: 16px 20px; flex-wrap: wrap; }
+  .vendor-summary-stat { display: flex; flex-direction: column; align-items: flex-start; }
+  .vendor-stat-number { font-family: var(--font-display, serif); font-size: 36px; font-weight: 900; color: var(--navy, #1a2456); line-height: 1; }
+  .vendor-stat-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted, #5a5a7a); margin-top: 4px; }
+  .vendor-summary-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .vendor-hint { font-size: 12px; color: var(--muted, #5a5a7a); line-height: 1.55; margin: 0; }
+
+  /* Festival band picker in modal */
+  .fest-band-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; border: 1.5px solid var(--border, #e5e5e5); border-radius: 6px; padding: 8px; background: #fafafa; }
+  .fest-band-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; cursor: pointer; transition: background 0.12s; }
+  .fest-band-option:hover { background: #f0f4ff; }
+  .fest-band-option input[type=radio] { flex-shrink: 0; accent-color: var(--blue, #2563b0); width: 16px; height: 16px; }
+  .fest-band-option-name { font-size: 14px; font-weight: 600; color: var(--navy, #1a2456); flex: 1; }
+  .fest-band-option-genre { font-size: 11px; font-weight: 600; color: var(--muted, #5a5a7a); background: #f1f5f9; padding: 2px 8px; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.05em; }
+
   .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
   .badge-shell         { background: #f1f5f9; color: #64748b; }
   .badge-band_assigned { background: #fef3c7; color: #92400e; }
+  .badge-planning      { background: #fef3c7; color: #92400e; }
   .badge-confirmed     { background: #d1fae5; color: #065f46; }
   .badge-published     { background: #dbeafe; color: #1e40af; }
 
-  /* Action buttons */
   .actions-cell { white-space: nowrap; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .btn-sm { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; border: 1.5px solid transparent; transition: opacity 0.15s; }
   .btn-sm:hover:not(:disabled) { opacity: 0.8; }
@@ -753,16 +1443,13 @@ const totalShells =
   .btn-publish  { background: var(--navy, #1a2456); border-color: var(--navy, #1a2456); color: #fff; }
   .btn-assign   { background: #f1f5f9; border-color: #cbd5e1; color: #64748b; }
 
-  /* Buttons */
   .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1.5px solid transparent; transition: opacity 0.15s; text-decoration: none; }
   .btn-primary { background: var(--navy, #1a2456); color: #fff; }
   .btn-primary:hover { opacity: 0.85; }
   .btn-outline.btn { border-color: var(--border, #e5e5e5); background: transparent; color: var(--navy, #1a2456); }
 
-  /* Empty state */
   .empty-state { text-align: center; padding: 48px; color: var(--muted, #5a5a7a); background: var(--white, #fff); border: 1.5px dashed var(--border, #e5e5e5); border-radius: 12px; }
 
-  /* Modal */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 100; }
   .modal-overlay[hidden] { display: none; }
   .modal-box { background: var(--white, #fff); border-radius: 12px; padding: 32px; width: 480px; max-width: 90vw; display: flex; flex-direction: column; gap: 20px; }
@@ -773,5 +1460,6 @@ const totalShells =
     .form-row { grid-template-columns: 1fr; }
     .shells-table { font-size: 12px; }
     .card { padding: 20px 16px; }
+    .cal-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); max-height: 480px; }
   }
 </style>

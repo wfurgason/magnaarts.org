@@ -37,7 +37,7 @@ const programs = [
     color: 'amber',
     title: 'Magna Main Street Arts Festival',
     tagline: 'Annual · August · Historic Magna Main Street',
-    image: '/images/events/IMG_2840.JPG',
+    image: '/images/festival/mmsaf.png',
     body: [
       'Our annual flagship event transforms Historic Magna Main Street into a full day of art, music, and community.',
       'The festival features live music on multiple stages, a juried fine arts contest, street performers, and dozens of arts and food vendors.',
@@ -50,7 +50,7 @@ const programs = [
       { label: 'Attendance', value: '5,000 – 7,000' },
       { label: 'Features', value: 'Live music, fine arts contest, vendors, performers' },
     ],
-    link: '/events/arts-festival-2025',
+    link: '/events/arts-festival-2026',
     linkLabel: 'Festival Details →',
   },
   {
@@ -198,7 +198,7 @@ const programs = [
           <div class="program-sidebar reveal">
             {p.image && (
               <div class="program-img-wrap">
-                <img src={p.image} alt={p.title} class="program-img" />
+                <img src={p.image} alt={p.title} class={`program-img${p.id === 'festival' ? ' program-img--top' : ''}`} />
               </div>
             )}
             <div class={`details-card card-${p.color}`}>
@@ -494,6 +494,10 @@ const programs = [
     aspect-ratio: 4/3;
     object-fit: cover;
     display: block;
+  }
+
+  .program-img--top {
+    aspect-ratio: 1/1;
   }
 
   .details-card {

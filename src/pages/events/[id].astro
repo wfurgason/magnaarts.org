@@ -146,7 +146,7 @@ const typeColor: Record<string, string> = {
     )}
 
     <!-- ── FESTIVAL EXTRAS (music schedule + vendors) ── -->
-    {event.id === 'arts-festival-2025' && (
+    {event.id === 'arts-festival-2026' && (
       <section class="section festival-extras">
         <div class="container festival-extras-inner">
 
@@ -226,7 +226,7 @@ const typeColor: Record<string, string> = {
 
   <Footer />
 
-  {event.id === 'arts-festival-2025' && (
+  {event.id === 'arts-festival-2026' && (
     <script type="module" define:vars={{ firebaseConfig }}>
       import { initializeApp }                              from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
       import { getFirestore, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
@@ -375,7 +375,7 @@ const typeColor: Record<string, string> = {
     border-radius: var(--radius);
     box-shadow: 0 12px 40px rgba(0,0,0,0.3);
     object-fit: cover;
-    aspect-ratio: 4/3;
+    aspect-ratio: 1/1;
   }
 
   /* ── DESCRIPTION ── */

@@ -213,6 +213,11 @@ const firebaseConfig = {
         });
 
         section.style.display = 'block';
+        // Tell the scroll animation to look for the new events
+        if (window.observer) {
+          const newCards = grid.querySelectorAll('.reveal');
+          newCards.forEach(card => window.observer.observe(card));
+        }
       }
     } catch (err) {
       console.warn('Could not load live events:', err);
@@ -221,7 +226,7 @@ const firebaseConfig = {
 
 </BaseLayout>
 
-<style>
+<style is:global>
   /* ── Published Events from Admin ── */
   .published-events-section { background: var(--cream); }
 

@@ -419,6 +419,12 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
+### March 29, 2026 — index.astro "Next Up" script fixes
+- Fixed homepage events not displaying: resolved script issue (details confirmed by Wes)
+- Added past-event filter: events with `eventDate` before today (midnight) are excluded from the "Next Up" grid
+- Added empty-state reveal: if no upcoming events exist, `#next-up-empty` is shown instead of an empty grid
+- Firebase init uses no dedup guard (single init on homepage — no conflict risk)
+
 ### March 28, 2026 (4) — programs.astro map links in At a Glance sidebar
 - Added `mapAddress` field to all 5 program detail objects
 - Location rows in the sidebar now render as a styled inline link → opens Google Maps `maps/search/?query=` in a new tab (no API key needed)

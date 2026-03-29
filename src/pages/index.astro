@@ -135,81 +135,82 @@ const roles = [
 
   <Footer />
 
-  <script type="module" define:vars={{ firebaseConfig }}>
-    import { initializeApp, getApps }            from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-    import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+<script type="module" define:vars={{ firebaseConfig }}>
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+  import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
-    const emptyEl = document.getElementById('next-up-empty');
-    const grid    = document.getElementById('next-up-grid');
+  // 1️⃣ Initialize Firebase app
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
 
-    function showEmpty() {
-      if (emptyEl) emptyEl.style.display = 'block';
-    }
-
-    function cardClass(eventType) {
-      return eventType === 'open_mic' ? 'class' : 'concert';
-    }
-
-    function tagClass(eventType) {
-      return eventType === 'open_mic' ? 'tag-class' : 'tag-concert';
-    }
-
-    // Wrap in async IIFE so `return` is valid and top-level await works everywhere
-    (async () => {
-      try {
-        const app  = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-        const db   = getFirestore(app);
-        const snap = await getDocs(collection(db, 'events'));
-
-        const now      = new Date();
-        const upcoming = [];
-
-        snap.forEach(doc => {
-          const d       = doc.data();
-          const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
-          if (isNaN(dateObj.getTime())) return;
-          if (dateObj < now) return;
-          upcoming.push({
-            title:     d.title || 'Untitled Event',
-            day:       dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-            time:      d.eventTime || d.startTime || '',
-            location:  d.venueName || d.venue || '',
-            eventType: d.eventType || '',
-            genre:     d.category || d.genre || d.bandGenre || 'Event',
-            _ts:       dateObj.getTime(),
-          });
-        });
-
-        upcoming.sort((a, b) => a._ts - b._ts);
-
-        if (upcoming.length === 0) {
-          showEmpty();
-          return;
-        }
-
-        grid.innerHTML = upcoming.slice(0, 3).map((e, i) => `
-          <article class="event-card ${cardClass(e.eventType)} reveal" style="transition-delay:${i * 0.1}s">
-            <span class="event-tag ${tagClass(e.eventType)}">${e.genre}</span>
-            <h3>${e.title}</h3>
-            <div class="event-meta">
-              <div class="meta-row"><span class="meta-icon">📅</span>${e.day}</div>
-              ${e.time     ? `<div class="meta-row"><span class="meta-icon">🕐</span>${e.time}</div>`     : ''}
-              ${e.location ? `<div class="meta-row"><span class="meta-icon">📍</span>${e.location}</div>` : ''}
-            </div>
-            <a href="/events" class="event-link">Learn More →</a>
-          </article>
-        `).join('');
-
-      } catch (err) {
-        console.error('Next Up — Firestore load failed:', err);
-        showEmpty();
+  (async function loadNextUpEvents() {
+    try {
+      const grid = document.querySelector('.events-grid');
+      if (!grid) {
+        console.error('Next Up — .events-grid container not found');
+        return;
       }
-    })();
-  </script>
+
+      // 2️⃣ Fetch documents from Firestore
+      const q = query(collection(db, 'events'), orderBy('eventDate', 'asc'));
+      const snapshot = await getDocs(q);
+
+      // 3️⃣ Build upcoming events array (future dates only)
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const upcoming = [];
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
+        if (isNaN(dateObj.getTime())) return;
+        if (dateObj < now) return;
+
+        upcoming.push({
+          title:     d.title || 'Untitled Event',
+          day:       dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          time:      d.eventTime || d.startTime || '',
+          location:  d.venueName || d.venue || '',
+          eventType: d.eventType || '',
+          genre:     d.category || d.genre || d.bandGenre || 'Event',
+          _ts:       dateObj.getTime(),
+        });
+      });
+
+      // 4️⃣ Generate HTML and insert into page
+      const html = upcoming.slice(0, 3).map((e, i) => `
+        <article class="event-card ${e.eventType}" style="transition-delay:${i * 0.1}s">
+          <span class="event-tag ${e.eventType ? `tag-${e.eventType}` : ''}">${e.genre}</span>
+          <h3>${e.title}</h3>
+          <div class="event-meta">
+            ${e.day ? `<div class="meta-row"><span class="meta-icon">📅</span>${e.day}</div>` : ''}
+            ${e.time ? `<div class="meta-row"><span class="meta-icon">🕐</span>${e.time}</div>` : ''}
+            ${e.location ? `<div class="meta-row"><span class="meta-icon">📍</span>${e.location}</div>` : ''}
+          </div>
+          <a href="/events" class="event-link">Learn More →</a>
+        </article>
+      `).join('');
+
+      if (upcoming.length === 0) {
+        document.getElementById('next-up-empty').style.display = 'block';
+        return;
+      }
+
+      grid.innerHTML = html;
+
+      // 5️⃣ Optional: scroll reveal
+      if (window.observer) {
+        grid.querySelectorAll('.event-card').forEach(card => window.observer.observe(card));
+      }
+
+    } catch (err) {
+      console.error('Next Up — Firestore load failed:', err);
+    }
+  })();
+</script>
 
 </BaseLayout>
 
-<style>
+<style is:global>
   /* ── HERO ── */
   .hero {
     background: var(--navy);
@@ -361,7 +362,8 @@ const roles = [
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 22px;
-  }
+    padding: 20px;
+}
 
   .event-card {
     background: var(--white);

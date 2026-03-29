@@ -385,6 +385,14 @@ const totalShells =
                   onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','open_mic_events')`}>
                   Edit
                 </button>
+                {shell.status !== 'published' && (
+                  <button class="btn-sm btn-publish om-publish-btn" data-shell-id={shell.id}>
+                    Publish ↗
+                  </button>
+                )}
+                {shell.status === 'published' && (
+                  <span class="badge badge-published">Published</span>
+                )}
                 {shell.status === 'shell' && (
                   <form method="POST" style="display:inline" onsubmit="return confirm('Delete this event shell?')">
                     <input type="hidden" name="action" value="delete_shell" />
@@ -567,6 +575,33 @@ const totalShells =
         alert(error || 'Action failed.');
         el.disabled    = false;
         el.textContent = { confirm: 'Mark Confirmed', unassign: 'Unassign', publish: 'Publish ↗' }[action] ?? el.textContent;
+      }
+    });
+  });
+
+  // ── Open Mic publish buttons ──────────────────────────────────────────
+  document.querySelectorAll('.om-publish-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const el      = btn as HTMLButtonElement;
+      const shellId = el.dataset.shellId!;
+
+      if (!confirm('Publish this Open Mic Night event to the public site?')) return;
+      el.disabled    = true;
+      el.textContent = 'Publishing…';
+
+      const res = await fetch('/api/admin/publish-open-mic', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ shellId }),
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const { error } = await res.json().catch(() => ({ error: 'Unknown error' }));
+        alert(error || 'Publish failed.');
+        el.disabled    = false;
+        el.textContent = 'Publish ↗';
       }
     });
   });

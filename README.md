@@ -419,6 +419,12 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
+### March 28, 2026 (4) — programs.astro map links in At a Glance sidebar
+- Added `mapAddress` field to all 5 program detail objects
+- Location rows in the sidebar now render as a styled inline link → opens Google Maps `maps/search/?query=` in a new tab (no API key needed)
+- Interaction: dashed blue underline at rest; on hover pin icon bounces up, underline goes solid, "OPEN MAP →" hint slides in from the left
+- All other detail rows (When, Admission, etc.) remain plain text — only Location rows with a `mapAddress` get the link treatment
+
 ### March 28, 2026 (3) — programs.astro fix Astro scoped CSS bug on ticket stubs
 - Root cause of unstyled ticket list: Astro's `<style>` block scopes all CSS with a unique hash attribute, but dynamically injected `innerHTML` elements never receive that hash, so selectors never matched
 - Fix: split into two style blocks — scoped `<style>` for static template elements, `<style is:global>` for `.glance-item` and all `.ticket-*` classes which are injected at runtime

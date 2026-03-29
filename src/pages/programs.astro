@@ -24,7 +24,7 @@ const programs = [
       'Salt Lake County Parks and Recreation waives park rental fees, making the entire series free and open to all.',
     ],
     details: [
-      { label: 'Location', value: 'Pleasant Green Park, 3250 S 8400 W, Magna' },
+      { label: 'Location', value: 'Pleasant Green Park, 3250 S 8400 W, Magna', mapAddress: 'Pleasant Green Park, 3250 S 8400 W, Magna, UT 84044' },
       { label: 'When', value: 'Most Fridays, June – August, 8:00 PM' },
       { label: 'Admission', value: 'Free' },
       { label: 'Attendance', value: '300+ per event' },
@@ -44,7 +44,7 @@ const programs = [
       '5,000–7,000 attendees come each year, making it one of the largest community events in Magna\'s history.',
     ],
     details: [
-      { label: 'Location', value: 'Historic Magna Main Street' },
+      { label: 'Location', value: 'Historic Magna Main Street', mapAddress: 'Magna Main Street, Magna, UT 84044' },
       { label: 'When', value: 'Annual — August' },
       { label: 'Admission', value: 'Free' },
       { label: 'Attendance', value: '5,000 – 7,000' },
@@ -66,14 +66,14 @@ const programs = [
       '8 to 10 events are held each year, making it one of our most consistent programs for local performers.',
     ],
     details: [
-      { label: 'Location', value: 'Magna Library, 2675 S 8950 W' },
+      { label: 'Location', value: 'Magna Library, 2675 S 8950 W', mapAddress: 'Magna Library, 2675 S 8950 W, Magna, UT 84044' },
       { label: 'Frequency', value: '8–10 events per year' },
       { label: 'Duration', value: '2 hours per event' },
       { label: 'Admission', value: 'Free' },
       { label: 'Features', value: 'Music, comedy, poetry — open to all performers' },
     ],
     link: '/events',
-    linkLabel: 'See Upcoming Events →',
+    linkLabel: 'See All Events →',
   },
   {
     id: 'art-night',
@@ -88,7 +88,7 @@ const programs = [
       'Consistently one of our most popular programs, with around 20 participants per session.',
     ],
     details: [
-      { label: 'Location', value: 'Magna Library, 2675 S 8950 W' },
+      { label: 'Location', value: 'Magna Library, 2675 S 8950 W', mapAddress: 'Magna Library, 2675 S 8950 W, Magna, UT 84044' },
       { label: 'Admission', value: 'Free' },
       { label: 'Attendance', value: '~20 participants per session' },
       { label: 'Format', value: 'Artist-guided; all skill levels welcome' },
@@ -109,7 +109,7 @@ const programs = [
       'The seminar is designed to deepen community appreciation for the arts and connect Magna residents with working artists.',
     ],
     details: [
-      { label: 'Location', value: 'Magna Library, 2675 S 8950 W' },
+      { label: 'Location', value: 'Magna Library, 2675 S 8950 W', mapAddress: 'Magna Library, 2675 S 8950 W, Magna, UT 84044' },
       { label: 'Frequency', value: 'Annual' },
       { label: 'Format', value: 'Panel, presentation, Q&A' },
       { label: 'Admission', value: 'Free' },
@@ -172,16 +172,27 @@ const programs = [
             )}
             <a href={p.link} class={`program-link link-${p.color}`}>{p.linkLabel}</a>
 
-          {p.id === 'music-movies' && (
-            <div class="events-glance">
-              <h3 class="glance-heading">Upcoming Events</h3>
-              <div id="glance-loading" class="glance-loading">Loading schedule…</div>
-              <ul id="glance-list" class="glance-list" style="display:none"></ul>
-              <div id="glance-empty" class="glance-empty" style="display:none">
-                Season schedule coming soon — <a href="/events">check the events page</a> for updates.
+            {p.id === 'music-movies' && (
+              <div class="events-glance">
+                <h3 class="glance-heading">Upcoming Events</h3>
+                <div id="glance-loading" class="glance-loading">Loading schedule…</div>
+                <ul id="glance-list" class="glance-list" style="display:none"></ul>
+                <div id="glance-empty" class="glance-empty" style="display:none">
+                  Season schedule coming soon — <a href="/events">check the events page</a> for updates.
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {p.id === 'open-mic' && (
+              <div class="events-glance">
+                <h3 class="glance-heading">Upcoming Open Mic Nights</h3>
+                <div id="om-glance-loading" class="glance-loading">Loading schedule…</div>
+                <ul id="om-glance-list" class="glance-list" style="display:none"></ul>
+                <div id="om-glance-empty" class="glance-empty" style="display:none">
+                  Schedule coming soon — <a href="/events">check the events page</a> for updates.
+                </div>
+              </div>
+            )}
           </div>
 
           <div class="program-sidebar reveal">
@@ -196,7 +207,27 @@ const programs = [
                 {p.details.map((d) => (
                   <>
                     <dt>{d.label}</dt>
-                    <dd>{d.value}</dd>
+                    <dd>
+                      {d.mapAddress
+                        ? (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.mapAddress)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="map-link"
+                          >
+                            <span class="map-pin-icon" aria-hidden="true">
+                              <svg width="11" height="14" viewBox="0 0 11 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5.5 0C2.46 0 0 2.46 0 5.5c0 3.85 5.5 8.5 5.5 8.5S11 9.35 11 5.5C11 2.46 8.54 0 5.5 0zm0 7.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="currentColor"/>
+                              </svg>
+                            </span>
+                            {d.value}
+                            <span class="map-link-hint">Open map →</span>
+                          </a>
+                        )
+                        : d.value
+                      }
+                    </dd>
                   </>
                 ))}
               </dl>
@@ -226,41 +257,30 @@ const programs = [
     import { initializeApp, getApps, getApp }                         from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import { getFirestore, collection, getDocs, orderBy, query }      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
-    const loadingEl = document.getElementById('glance-loading');
-    const listEl    = document.getElementById('glance-list');
-    const emptyEl   = document.getElementById('glance-empty');
-    if (!listEl) { loadingEl && (loadingEl.style.display = 'none'); } // not on this page
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
 
-    try {
-      const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-      const db  = getFirestore(app);
-      const q   = query(collection(db, 'events'), orderBy('eventDate', 'asc'));
-      const snap = await getDocs(q);
+    const now = new Date();
 
-      const now = new Date();
-      const upcoming = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
-        if (dateObj < now) return;
-        upcoming.push({
-          id:      doc.id,
-          rawDate: dateObj.toISOString(),
-          time:    d.eventTime || d.startTime || '',
-          bandName: d.bandName || d.title || 'TBA',
-        });
-      });
+    // ── Helper: render ticket stubs into a glance list ─────────────────
+    function renderGlance(loadingId, listId, emptyId, items) {
+      const loadingEl = document.getElementById(loadingId);
+      const listEl    = document.getElementById(listId);
+      const emptyEl   = document.getElementById(emptyId);
+      if (!listEl) return;
 
-      loadingEl.style.display = 'none';
+      if (loadingEl) loadingEl.style.display = 'none';
 
-      if (upcoming.length === 0) {
-        emptyEl.style.display = 'block';
-      } else {
-        listEl.innerHTML = upcoming.map(e => {
-          const d = new Date(e.rawDate);
-          const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-          const day = d.toLocaleDateString('en-US', { day:   'numeric' });
-          return `
+      if (items.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+
+      listEl.innerHTML = items.map(e => {
+        const d   = new Date(e.rawDate);
+        const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+        const day = d.toLocaleDateString('en-US', { day: 'numeric' });
+        return `
           <li class="glance-item">
             <div class="ticket-stub">
               <div class="ticket-left">
@@ -268,21 +288,62 @@ const programs = [
                 <span class="ticket-day">${day}</span>
               </div>
               <div class="ticket-body">
-                <span class="ticket-band">${e.bandName}</span>
-                ${e.time ? `<span class="ticket-time">♪ Live at ${e.time}</span>` : ''}
+                <span class="ticket-band">${e.title}</span>
+                ${e.time ? `<span class="ticket-time">🎤 Doors open at ${e.time}</span>` : ''}
               </div>
               <div class="ticket-right">
                 <span class="ticket-free">FREE</span>
               </div>
             </div>
           </li>`;
-        }).join('');
-        listEl.style.display = 'block';
-      }
+      }).join('');
+      listEl.style.display = 'block';
+    }
+
+    try {
+      const q    = query(collection(db, 'events'), orderBy('eventDate', 'asc'));
+      const snap = await getDocs(q);
+
+      const concertEvents  = [];
+      const openMicEvents  = [];
+
+      snap.forEach(doc => {
+        const d       = doc.data();
+        const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
+        if (dateObj < now) return;
+
+        const item = {
+          id:      doc.id,
+          rawDate: dateObj.toISOString(),
+          time:    d.eventTime || d.startTime || '',
+          title:   d.bandName || d.title || 'TBA',
+          type:    d.eventType || '',
+        };
+
+        if (d.eventType === 'open_mic') {
+          openMicEvents.push(item);
+        } else {
+          concertEvents.push(item);
+        }
+      });
+
+      // Music & Movies glance
+      renderGlance('glance-loading', 'glance-list', 'glance-empty', concertEvents);
+
+      // Open Mic glance
+      renderGlance('om-glance-loading', 'om-glance-list', 'om-glance-empty', openMicEvents);
+
     } catch (err) {
-      loadingEl.style.display = 'none';
-      emptyEl.style.display = 'block';
-      console.warn('Could not load events for glance list:', err);
+      // Fail silently — show empty state for both
+      ['glance-loading', 'om-glance-loading'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      ['glance-empty', 'om-glance-empty'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'block';
+      });
+      console.warn('Could not load events for programs page:', err);
     }
   </script>
 
@@ -474,6 +535,51 @@ const programs = [
   }
 
   dd { font-size: 14px; color: var(--navy); line-height: 1.5; }
+
+  /* ── MAP LINK ── */
+  .map-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--navy);
+    text-decoration: none;
+    font-size: 14px;
+    line-height: 1.4;
+    border-bottom: 1.5px dashed var(--blue);
+    padding-bottom: 1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .map-link:hover {
+    color: var(--blue);
+    border-bottom-style: solid;
+  }
+
+  .map-pin-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--blue);
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+  .map-link:hover .map-pin-icon {
+    transform: translateY(-2px);
+  }
+
+  .map-link-hint {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.15s, transform 0.15s;
+    white-space: nowrap;
+  }
+  .map-link:hover .map-link-hint {
+    opacity: 1;
+    transform: translateX(0);
+  }
 
   /* ── CTA ── */
   .cta-banner { background: var(--navy-dk); color: var(--white); padding: 56px 0; }

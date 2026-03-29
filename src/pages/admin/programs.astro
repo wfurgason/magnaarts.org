@@ -138,7 +138,7 @@ function getTitle(p: Program): string {
   )}
 
   <!-- Publish Modal -->
-  <div id="publish-modal" class="modal-backdrop" hidden>
+  <div id="publish-modal" class="modal-backdrop" style="display:none">
     <div class="modal">
       <div class="modal-header">
         <h2>Publish Event</h2>
@@ -231,11 +231,11 @@ function getTitle(p: Program): string {
         (document.getElementById('pub-desc') as HTMLTextAreaElement).value = prog.description || '';
         if (prog.proposed_date) (document.getElementById('pub-date') as HTMLInputElement).value = prog.proposed_date;
         if (prog.proposed_venue) (document.getElementById('pub-venue') as HTMLInputElement).value = prog.proposed_venue;
-        modal.hidden = false;
+        modal.style.display = 'flex';
       });
     });
 
-    const closeModal = () => { modal.hidden = true; form.reset(); };
+    const closeModal = () => { modal.style.display = 'none'; form.reset(); };
     document.getElementById('modal-close')?.addEventListener('click', closeModal);
     document.getElementById('modal-cancel')?.addEventListener('click', closeModal);
     modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });

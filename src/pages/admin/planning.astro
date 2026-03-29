@@ -900,6 +900,7 @@ const totalShells =
 
       const dowRow = document.createElement('div');
       dowRow.className = 'cal-dow-row';
+      dowRow.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;';
       DAY_ABBRS.forEach(ab => {
         const c = document.createElement('div');
         c.className = 'cal-dow';
@@ -910,6 +911,7 @@ const totalShells =
 
       const daysEl = document.createElement('div');
       daysEl.className = 'cal-days';
+      daysEl.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;';
 
       const firstDow   = new Date(year, m, 1).getDay();
       const daysInMonth = new Date(year, m+1, 0).getDate();
@@ -1316,64 +1318,7 @@ const totalShells =
     background: #fff; border-top: 1.5px solid var(--border, #e5e5e5);
     font-size: 13px; color: var(--muted, #5a5a7a);
   }
-  .upload-preview img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
   .upload-status { font-size: 12px; color: var(--blue, #2563b0); font-style: italic; margin-top: 4px; }
-
-  /* ── Calendar ── */
-  .cal-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
-    padding: 20px;
-    background: #f8faff;
-    border: 1.5px solid #dbeafe;
-    border-radius: 8px;
-    max-height: 640px;
-    overflow-y: auto;
-    margin-top: 8px;
-  }
-  .cal-month { display: flex; flex-direction: column; gap: 4px; }
-  .cal-month-heading {
-    font-size: 12px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.07em; color: var(--navy, #1a2456);
-    padding-bottom: 6px; border-bottom: 1.5px solid var(--border, #e5e5e5); margin-bottom: 4px;
-  }
-  .cal-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 2px; }
-  .cal-dow { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted, #5a5a7a); padding: 2px 0; }
-  .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-  .cal-day {
-    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 500; border-radius: 4px; cursor: pointer;
-    color: var(--navy, #1a2456); transition: background 0.12s, color 0.12s; user-select: none;
-  }
-  .cal-day:hover:not(.cal-blank) { background: #dbeafe; }
-  .cal-day.cal-selected { background: var(--navy, #1a2456); color: #fff; font-weight: 700; }
-  .cal-blank { cursor: default; }
-
-  /* ── Selected date chips ── */
-  .selected-chips {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-    padding: 10px 14px; background: #fff;
-    border: 1.5px solid var(--border, #e5e5e5); border-radius: 6px; margin-bottom: 8px;
-  }
-  .chips-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, #5a5a7a); white-space: nowrap; }
-  .chips-list { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
-  .date-chip {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: #dbeafe; color: #1e40af; font-size: 12px; font-weight: 600;
-    padding: 3px 8px 3px 10px; border-radius: 100px;
-  }
-  .chip-remove {
-    background: none; border: none; cursor: pointer; font-size: 14px;
-    line-height: 1; color: #1e40af; padding: 0; display: flex; align-items: center;
-  }
-  .chip-remove:hover { color: var(--red, #b52626); }
-  .clear-dates-btn {
-    font-size: 11px; font-weight: 600; color: var(--muted, #5a5a7a);
-    background: none; border: none; cursor: pointer; padding: 2px 6px;
-    text-decoration: underline; white-space: nowrap;
-  }
-  .clear-dates-btn:hover { color: var(--red, #b52626); }
 
   /* ── Shells table ── */
   .shells-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1418,14 +1363,6 @@ const totalShells =
   .vendor-summary-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .vendor-hint { font-size: 12px; color: var(--muted, #5a5a7a); line-height: 1.55; margin: 0; }
 
-  /* Festival band picker in modal */
-  .fest-band-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; border: 1.5px solid var(--border, #e5e5e5); border-radius: 6px; padding: 8px; background: #fafafa; }
-  .fest-band-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; cursor: pointer; transition: background 0.12s; }
-  .fest-band-option:hover { background: #f0f4ff; }
-  .fest-band-option input[type=radio] { flex-shrink: 0; accent-color: var(--blue, #2563b0); width: 16px; height: 16px; }
-  .fest-band-option-name { font-size: 14px; font-weight: 600; color: var(--navy, #1a2456); flex: 1; }
-  .fest-band-option-genre { font-size: 11px; font-weight: 600; color: var(--muted, #5a5a7a); background: #f1f5f9; padding: 2px 8px; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.05em; }
-
   .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
   .badge-shell         { background: #f1f5f9; color: #64748b; }
   .badge-band_assigned { background: #fef3c7; color: #92400e; }
@@ -1460,6 +1397,77 @@ const totalShells =
     .form-row { grid-template-columns: 1fr; }
     .shells-table { font-size: 12px; }
     .card { padding: 20px 16px; }
-    .cal-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); max-height: 480px; }
   }
+</style>
+
+<style is:global>
+  /* ── Calendar (JS-injected elements) ── */
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    padding: 10px;
+    background: #f8faff;
+    border: 1.5px solid #dbeafe;
+    border-radius: 8px;
+    max-height: 420px;
+    overflow-y: auto;
+    margin-top: 8px;
+  }
+  .cal-month { display: flex; flex-direction: column; gap: 1px; }
+  .cal-month-heading {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--navy, #1a2456);
+    padding-bottom: 3px; border-bottom: 1.5px solid var(--border, #e5e5e5); margin-bottom: 2px;
+  }
+  .cal-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; margin-bottom: 1px; }
+  .cal-dow { text-align: center; font-size: 9px; font-weight: 700; color: var(--muted, #5a5a7a); padding: 0; }
+  .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+  .cal-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 500; border-radius: 3px; cursor: pointer;
+    color: var(--navy, #1a2456); transition: background 0.12s, color 0.12s; user-select: none;
+  }
+  .cal-day:hover:not(.cal-blank) { background: #dbeafe; }
+  .cal-day.cal-selected { background: var(--navy, #1a2456); color: #fff; font-weight: 700; }
+  .cal-blank { cursor: default; }
+  @media (max-width: 900px) {
+    .cal-grid { grid-template-columns: repeat(3, 1fr); max-height: 520px; }
+  }
+
+  /* ── Selected date chips (JS-injected) ── */
+  .selected-chips {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 10px 14px; background: #fff;
+    border: 1.5px solid var(--border, #e5e5e5); border-radius: 6px; margin-bottom: 8px;
+  }
+  .chips-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, #5a5a7a); white-space: nowrap; }
+  .chips-list { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+  .date-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #dbeafe; color: #1e40af; font-size: 12px; font-weight: 600;
+    padding: 3px 8px 3px 10px; border-radius: 100px;
+  }
+  .chip-remove {
+    background: none; border: none; cursor: pointer; font-size: 14px;
+    line-height: 1; color: #1e40af; padding: 0; display: flex; align-items: center;
+  }
+  .chip-remove:hover { color: var(--red, #b52626); }
+  .clear-dates-btn {
+    font-size: 11px; font-weight: 600; color: var(--muted, #5a5a7a);
+    background: none; border: none; cursor: pointer; padding: 2px 6px;
+    text-decoration: underline; white-space: nowrap;
+  }
+  .clear-dates-btn:hover { color: var(--red, #b52626); }
+
+  /* ── Upload preview image (JS-injected) ── */
+  .upload-preview img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+
+  /* ── Festival band picker (JS-injected) ── */
+  .fest-band-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; border: 1.5px solid var(--border, #e5e5e5); border-radius: 6px; padding: 8px; background: #fafafa; }
+  .fest-band-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; cursor: pointer; transition: background 0.12s; }
+  .fest-band-option:hover { background: #f0f4ff; }
+  .fest-band-option input[type=radio] { flex-shrink: 0; accent-color: var(--blue, #2563b0); width: 16px; height: 16px; }
+  .fest-band-option-name { font-size: 14px; font-weight: 600; color: var(--navy, #1a2456); flex: 1; }
+  .fest-band-option-genre { font-size: 11px; font-weight: 600; color: var(--muted, #5a5a7a); background: #f1f5f9; padding: 2px 8px; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.05em; }
 </style>

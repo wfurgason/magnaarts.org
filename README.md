@@ -254,6 +254,22 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [x] `park_seasons` Firestore collection — one doc per year
   - [x] `park_events` Firestore collection — one doc per event shell; status: `shell` → `band_assigned` → `confirmed` → `published`
   - [x] Season Setup added to Admin sidebar nav
+
+- [x] **Phase 3.6 — Plan Events Refactor**
+  - [x] Renamed `/admin/seasons` → `/admin/planning`; old URL issues a 301 redirect
+  - [x] Renamed sidebar nav item "Season Setup" → "Plan Events"
+  - [x] Replaced event-type radio toggle with dropdown populated from EVA.rtf event list
+  - [x] Dropdown auto-fills venue & address for each event title (still editable)
+  - [x] Per-event workflows: Music & Movies (existing), Open Mic (existing), Group Art Night (new)
+  - [x] Group Art Night shells saved to `art_night_events` Firestore collection
+  - [x] Group Art Night shell table with placeholder "Assign Presenter" button (disabled; wired in next build)
+  - [x] Annual Arts Seminar, Arts Festival, "or something else" show placeholder UI (no workflow yet)
+  - [x] Public "Teach an Art Class" form at `/teach-an-art-class` — saves to `art_class_submissions`
+  - [x] Link to `/teach-an-art-class` added above "See Upcoming Events" on `programs.astro#art-night`
+  - [x] Open Mic shells table now visible on planning page
+  - [x] Edit modal updated to pass `collection` param; works for park_events, open_mic_events, art_night_events
+  - [ ] Wire presenter assignment for Group Art Night (pulls from `art_class_submissions`)
+  - [ ] Add `art_class_submissions` to Firestore security rules (allow public write)
   - [x] Band assignment — "Assign to Date" button on approved bands; modal shows available shells; warns if date not in band's availability list
   - [x] Unassign / reassign — removes band from shell, resets both docs; available from bands page and seasons page
   - [x] Band confirmation tracking — "Mark Confirmed" on season shell; sets `bandConfirmed: true`; Publish button only enabled after confirmation
@@ -282,6 +298,7 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
 | `band_applications` | Call-for-bands submissions; status: `pending` → `approved` / `declined` / `waitlisted` / `published` |
 | `program_submissions` | Proposal wizard submissions; status: `pending` → `approved` / `rejected` |
 | `events` | Published events with date/time/location |
+| `vendor_applications` | Arts Festival vendor applications; status: `pending` → `approved` → `paid` / `rejected`; `space_number` assigned on payment |
 
 ### Planned collections (Phase 4–5)
 
@@ -395,6 +412,42 @@ Preview URLs are generated for every branch and pull request.
 - [ ] Confirm Google Fonts load (no mixed-content warnings)
 - [ ] Submit sitemap to Google Search Console
 - [ ] Verify OG tags render correctly (use https://opengraph.xyz)
+
+---
+
+---
+
+## Recent Changes
+
+### March 28, 2026 (3) — programs.astro fix Astro scoped CSS bug on ticket stubs
+- Root cause of unstyled ticket list: Astro's `<style>` block scopes all CSS with a unique hash attribute, but dynamically injected `innerHTML` elements never receive that hash, so selectors never matched
+- Fix: split into two style blocks — scoped `<style>` for static template elements, `<style is:global>` for `.glance-item` and all `.ticket-*` classes which are injected at runtime
+
+### March 28, 2026 (2) — programs.astro ticket stub styling
+- Removed venue address from glance list (already shown in the sidebar panel)
+- Restyled each event as a **concert ticket row** (inspired by venue event listings): navy background card, gold left border accent, large day number + month abbreviation on the left, band name large (Playfair Display 20px bold white) + "Live at HH:MM" subtitle in the middle, gold "FREE" badge on the right
+- Date now split into `ticket-mon` (gold uppercase) + `ticket-day` (30px Playfair Display white)
+- Hover lifts card with deeper shadow
+
+### March 28, 2026 — programs.astro `#music-movies` glance list fix
+- Renamed "Events at a Glance" heading → **"Upcoming Events"**
+- Expanded glance list items to show **Date · Time**, **Band Name**, and **Venue · Venue Address** (previously only showed Date + title link)
+- Added `getApps()`/`getApp()` Firebase deduplication guard so duplicate `initializeApp` calls don't silently crash the script and leave "Loading schedule…" stuck
+- Replaced top-level `return` guard with a safe `display:none` fallback for the loading element
+- All field names confirmed to match `publish-event.ts` output (`eventDate`, `eventTime`, `venueName`, `venueAddress`, `bandName`)
+- Firestore rules confirmed: `events` collection has `allow read: if true` — public reads work
+
+---
+
+## Recent Changes
+
+### March 28, 2026 — programs.astro `#music-movies` glance list fix
+- Renamed **"Events at a Glance"** heading → **"Upcoming Events"**
+- Expanded glance list items to show **Date · Time**, **Band Name**, and **Venue · Address** (previously only showed Date + title link)
+- Added `getApps()`/`getApp()` Firebase deduplication guard so duplicate `initializeApp` calls don't silently crash the script and leave "Loading schedule…" stuck
+- Replaced top-level module `return` guard with a safe `display:none` fallback for the loading element
+- All Firestore field names confirmed to match `publish-event.ts` output (`eventDate`, `eventTime`, `venueName`, `venueAddress`, `bandName`)
+- Firestore rules confirmed: `events` collection has `allow read: if true` — public reads OK
 
 ---
 

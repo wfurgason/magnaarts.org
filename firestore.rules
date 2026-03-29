@@ -20,6 +20,12 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // ── Vendor applications — public can create (submit form), only server reads/writes ──
+    match /vendor_applications/{doc} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
     // ── Admin users — no client-side access at all ──
     match /admin_users/{doc} {
       allow read, write: if false;

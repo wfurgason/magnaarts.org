@@ -1,0 +1,438 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import '../../styles/global.css';
+
+const firebaseConfig = {
+  apiKey:     import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:  import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+};
+---
+
+<BaseLayout
+  title="Teach an Art Class — Magna Arts Council"
+  description="Share your artistic expertise with the Magna community. Apply to lead a Group Art Night session at the Magna Library."
+>
+  <Header />
+
+  <main>
+
+    <!-- ── HERO ──────────────────────────────────────────────────────── -->
+    <section class="page-hero">
+      <div class="container">
+        <div class="hero-badge">Call for Arts Presenters</div>
+        <h1>Teach an Art Class</h1>
+        <p class="hero-sub">
+          Do you have expertise in an area of the arts? We're looking for local artists
+          and educators to lead interactive sessions for the Magna community at the Magna Library.
+          Material costs are covered and compensation for your time may be negotiated.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── FORM ──────────────────────────────────────────────────────── -->
+    <section class="section">
+      <div class="container form-container">
+
+        <!-- Left: context -->
+        <aside class="form-sidebar reveal">
+          <div class="info-card">
+            <h3>About Group Art Night</h3>
+            <p>Group Art Night is a monthly community session held at the Magna Library where a local artist guides participants through a hands-on project in a relaxed social setting.</p>
+            <p>Sessions run 1–2 hours and typically draw around 20 participants of all skill levels. We're always looking for enthusiastic presenters across all arts disciplines.</p>
+            <dl class="quick-facts">
+              <dt>Location</dt>
+              <dd>Magna Library, 2675 S 8950 W</dd>
+              <dt>Duration</dt>
+              <dd>1–2 hours per session</dd>
+              <dt>Age Group</dt>
+              <dd>16 and older</dd>
+              <dt>Materials</dt>
+              <dd>Covered by the Arts Council</dd>
+              <dt>Compensation</dt>
+              <dd>Negotiable</dd>
+            </dl>
+          </div>
+        </aside>
+
+        <!-- Right: form -->
+        <div class="form-main reveal">
+
+          <!-- Success state (hidden by default) -->
+          <div id="success-state" class="success-state" hidden>
+            <div class="success-icon">✓</div>
+            <h2>Application Received!</h2>
+            <p>Thank you for your interest in teaching a Group Art Night session. The Arts Council board will review your application and reach out to you soon.</p>
+            <a href="/programs#art-night" class="btn btn-gold">Back to Group Art Night →</a>
+          </div>
+
+          <!-- Error banner -->
+          <div id="error-banner" class="error-banner" hidden>
+            <strong>Something went wrong.</strong>
+            <span id="error-message">Please try again or contact us directly.</span>
+          </div>
+
+          <!-- The form -->
+          <form id="teach-form" class="teach-form" novalidate>
+
+            <h2 class="form-heading">Tell Us About Yourself</h2>
+
+            <div class="form-row">
+              <div class="form-field">
+                <label for="fullName">Full Name <span class="req">*</span></label>
+                <input type="text" id="fullName" name="fullName" required autocomplete="name" placeholder="Your full name" />
+                <span class="field-error" id="err-fullName"></span>
+              </div>
+            </div>
+
+            <div class="form-row two-col">
+              <div class="form-field">
+                <label for="email">Email Address <span class="req">*</span></label>
+                <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+                <span class="field-error" id="err-email"></span>
+              </div>
+              <div class="form-field">
+                <label for="phone">Phone Number <span class="req">*</span></label>
+                <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="(801) 555-0100" />
+                <span class="field-error" id="err-phone"></span>
+              </div>
+            </div>
+
+            <h2 class="form-heading">About Your Session</h2>
+
+            <div class="form-field">
+              <label for="artsArea">
+                Arts Area &amp; Experience <span class="req">*</span>
+                <span class="field-hint">What would you like to present? Briefly describe your background and credentials.</span>
+              </label>
+              <textarea id="artsArea" name="artsArea" rows="5" required
+                placeholder="e.g. I've been painting with watercolors for 15 years and have taught beginner workshops at the community center…"></textarea>
+              <span class="field-error" id="err-artsArea"></span>
+            </div>
+
+            <div class="form-field">
+              <label for="links">
+                Links to Your Work
+                <span class="field-hint">Website, Instagram, YouTube, portfolio — anything that shows your work</span>
+              </label>
+              <textarea id="links" name="links" rows="3"
+                placeholder="https://instagram.com/yourhandle&#10;https://yourportfolio.com"></textarea>
+            </div>
+
+            <div class="form-field">
+              <label for="materials">
+                Materials &amp; Resources Required
+                <span class="field-hint">List anything participants will need. The Arts Council covers supply costs.</span>
+              </label>
+              <textarea id="materials" name="materials" rows="4"
+                placeholder="e.g. Watercolor paper (9×12"), basic watercolor paint sets, brushes, water cups…"></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-gold" id="submit-btn">
+                <span id="btn-text">Submit Application →</span>
+                <span id="btn-loading" hidden>Submitting…</span>
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <Footer />
+
+  <script type="module" define:vars={{ firebaseConfig }}>
+    import { initializeApp }           from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collection, addDoc, serverTimestamp }
+                                       from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    const form         = document.getElementById('teach-form');
+    const submitBtn    = document.getElementById('submit-btn');
+    const btnText      = document.getElementById('btn-text');
+    const btnLoading   = document.getElementById('btn-loading');
+    const successState = document.getElementById('success-state');
+    const errorBanner  = document.getElementById('error-banner');
+    const errorMsg     = document.getElementById('error-message');
+
+    // ── Inline validation helpers ────────────────────────────────────────
+    function setError(id, msg) {
+      const el = document.getElementById('err-' + id);
+      const input = document.getElementById(id);
+      if (el) el.textContent = msg;
+      if (input) input.classList.toggle('input-error', !!msg);
+    }
+
+    function validate() {
+      let ok = true;
+      const fullName = document.getElementById('fullName').value.trim();
+      const email    = document.getElementById('email').value.trim();
+      const phone    = document.getElementById('phone').value.trim();
+      const artsArea = document.getElementById('artsArea').value.trim();
+
+      setError('fullName', fullName ? '' : 'Full name is required.');
+      if (!fullName) ok = false;
+
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      setError('email', emailOk ? '' : 'Please enter a valid email address.');
+      if (!emailOk) ok = false;
+
+      setError('phone', phone ? '' : 'Phone number is required.');
+      if (!phone) ok = false;
+
+      setError('artsArea', artsArea ? '' : 'Please describe your arts area and experience.');
+      if (!artsArea) ok = false;
+
+      return ok;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorBanner.hidden = true;
+
+      if (!validate()) return;
+
+      // Loading state
+      submitBtn.disabled = true;
+      btnText.hidden     = true;
+      btnLoading.hidden  = false;
+
+      try {
+        await addDoc(collection(db, 'art_class_submissions'), {
+          fullName:  document.getElementById('fullName').value.trim(),
+          email:     document.getElementById('email').value.trim(),
+          phone:     document.getElementById('phone').value.trim(),
+          artsArea:  document.getElementById('artsArea').value.trim(),
+          links:     document.getElementById('links').value.trim(),
+          materials: document.getElementById('materials').value.trim(),
+          status:    'pending',
+          submittedAt: serverTimestamp(),
+        });
+
+        // Show success
+        form.hidden          = true;
+        successState.hidden  = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      } catch (err) {
+        console.error('Submission error:', err);
+        errorMsg.textContent = err.message || 'Please try again or contact us directly.';
+        errorBanner.hidden   = false;
+        submitBtn.disabled   = false;
+        btnText.hidden       = false;
+        btnLoading.hidden    = true;
+      }
+    });
+
+    // Clear errors on input
+    ['fullName','email','phone','artsArea'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', () => setError(id, ''));
+    });
+  </script>
+
+</BaseLayout>
+
+<style>
+  /* ── HERO ── */
+  .page-hero {
+    background: var(--green, #2d7a3a);
+    color: var(--white, #fff);
+    padding: 72px 0 64px;
+    text-align: center;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.35);
+    color: rgba(255,255,255,0.9);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  .hero-sub {
+    font-size: 17px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.85);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* ── LAYOUT ── */
+  .form-container {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* ── SIDEBAR ── */
+  .info-card {
+    background: var(--white, #fff);
+    border: 1.5px solid var(--border, #e5e5e5);
+    border-top: 3px solid var(--green, #2d7a3a);
+    border-radius: 10px;
+    padding: 24px;
+  }
+
+  .info-card h3 {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--navy, #1a2456);
+    margin: 0 0 12px;
+  }
+
+  .info-card p {
+    font-size: 14px;
+    color: var(--muted, #5a5a7a);
+    line-height: 1.7;
+    margin-bottom: 12px;
+  }
+
+  .quick-facts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 14px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border, #e5e5e5);
+  }
+
+  .quick-facts dt {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted, #5a5a7a);
+    align-self: start;
+    padding-top: 1px;
+    white-space: nowrap;
+  }
+
+  .quick-facts dd {
+    font-size: 13px;
+    color: var(--navy, #1a2456);
+    line-height: 1.5;
+  }
+
+  /* ── FORM ── */
+  .form-heading {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy, #1a2456);
+    margin: 24px 0 16px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border, #e5e5e5);
+  }
+
+  .form-heading:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+
+  .teach-form { display: flex; flex-direction: column; gap: 16px; }
+
+  .form-row { display: flex; flex-direction: column; gap: 16px; }
+  .form-row.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .form-field { display: flex; flex-direction: column; gap: 6px; }
+  .form-field label {
+    font-size: 12px; font-weight: 700;
+    color: var(--navy, #1a2456); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .field-hint {
+    font-size: 11px; font-weight: 400;
+    color: var(--muted, #5a5a7a); text-transform: none; letter-spacing: 0; margin-left: 6px;
+    display: block; margin-top: 2px;
+  }
+  .req { color: var(--red, #b52626); }
+
+  .form-field input,
+  .form-field textarea {
+    font-family: inherit; font-size: 15px; color: var(--text, #1a1a1a);
+    border: 1.5px solid var(--border, #e5e5e5); border-radius: 8px;
+    padding: 10px 14px; outline: none; transition: border-color 0.2s;
+    width: 100%; box-sizing: border-box;
+  }
+  .form-field input:focus,
+  .form-field textarea:focus { border-color: var(--green, #2d7a3a); box-shadow: 0 0 0 3px rgba(45,122,58,0.12); }
+  .form-field textarea { resize: vertical; min-height: 80px; }
+  .form-field input.input-error,
+  .form-field textarea.input-error { border-color: var(--red, #b52626); }
+
+  .field-error { font-size: 12px; color: var(--red, #b52626); min-height: 16px; }
+
+  .form-actions { padding-top: 8px; }
+
+  /* ── SUCCESS / ERROR STATES ── */
+  .success-state {
+    text-align: center;
+    padding: 48px 32px;
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    border-radius: 12px;
+  }
+
+  .success-icon {
+    width: 56px; height: 56px;
+    background: var(--green, #2d7a3a);
+    color: #fff; font-size: 24px; font-weight: 700;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+  }
+
+  .success-state h2 {
+    font-family: var(--font-display);
+    font-size: 26px; font-weight: 700;
+    color: var(--navy, #1a2456);
+    margin-bottom: 12px;
+  }
+
+  .success-state p {
+    font-size: 15px; color: var(--muted, #5a5a7a);
+    max-width: 440px; margin: 0 auto 24px;
+    line-height: 1.65;
+  }
+
+  .error-banner {
+    padding: 14px 18px;
+    background: #fee2e2; border: 1.5px solid #fca5a5;
+    border-radius: 8px; font-size: 14px; color: #991b1b;
+    margin-bottom: 16px;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 860px) {
+    .form-container { grid-template-columns: 1fr; }
+    .form-sidebar { order: 1; }
+    .form-main { order: 0; }
+    .form-row.two-col { grid-template-columns: 1fr; }
+  }
+</style>

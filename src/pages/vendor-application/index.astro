@@ -94,6 +94,80 @@ const firebaseConfig = {
       </div>
     </section>
 
+    <!-- ── BOOTH MAP ── -->
+    <section class="section map-section reveal">
+      <div class="container">
+        <div class="map-intro">
+          <h2>Festival Layout &amp; Space Map</h2>
+          <p>Use the map below to reference a preferred location when filling out your application. Space assignments are made after payment and are not guaranteed to match your request.</p>
+        </div>
+        <div class="map-wrapper">
+          <svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" class="booth-map" role="img" aria-label="Magna Main Street Arts Festival booth layout map">
+            <!-- Street -->
+            <rect x="0" y="160" width="760" height="100" fill="#d4d0c8" rx="0"/>
+            <text x="380" y="217" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#888" letter-spacing="3">MAGNA MAIN STREET (East → West)</text>
+            <!-- Sidewalk lines -->
+            <rect x="0" y="158" width="760" height="4" fill="#b0aca0"/>
+            <rect x="0" y="258" width="760" height="4" fill="#b0aca0"/>
+
+            <!-- NORTH SIDE booths (above street) -->
+            <!-- Row label -->
+            <text x="10" y="148" font-family="sans-serif" font-size="11" fill="#888" font-weight="600">NORTH SIDE</text>
+
+            <!-- Spaces 1–9: north side, left to right -->
+            {[
+              {n:'1', x:20},  {n:'2', x:100}, {n:'3', x:180},
+              {n:'4', x:260}, {n:'5', x:340}, {n:'6', x:420},
+              {n:'7', x:500}, {n:'8', x:580}, {n:'9', x:660},
+            ].map(s => (
+              <>
+                <rect x={s.x} y="62" width="72" height="90" rx="6" fill="#e8a020" opacity="0.82" stroke="#c87e0a" stroke-width="1.5"/>
+                <text x={s.x+36} y="108" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="900" fill="#fff">{s.n}</text>
+                <text x={s.x+36} y="124" text-anchor="middle" font-family="sans-serif" font-size="9" fill="rgba(255,255,255,0.85)">10×10 ft</text>
+              </>
+            ))}
+
+            <!-- SOUTH SIDE booths (below street) -->
+            <text x="10" y="296" font-family="sans-serif" font-size="11" fill="#888" font-weight="600">SOUTH SIDE</text>
+
+            <!-- Spaces 10–18: south side, left to right -->
+            {[
+              {n:'10', x:20},  {n:'11', x:100}, {n:'12', x:180},
+              {n:'13', x:260}, {n:'14', x:340}, {n:'15', x:420},
+              {n:'16', x:500}, {n:'17', x:580}, {n:'18', x:660},
+            ].map(s => (
+              <>
+                <rect x={s.x} y="270" width="72" height="90" rx="6" fill="#2563b0" opacity="0.82" stroke="#1e4a8f" stroke-width="1.5"/>
+                <text x={s.x+36} y="316" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="900" fill="#fff">{s.n}</text>
+                <text x={s.x+36} y="332" text-anchor="middle" font-family="sans-serif" font-size="9" fill="rgba(255,255,255,0.85)">10×10 ft</text>
+              </>
+            ))}
+
+            <!-- Stage marker -->
+            <rect x="310" y="360" width="140" height="50" rx="8" fill="#1a2456"/>
+            <text x="380" y="381" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#e8a020">🎵 STAGE</text>
+            <text x="380" y="398" text-anchor="middle" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.7)">West end</text>
+
+            <!-- Food truck zone -->
+            <rect x="650" y="360" width="100" height="50" rx="8" fill="#2d7a3a" opacity="0.85"/>
+            <text x="700" y="381" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#fff">🚚 FOOD</text>
+            <text x="700" y="396" text-anchor="middle" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.8)">TRUCKS</text>
+
+            <!-- Compass -->
+            <text x="730" y="26" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#1a2456">▲ N</text>
+          </svg>
+
+          <div class="map-legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#e8a020"></span>North-side booths (1–9)</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#2563b0"></span>South-side booths (10–18)</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#1a2456"></span>Stage (west end)</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#2d7a3a"></span>Food truck zone</div>
+          </div>
+          <p class="map-note">⚠️ This is a <strong>draft layout</strong>. Final space count and exact locations may change. Space numbers are confirmed after payment.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- ── APPLICATION FORM ── -->
     <section class="section form-section">
       <div class="container form-outer">
@@ -218,9 +292,17 @@ const firebaseConfig = {
             </div>
 
             <div class="field">
+              <label for="location_request">Space Location Request
+                <span style="font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:6px;">(optional — reference the map below; not guaranteed)</span>
+              </label>
+              <input type="text" id="location_request" name="location_request"
+                placeholder="e.g. Space 12 (near the stage), or corner spot preferred" />
+            </div>
+
+            <div class="field">
               <label for="additional_comments">Additional Comments</label>
               <textarea id="additional_comments" name="additional_comments" rows="2"
-                placeholder="Location requests, accessibility needs, etc."></textarea>
+                placeholder="Accessibility needs, special requirements, etc."></textarea>
             </div>
           </fieldset>
 
@@ -323,6 +405,7 @@ const firebaseConfig = {
           description:         fd.get('description') || null,
           needs_electricity:   fd.get('needs_electricity'),
           needs_water:         fd.get('needs_water'),
+          location_request:    fd.get('location_request') || null,
           additional_comments: fd.get('additional_comments') || null,
           waiver_agreed:       true,
           signature:           fd.get('signature'),
@@ -428,6 +511,18 @@ const firebaseConfig = {
   .form-disclaimer { flex: 1; font-size: 13px; color: var(--muted); line-height: 1.55; margin: 0; min-width: 200px; }
   .submit-btn { font-size: 16px; padding: 15px 36px; white-space: nowrap; }
   .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* ── BOOTH MAP ── */
+  .map-section { background: var(--white); }
+  .map-intro { text-align: center; margin-bottom: 28px; }
+  .map-intro h2 { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+  .map-intro p { font-size: 15px; color: var(--muted); line-height: 1.65; max-width: 620px; margin: 0 auto; }
+  .map-wrapper { background: var(--cream); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 24px; }
+  .booth-map { width: 100%; height: auto; display: block; max-height: 340px; }
+  .map-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; justify-content: center; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .map-note { font-size: 12px; color: var(--muted); text-align: center; margin: 12px 0 0; line-height: 1.5; }
 
   @media (max-width: 680px) {
     .field-row { grid-template-columns: 1fr; }

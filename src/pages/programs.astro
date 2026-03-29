@@ -165,11 +165,16 @@ const programs = [
             {p.body.map((para) => (
               <p class="program-body">{para}</p>
             ))}
+            {p.id === 'art-night' && (
+              <a href="/teach-an-art-class" class={`program-link link-${p.color}`} style="display:block; margin-bottom:12px;">
+                Want to Teach a Session? Apply Here →
+              </a>
+            )}
             <a href={p.link} class={`program-link link-${p.color}`}>{p.linkLabel}</a>
 
           {p.id === 'music-movies' && (
             <div class="events-glance">
-              <h3 class="glance-heading">Events at a Glance</h3>
+              <h3 class="glance-heading">Upcoming Events</h3>
               <div id="glance-loading" class="glance-loading">Loading schedule…</div>
               <ul id="glance-list" class="glance-list" style="display:none"></ul>
               <div id="glance-empty" class="glance-empty" style="display:none">
@@ -218,16 +223,16 @@ const programs = [
   <Footer />
 
   <script type="module" define:vars={{ firebaseConfig }}>
-    import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { initializeApp, getApps, getApp }                         from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import { getFirestore, collection, getDocs, orderBy, query }      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
     const loadingEl = document.getElementById('glance-loading');
     const listEl    = document.getElementById('glance-list');
     const emptyEl   = document.getElementById('glance-empty');
-    if (!listEl) return; // not on this page
+    if (!listEl) { loadingEl && (loadingEl.style.display = 'none'); } // not on this page
 
     try {
-      const app = initializeApp(firebaseConfig);
+      const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
       const db  = getFirestore(app);
       const q   = query(collection(db, 'events'), orderBy('eventDate', 'asc'));
       const snap = await getDocs(q);
@@ -239,9 +244,10 @@ const programs = [
         const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
         if (dateObj < now) return;
         upcoming.push({
-          id:    doc.id,
-          date:  dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          title: d.title || d.bandName || 'TBA',
+          id:      doc.id,
+          rawDate: dateObj.toISOString(),
+          time:    d.eventTime || d.startTime || '',
+          bandName: d.bandName || d.title || 'TBA',
         });
       });
 
@@ -250,12 +256,27 @@ const programs = [
       if (upcoming.length === 0) {
         emptyEl.style.display = 'block';
       } else {
-        listEl.innerHTML = upcoming.map(e => `
+        listEl.innerHTML = upcoming.map(e => {
+          const d = new Date(e.rawDate);
+          const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+          const day = d.toLocaleDateString('en-US', { day:   'numeric' });
+          return `
           <li class="glance-item">
-            <span class="glance-date">${e.date}</span>
-            <a href="/events" class="glance-title">${e.title}</a>
-          </li>
-        `).join('');
+            <div class="ticket-stub">
+              <div class="ticket-left">
+                <span class="ticket-mon">${mon}</span>
+                <span class="ticket-day">${day}</span>
+              </div>
+              <div class="ticket-body">
+                <span class="ticket-band">${e.bandName}</span>
+                ${e.time ? `<span class="ticket-time">♪ Live at ${e.time}</span>` : ''}
+              </div>
+              <div class="ticket-right">
+                <span class="ticket-free">FREE</span>
+              </div>
+            </div>
+          </li>`;
+        }).join('');
         listEl.style.display = 'block';
       }
     } catch (err) {
@@ -484,7 +505,7 @@ const programs = [
     .pnav-item span:last-child { display: none; }
   }
 
-  /* ── EVENTS AT A GLANCE ── */
+  /* ── UPCOMING EVENTS / TICKET LIST ── */
   .events-glance {
     margin-top: 28px;
     padding-top: 24px;
@@ -496,7 +517,7 @@ const programs = [
     font-size: 16px;
     font-weight: 700;
     color: var(--navy);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
 
   .glance-loading, .glance-empty {
@@ -512,33 +533,102 @@ const programs = [
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 10px;
   }
 
-  .glance-item {
+</style>
+
+<!-- Ticket styles must be global — these elements are injected via innerHTML and won't receive Astro's scoped hash -->
+<style is:global>
+  .glance-item { display: block; }
+
+  /* ── TICKET STUB ── */
+  .ticket-stub {
     display: flex;
-    align-items: baseline;
-    gap: 12px;
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-    transition: background 0.12s;
+    align-items: center;
+    background: var(--navy);
+    border-radius: 8px;
+    overflow: hidden;
+    border-left: 5px solid var(--gold);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: transform 0.15s, box-shadow 0.15s;
+    min-height: 68px;
   }
-  .glance-item:hover { background: var(--cream); }
+  .ticket-stub:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+  }
 
-  .glance-date {
-    font-size: 12px;
+  /* Date block on the left */
+  .ticket-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    min-width: 68px;
+    flex-shrink: 0;
+    border-right: 1px dashed rgba(255,255,255,0.2);
+  }
+
+  .ticket-mon {
+    font-size: 10px;
     font-weight: 700;
-    color: var(--blue);
-    white-space: nowrap;
-    min-width: 52px;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    text-transform: uppercase;
+    line-height: 1;
   }
 
-  .glance-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--navy);
-    text-decoration: none;
-    transition: color 0.15s;
+  .ticket-day {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 900;
+    color: var(--white);
+    line-height: 1;
+    margin-top: 2px;
   }
-  .glance-title:hover { color: var(--blue); text-decoration: underline; }
+
+  /* Middle — band name + time */
+  .ticket-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 12px 18px;
+  }
+
+  .ticket-band {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.2;
+  }
+
+  .ticket-time {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.04em;
+  }
+
+  /* Right — FREE badge */
+  .ticket-right {
+    padding: 10px 18px;
+    flex-shrink: 0;
+  }
+
+  .ticket-free {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    border: 1.5px solid var(--gold);
+    border-radius: 4px;
+    padding: 4px 9px;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
 </style>

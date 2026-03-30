@@ -428,6 +428,9 @@ const firebaseConfig = {
     display: flex; gap: 8px; align-items: flex-start;
   }
 
+  /* Ensure the HTML `hidden` attribute wins over display:flex above */
+  .error-banner[hidden] { display: none; }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 860px) {
     .form-container { grid-template-columns: 1fr; }

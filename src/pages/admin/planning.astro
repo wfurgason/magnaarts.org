@@ -15,7 +15,7 @@ const firebaseConfig = {
 };
 
 // ── Load existing shells ──────────────────────────────────────────────────
-const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, vendorSnap] = await Promise.all([
+const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, vendorSnap, artClassSnap] = await Promise.all([
   adminDb.collection('park_seasons').orderBy('year', 'desc').get(),
   adminDb.collection('park_events').orderBy('date', 'asc').get(),
   adminDb.collection('open_mic_events').orderBy('date', 'asc').get(),
@@ -23,6 +23,7 @@ const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap, festivalSnap, approve
   adminDb.collection('festival_events').orderBy('date', 'asc').get(),
   adminDb.collection('band_applications').where('status', 'in', ['approved', 'waitlisted']).orderBy('band_name', 'asc').get(),
   adminDb.collection('vendor_applications').where('status', 'in', ['approved', 'paid']).get(),
+  adminDb.collection('art_class_submissions').where('status', '==', 'pending').orderBy('submittedAt', 'desc').get(),
 ]);
 
 const allShells         = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
@@ -30,7 +31,8 @@ const allOpenMicShells  = openMicSnap.docs.map(d => ({ id: d.id, ...d.data() }))
 const allArtNightShells = artNightSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const allFestivalShells = festivalSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const approvedBands     = approvedBandsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-const approvedVendorCount = vendorSnap.size;
+const approvedVendorCount  = vendorSnap.size;
+const artClassSubmissions  = artClassSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
 // ── POST handling ─────────────────────────────────────────────────────────
 let flashMsg  = '';
@@ -238,6 +240,51 @@ if (Astro.request.method === 'POST') {
     }
   }
 
+  // ── Assign an art-night presenter ────────────────────────────────────────
+  if (action === 'assign_presenter') {
+    const shellId       = form.get('shellId')?.toString();
+    const presenterId   = form.get('presenterId')?.toString();
+    const presenterName = form.get('presenterName')?.toString();
+    if (shellId && presenterId) {
+      await adminDb.collection('art_night_events').doc(shellId).update({
+        presenterId,
+        presenterName,
+        presenterConfirmed: false,
+        status: 'presenter_assigned',
+      });
+      flashMsg  = `${presenterName} assigned as presenter.`;
+      flashType = 'success';
+    }
+  }
+
+  // ── Unassign an art-night presenter ──────────────────────────────────────
+  if (action === 'unassign_presenter') {
+    const shellId = form.get('shellId')?.toString();
+    if (shellId) {
+      await adminDb.collection('art_night_events').doc(shellId).update({
+        presenterId:        null,
+        presenterName:      null,
+        presenterConfirmed: false,
+        status:             'shell',
+      });
+      flashMsg  = 'Presenter removed.';
+      flashType = 'success';
+    }
+  }
+
+  // ── Confirm an art-night presenter ───────────────────────────────────────
+  if (action === 'confirm_presenter') {
+    const shellId = form.get('shellId')?.toString();
+    if (shellId) {
+      await adminDb.collection('art_night_events').doc(shellId).update({
+        presenterConfirmed: true,
+        status:             'confirmed',
+      });
+      flashMsg  = 'Presenter confirmed.';
+      flashType = 'success';
+    }
+  }
+
   // ── Edit a shell ────────────────────────────────────────────────────────
   if (action === 'update_shell') {
     const shellId   = form.get('shellId')?.toString();
@@ -421,8 +468,7 @@ const totalShells =
           </div>
           <div class="info-callout">
             <span>ℹ️</span>
-            <span>After creating shells, use the table below to assign a presenter from
-              <strong>Art Class submissions</strong>. Presenter assignment is coming in the next build.</span>
+            <span>After creating shells, use the table below to assign a presenter. Click <strong>Assign Presenter</strong> on any shell to pick from pending Art Class submissions. Once assigned, use <strong>Mark Confirmed</strong> when you've spoken with the presenter, then <strong>Publish ↗</strong> to push the event live.</span>
           </div>
         </div>
 
@@ -728,9 +774,30 @@ const totalShells =
                   onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','art_night_events')`}>
                   Edit
                 </button>
-                <button class="btn-sm btn-assign" disabled title="Presenter assignment coming in next build">
-                  Assign Presenter
-                </button>
+                {!shell.presenterId && (
+                  <button class="btn-sm btn-assign-presenter" data-shell-id={shell.id}>
+                    Assign Presenter
+                  </button>
+                )}
+                {shell.presenterId && !shell.presenterConfirmed && (
+                  <>
+                    <form method="POST" style="display:inline">
+                      <input type="hidden" name="action" value="confirm_presenter" />
+                      <input type="hidden" name="shellId" value={shell.id} />
+                      <button type="submit" class="btn-sm btn-confirm">Mark Confirmed</button>
+                    </form>
+                    <form method="POST" style="display:inline" onsubmit="return confirm('Remove this presenter?')">
+                      <input type="hidden" name="action" value="unassign_presenter" />
+                      <input type="hidden" name="shellId" value={shell.id} />
+                      <button type="submit" class="btn-sm btn-outline">Unassign</button>
+                    </form>
+                  </>
+                )}
+                {shell.status === 'confirmed' && (
+                  <button class="btn-sm btn-publish an-publish-btn" data-shell-id={shell.id}>
+                    Publish ↗
+                  </button>
+                )}
                 {shell.status === 'shell' && (
                   <form method="POST" style="display:inline" onsubmit="return confirm('Delete this event shell?')">
                     <input type="hidden" name="action" value="delete_shell" />
@@ -752,6 +819,27 @@ const totalShells =
       <p>No event shells yet. Select an event type above to get started.</p>
     </div>
   )}
+
+  <!-- ── PRESENTER ASSIGN MODAL ─────────────────────────────────────────── -->
+  <div id="presenter-modal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <h3>✦ Assign Presenter</h3>
+      <form method="POST" id="presenter-form">
+        <input type="hidden" name="action" value="assign_presenter" />
+        <input type="hidden" name="shellId" id="presenter-modal-shell-id" />
+        <input type="hidden" name="presenterId" id="presenter-modal-presenter-id" />
+        <input type="hidden" name="presenterName" id="presenter-modal-presenter-name" />
+        <div class="form-field">
+          <label>Select from Art Class Submissions</label>
+          <div id="presenter-list" class="fest-band-list"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" id="presenter-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="presenter-modal-submit" disabled>Assign Presenter →</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- ── FESTIVAL BAND ASSIGN MODAL ────────────────────────────────── -->
   <div id="fest-band-modal" class="modal-overlay" hidden>
@@ -809,10 +897,11 @@ const totalShells =
 
 </AdminLayout>
 
-<!-- Inject Firebase config and approved bands -->
-<script define:vars={{ firebaseConfig, approvedBands }}>
-  window.__FIREBASE_CONFIG__ = firebaseConfig;
-  window.__APPROVED_BANDS__  = approvedBands;
+<!-- Inject Firebase config, approved bands, and art class submissions -->
+<script define:vars={{ firebaseConfig, approvedBands, artClassSubmissions }}>
+  window.__FIREBASE_CONFIG__      = firebaseConfig;
+  window.__APPROVED_BANDS__       = approvedBands;
+  window.__ART_CLASS_SUBMISSIONS__ = artClassSubmissions;
 </script>
 
 <script type="module">
@@ -1166,6 +1255,78 @@ const totalShells =
     });
   });
 
+  // ── Art Night publish buttons ────────────────────────────────────────────
+  document.querySelectorAll('.an-publish-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const shellId = btn.dataset.shellId;
+      if (!confirm('Publish this Group Art Night event to the public site?')) return;
+      btn.disabled    = true;
+      btn.textContent = 'Publishing…';
+      try {
+        const res = await fetch('/api/admin/publish-art-night', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ shellId }),
+        });
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          const { error } = await res.json().catch(() => ({ error: 'Unknown error' }));
+          alert(error || 'Publish failed.');
+          btn.disabled    = false;
+          btn.textContent = 'Publish ↗';
+        }
+      } catch (err) {
+        alert('Publish failed: ' + (err.message || 'Unknown error'));
+        btn.disabled    = false;
+        btn.textContent = 'Publish ↗';
+      }
+    });
+  });
+
+  // ── Presenter assign modal ───────────────────────────────────────────────
+  const presenterModal      = document.getElementById('presenter-modal');
+  const presenterShellIdEl  = document.getElementById('presenter-modal-shell-id');
+  const presenterIdEl       = document.getElementById('presenter-modal-presenter-id');
+  const presenterNameEl     = document.getElementById('presenter-modal-presenter-name');
+  const presenterList       = document.getElementById('presenter-list');
+  const presenterSubmitBtn  = document.getElementById('presenter-modal-submit');
+  const submissions         = window.__ART_CLASS_SUBMISSIONS__ || [];
+
+  document.querySelectorAll('.btn-assign-presenter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      presenterShellIdEl.value    = btn.dataset.shellId;
+      presenterIdEl.value         = '';
+      presenterNameEl.value       = '';
+      presenterSubmitBtn.disabled = true;
+
+      if (submissions.length === 0) {
+        presenterList.innerHTML = '<p class="dim" style="font-size:13px;padding:12px">No pending Art Class submissions found. Applicants submit via the Teach an Art Class page.</p>';
+      } else {
+        presenterList.innerHTML = submissions.map(s => `
+          <label class="fest-band-option">
+            <input type="radio" name="presenter-pick" value="${s.id}" data-name="${s.fullName}" />
+            <span class="fest-band-option-name">${s.fullName}</span>
+            <span class="fest-band-option-genre">${s.artsArea ? s.artsArea.substring(0, 40) : ''}</span>
+          </label>
+        `).join('');
+
+        presenterList.querySelectorAll('input[type=radio]').forEach(radio => {
+          radio.addEventListener('change', () => {
+            presenterIdEl.value         = radio.value;
+            presenterNameEl.value       = radio.dataset.name;
+            presenterSubmitBtn.disabled = false;
+          });
+        });
+      }
+
+      presenterModal.hidden = false;
+    });
+  });
+
+  document.getElementById('presenter-modal-cancel')?.addEventListener('click', () => { presenterModal.hidden = true; });
+  presenterModal.addEventListener('click', e => { if (e.target === presenterModal) presenterModal.hidden = true; });
+
   // ── Festival band assign modal ─────────────────────────────────────
   const festModal       = document.getElementById('fest-band-modal');
   const festSlotLabel   = document.getElementById('fest-modal-slot-label');
@@ -1364,21 +1525,24 @@ const totalShells =
   .vendor-hint { font-size: 12px; color: var(--muted, #5a5a7a); line-height: 1.55; margin: 0; }
 
   .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-  .badge-shell         { background: #f1f5f9; color: #64748b; }
-  .badge-band_assigned { background: #fef3c7; color: #92400e; }
-  .badge-planning      { background: #fef3c7; color: #92400e; }
-  .badge-confirmed     { background: #d1fae5; color: #065f46; }
-  .badge-published     { background: #dbeafe; color: #1e40af; }
+  .badge-shell              { background: #f1f5f9; color: #64748b; }
+  .badge-band_assigned      { background: #fef3c7; color: #92400e; }
+  .badge-presenter_assigned { background: #fef3c7; color: #92400e; }
+  .badge-planning           { background: #fef3c7; color: #92400e; }
+  .badge-confirmed          { background: #d1fae5; color: #065f46; }
+  .badge-published          { background: #dbeafe; color: #1e40af; }
 
   .actions-cell { white-space: nowrap; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .btn-sm { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; border: 1.5px solid transparent; transition: opacity 0.15s; }
   .btn-sm:hover:not(:disabled) { opacity: 0.8; }
   .btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-outline  { background: transparent; border-color: var(--border, #e5e5e5); color: var(--navy, #1a2456); }
-  .btn-danger   { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
-  .btn-confirm  { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
-  .btn-publish  { background: var(--navy, #1a2456); border-color: var(--navy, #1a2456); color: #fff; }
-  .btn-assign   { background: #f1f5f9; border-color: #cbd5e1; color: #64748b; }
+  .btn-outline         { background: transparent; border-color: var(--border, #e5e5e5); color: var(--navy, #1a2456); }
+  .btn-danger          { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+  .btn-confirm         { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+  .btn-publish         { background: var(--navy, #1a2456); border-color: var(--navy, #1a2456); color: #fff; }
+  .btn-assign          { background: #f1f5f9; border-color: #cbd5e1; color: #64748b; }
+  .btn-assign-presenter { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; border: 1.5px solid; }
+  .btn-assign-presenter:hover { background: #dbeafe; }
 
   .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1.5px solid transparent; transition: opacity 0.15s; text-decoration: none; }
   .btn-primary { background: var(--navy, #1a2456); color: #fff; }
@@ -1463,7 +1627,7 @@ const totalShells =
   /* ── Upload preview image (JS-injected) ── */
   .upload-preview img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
 
-  /* ── Festival band picker (JS-injected) ── */
+  /* ── Festival band / presenter picker (JS-injected) ── */
   .fest-band-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; border: 1.5px solid var(--border, #e5e5e5); border-radius: 6px; padding: 8px; background: #fafafa; }
   .fest-band-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; cursor: pointer; transition: background 0.12s; }
   .fest-band-option:hover { background: #f0f4ff; }

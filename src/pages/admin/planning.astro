@@ -23,7 +23,7 @@ const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap, festivalSnap, approve
   adminDb.collection('festival_events').orderBy('date', 'asc').get(),
   adminDb.collection('band_applications').where('status', 'in', ['approved', 'waitlisted']).orderBy('band_name', 'asc').get(),
   adminDb.collection('vendor_applications').where('status', 'in', ['approved', 'paid']).get(),
-  adminDb.collection('art_class_submissions').where('status', '==', 'pending').orderBy('submittedAt', 'desc').get(),
+  adminDb.collection('art_class_submissions').where('status', 'in', ['pending', 'approved', 'contacted']).orderBy('submittedAt', 'desc').get(),
 ]);
 
 const allShells         = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];

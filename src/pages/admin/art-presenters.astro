@@ -1,0 +1,151 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+const filterParam = Astro.url.searchParams.get('filter') || 'all';
+
+const snap = await adminDb.collection('art_class_submissions')
+  .orderBy('submittedAt', 'desc')
+  .get();
+
+type Presenter = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  artsArea: string;
+  links: string;
+  materials: string;
+  status: string;
+  submittedAt?: any;
+};
+
+let presenters = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Presenter[];
+
+const filters = ['all', 'pending', 'approved', 'rejected', 'contacted', 'scheduled'];
+
+if (filterParam !== 'all') {
+  presenters = presenters.filter(p => (p.status || 'pending') === filterParam);
+}
+---
+
+<AdminLayout title="Art Presenters" user={user}>
+  <div class="page-header">
+    <h1>Art Presenters</h1>
+    <div class="filter-tabs">
+      {filters.map(f => (
+        <a
+          href={`/admin/art-presenters${f === 'all' ? '' : `?filter=${f}`}`}
+          class:list={['filter-tab', { active: filterParam === f }]}
+        >
+          {f.charAt(0).toUpperCase() + f.slice(1)}
+        </a>
+      ))}
+    </div>
+  </div>
+
+  {presenters.length === 0 ? (
+    <div class="empty-state">
+      <p>No submissions matching this filter.</p>
+    </div>
+  ) : (
+    <div class="submission-list">
+      {presenters.map(p => (
+        <div class="submission-card" id={p.id}>
+          <div class="submission-header">
+            <div class="submission-title-group">
+              <div>
+                <h2 class="submission-name">{p.fullName}</h2>
+                <span class="submission-meta">
+                  <a href={`mailto:${p.email}`}>{p.email}</a>
+                  {p.phone && <> · {p.phone}</>}
+                </span>
+              </div>
+            </div>
+            <span class={`badge badge-${p.status || 'pending'}`}>{p.status || 'pending'}</span>
+          </div>
+
+          <div class="submission-body">
+            <div class="detail-grid">
+              <div>
+                <div class="detail-label">Arts Area &amp; Experience</div>
+                <p class="detail-text">{p.artsArea}</p>
+              </div>
+              {p.materials && (
+                <div>
+                  <div class="detail-label">Materials &amp; Resources</div>
+                  <p class="detail-text">{p.materials}</p>
+                </div>
+              )}
+              {p.links && (
+                <div>
+                  <div class="detail-label">Links</div>
+                  <div class="link-list">
+                    {p.links.split('\n').filter(Boolean).map(link => (
+                      <div><a href={link.trim()} target="_blank" rel="noopener">{link.trim()} ↗</a></div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div class="submission-actions">
+            {(p.status === 'pending') && (
+              <>
+                <button class="btn btn-success" data-action="approved" data-id={p.id}>Approve</button>
+                <button class="btn btn-primary" data-action="contacted" data-id={p.id}>Mark Contacted</button>
+                <button class="btn btn-danger" data-action="rejected" data-id={p.id}>Reject</button>
+              </>
+            )}
+            {(p.status === 'approved') && (
+              <>
+                <button class="btn btn-primary" data-action="contacted" data-id={p.id}>Mark Contacted</button>
+                <button class="btn btn-success" data-action="scheduled" data-id={p.id}>Mark Scheduled</button>
+                <button class="btn btn-danger" data-action="rejected" data-id={p.id}>Reject</button>
+              </>
+            )}
+            {(p.status === 'contacted') && (
+              <>
+                <button class="btn btn-success" data-action="scheduled" data-id={p.id}>Mark Scheduled</button>
+                <button class="btn btn-danger" data-action="rejected" data-id={p.id}>Reject</button>
+              </>
+            )}
+            {(p.status === 'scheduled') && (
+              <span class="muted" style="font-size:13px">Scheduled ✓</span>
+            )}
+            {(p.status === 'rejected') && (
+              <button class="btn btn-success" data-action="pending" data-id={p.id}>Restore to Pending</button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <style>
+    .detail-text { font-size: 14px; color: var(--text, #1a1a1a); line-height: 1.65; margin: 4px 0 0; white-space: pre-wrap; }
+    .link-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; font-size: 14px; }
+    .muted { color: var(--muted, #5a5a7a); }
+    .badge-contacted { background: #e0f2fe; color: #075985; }
+    .badge-scheduled { background: #f0fdf4; color: #166534; }
+  </style>
+
+  <script>
+    document.querySelectorAll('[data-action]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var action = btn.dataset.action;
+        var id = btn.dataset.id;
+        btn.disabled = true;
+        var res = await fetch('/api/admin/update-submission', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id, collection: 'art_class_submissions', status: action }),
+        });
+        if (res.ok) window.location.reload();
+        else { alert('Action failed.'); btn.disabled = false; }
+      });
+    });
+  </script>
+</AdminLayout>

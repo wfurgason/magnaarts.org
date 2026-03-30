@@ -269,6 +269,7 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [x] Open Mic shells table now visible on planning page
   - [x] Edit modal updated to pass `collection` param; works for park_events, open_mic_events, art_night_events
   - [ ] Wire presenter assignment for Group Art Night (pulls from `art_class_submissions`)
+  - [x] Admin page to review art class submissions (`/admin/art-presenters`) — filter tabs, status actions, sidebar nav link
   - [ ] Add `art_class_submissions` to Firestore security rules (allow public write)
   - [x] Band assignment — "Assign to Date" button on approved bands; modal shows available shells; warns if date not in band's availability list
   - [x] Unassign / reassign — removes band from shell, resets both docs; available from bands page and seasons page
@@ -419,6 +420,19 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
+### March 29, 2026 (3) — planning.astro: calendar CSS fix
+- Root cause: `.cal-dow-row` and `.cal-days` are JS-created elements; `is:global` CSS wasn't reliably applied to them in AdminLayout (which doesn't load global.css)
+- Fix: set `display:grid` and `grid-template-columns` as inline `style.cssText` directly on those elements when building the calendar in JS
+- Pattern to remember: for JS-injected elements in admin pages, inline styles are more reliable than even `is:global` CSS for layout-critical properties
+
+### March 29, 2026 (2) — planning.astro: calendar date picker + Open Mic image upload
+- Replaced dates textarea (YYYY-MM-DD manual entry) with a scrollable 12-month calendar for all 3 series types (Music & Movies, Open Mic, Art Night)
+- Calendar renders all 12 months for the selected season year; click any day to toggle it on/off (highlighted navy); year change resets selection
+- Selected dates appear as removable chips above the calendar; dates written to hidden `<textarea name="dates">` — server POST handler unchanged
+- Replaced Open Mic `omImageUrl` text input with a drag-and-drop file upload zone (same pattern as call-for-bands)
+- On submit, image is uploaded to Firebase Storage at `open-mic-images/{year}/event-image.{ext}`, download URL injected into hidden `omImageUrl` input, then form POSTs normally
+- Firebase client SDK initialized via `define:vars={{ firebaseConfig }}` (same env vars already in use)
+
 ### March 29, 2026 — index.astro "Next Up" script fixes
 - Fixed homepage events not displaying: resolved script issue (details confirmed by Wes)
 - Added past-event filter: events with `eventDate` before today (midnight) are excluded from the "Next Up" grid
@@ -460,6 +474,21 @@ Preview URLs are generated for every branch and pull request.
 - Replaced top-level module `return` guard with a safe `display:none` fallback for the loading element
 - All Firestore field names confirmed to match `publish-event.ts` output (`eventDate`, `eventTime`, `venueName`, `venueAddress`, `bandName`)
 - Firestore rules confirmed: `events` collection has `allow read: if true` — public reads OK
+
+### March 29, 2026 (3) — programs.astro festival image fix + arts-festival-2025 → 2026 rename
+
+**Festival image fix (`programs.astro`)**
+- New festival image (`/images/festival/mmsaf.png`) was being cropped because the `.program-img` style uses `aspect-ratio: 4/3` with `object-fit: cover`, clipping the subject
+- Image was created at 1:1 (square), so fix was to add a `.program-img--top` modifier class that overrides `aspect-ratio` to `1/1` for the festival image only
+- Applied via conditional class: `p.id === 'festival' ? ' program-img--top' : ''` — all other program images unaffected
+
+**Festival page rename: 2025 → 2026**
+
+All references to `arts-festival-2025` updated across 3 files:
+
+- **`src/data/events.ts`** — event `id` changed to `arts-festival-2026`; `isoDate` updated to `2026-08-15`; `day` updated to `Saturday, August 15, 2026`; added `image: '/images/festival/mmsaf.png'` so the festival logo appears in the event hero on the detail page; file comment updated to reference 2026
+- **`src/pages/events/[id].astro`** — both `event.id === 'arts-festival-2025'` checks (festival extras section and vendor Firestore script) updated to `arts-festival-2026`
+- **`src/pages/programs.astro`** — `link` updated from `/events/arts-festival-2025` → `/events/arts-festival-2026`
 
 ---
 

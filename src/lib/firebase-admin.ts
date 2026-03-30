@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 let adminApp: App | null = null;
 
@@ -24,5 +25,6 @@ try {
   console.warn('Firebase Admin SDK not initialized:', (e as Error).message);
 }
 
-export const adminAuth = adminApp ? getAuth(adminApp) : null as any;
-export const adminDb   = adminApp ? getFirestore(adminApp) : null as any;
+export const adminAuth    = adminApp ? getAuth(adminApp) : null as any;
+export const adminDb      = adminApp ? getFirestore(adminApp) : null as any;
+export const adminStorage = adminApp ? getStorage(adminApp) : null as any;

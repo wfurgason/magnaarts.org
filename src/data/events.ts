@@ -1,5 +1,5 @@
 // src/data/events.ts
-// Single source of truth for 2025 event data.
+// Single source of truth for 2026 event data.
 // TODO: Replace with Supabase query in Phase 2.
 
 export interface Event {
@@ -155,16 +155,17 @@ export const events: Event[] = [
     tags: ['Concert', 'Film'],
   },
   {
-    id: 'arts-festival-2025',
+    id: 'arts-festival-2026',
     type: 'festival',
     date: 'Aug 15',
-    isoDate: '2025-08-15',
-    day: 'Friday, August 15, 2025',
+    isoDate: '2026-08-15',
+    day: 'Saturday, August 15, 2026',
     time: '10:00 AM – 6:00 PM',
     title: 'Magna Main Street Arts Festival',
     location: 'Historic Magna Main Street',
     address: 'Historic Magna Main Street, Magna, UT 84044',
     description: 'Our annual flagship event draws 5,000–7,000 people to Historic Magna Main Street for a full day of live music, a fine arts contest, street performers, and arts and food vendors. Free and open to all.',
+    image: '/images/festival/mmsaf.png',
     tags: ['Festival', 'Family'],
   },
 ];

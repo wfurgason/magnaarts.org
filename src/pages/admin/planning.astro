@@ -293,8 +293,11 @@ if (Astro.request.method === 'POST') {
     const address   = form.get('address')?.toString();
     const startTime = form.get('startTime')?.toString();
     const col       = form.get('collection')?.toString() || 'park_events';
+    const newImageUrl = form.get('imageUrl')?.toString() || null;
     if (shellId) {
-      await adminDb.collection(col).doc(shellId).update({ venue, address, startTime });
+      const updateData: Record<string, any> = { venue, address, startTime };
+      if (newImageUrl) updateData.imageUrl = newImageUrl;
+      await adminDb.collection(col).doc(shellId).update(updateData);
       flashMsg  = 'Event shell updated.';
       flashType = 'success';
     }
@@ -612,7 +615,7 @@ const totalShells =
               <td>{shell.imageUrl ? <span class="check-yes">✓ Set</span> : <span class="dim">—</span>}</td>
               <td class="actions-cell">
                 <button class="btn-sm btn-outline"
-                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','open_mic_events')`}>
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','open_mic_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}')`}>
                   Edit
                 </button>
                 {shell.status !== 'published' && (
@@ -797,7 +800,7 @@ const totalShells =
               <td>{shell.presenterName || <span class="dim">—</span>}</td>
               <td class="actions-cell">
                 <button class="btn-sm btn-outline"
-                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','art_night_events')`}>
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','art_night_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}')`}>
                   Edit
                 </button>
                 {!shell.presenterId && (
@@ -913,9 +916,34 @@ const totalShells =
           <label for="edit-startTime">Start Time</label>
           <input type="text" id="edit-startTime" name="startTime" required />
         </div>
+
+        <!-- Image replace — only shown for event types that have images -->
+        <div id="edit-image-section" style="display:none">
+          <div class="form-field">
+            <label>Replace Image <span class="field-hint">Leave blank to keep current image</span></label>
+            <!-- Populated by JS after upload -->
+            <input type="hidden" id="edit-imageUrl" name="imageUrl" />
+            <div id="edit-current-image" style="display:none; margin-bottom:8px">
+              <img id="edit-current-img-el" src="" alt="Current image"
+                style="width:100%; max-height:140px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border)" />
+              <p style="font-size:11px; color:var(--muted); margin:4px 0 0">Current image</p>
+            </div>
+            <div class="upload-zone" id="edit-image-zone">
+              <input type="file" id="edit-image-input" accept="image/jpeg,image/png,image/webp" class="upload-input" />
+              <label for="edit-image-input" class="upload-label">
+                <span class="upload-icon">🖼️</span>
+                <span class="upload-text"><strong>Choose a replacement</strong> or drag and drop</span>
+                <span class="upload-hint">JPG, PNG or WebP · max 10 MB</span>
+              </label>
+              <div class="upload-preview" id="edit-image-preview" hidden></div>
+            </div>
+            <div id="edit-upload-status" class="upload-status" hidden></div>
+          </div>
+        </div>
+
         <div class="modal-actions">
           <button type="button" class="btn btn-outline" id="modal-cancel-btn">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <button type="submit" class="btn btn-primary" id="edit-save-btn">Save Changes</button>
         </div>
       </form>
     </div>
@@ -1467,12 +1495,38 @@ const totalShells =
   // ── Edit modal ──────────────────────────────────────────────────────────
   const editModal = document.getElementById('edit-modal');
 
-  window.openEditModal = function(id, venue, address, startTime, collection) {
+  const IMAGE_COLLECTIONS = new Set(['open_mic_events', 'art_night_events']);
+
+  window.openEditModal = function(id, venue, address, startTime, collection, currentImageUrl) {
     document.getElementById('edit-shell-id').value   = id;
     document.getElementById('edit-venue').value      = venue;
     document.getElementById('edit-address').value    = address;
     document.getElementById('edit-startTime').value  = startTime;
     document.getElementById('edit-collection').value = collection;
+
+    // Reset image section
+    const imageSection  = document.getElementById('edit-image-section');
+    const currentImgWrap = document.getElementById('edit-current-image');
+    const currentImgEl  = document.getElementById('edit-current-img-el');
+    const editImageUrl  = document.getElementById('edit-imageUrl');
+    const editImgInput  = document.getElementById('edit-image-input');
+    const editImgPrev   = document.getElementById('edit-image-preview');
+    editImageUrl.value  = '';
+    editImgInput.value  = '';
+    editImgPrev.hidden  = true;
+
+    if (IMAGE_COLLECTIONS.has(collection)) {
+      imageSection.style.display = 'block';
+      if (currentImageUrl) {
+        currentImgEl.src          = currentImageUrl;
+        currentImgWrap.style.display = 'block';
+      } else {
+        currentImgWrap.style.display = 'none';
+      }
+    } else {
+      imageSection.style.display = 'none';
+    }
+
     editModal.hidden = false;
   };
 
@@ -1480,6 +1534,71 @@ const totalShells =
 
   document.getElementById('modal-cancel-btn')?.addEventListener('click', () => { editModal.hidden = true; });
   editModal.addEventListener('click', function(e) { if (e.target === this) editModal.hidden = true; });
+
+  // ── Edit form: upload image if new file chosen ───────────────────────────
+  const editForm      = document.getElementById('edit-form');
+  const editSaveBtn   = document.getElementById('edit-save-btn');
+  const editImgInput2 = document.getElementById('edit-image-input');
+  const editImageUrl2 = document.getElementById('edit-imageUrl');
+  const editUploadSt  = document.getElementById('edit-upload-status');
+  const editImgPrev2  = document.getElementById('edit-image-preview');
+
+  // Preview on file select
+  editImgInput2?.addEventListener('change', () => {
+    const file = editImgInput2.files?.[0];
+    if (!file) { editImgPrev2.hidden = true; return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      editImgPrev2.hidden = false;
+      editImgPrev2.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+    };
+    reader.readAsDataURL(file);
+    editImageUrl2.value = ''; // clear old URL when new file chosen
+  });
+
+  // Drag-and-drop on edit zone
+  const editZone = document.getElementById('edit-image-zone');
+  editZone?.addEventListener('dragover', e => { e.preventDefault(); editZone.classList.add('drag-over'); });
+  editZone?.addEventListener('dragleave', () => editZone.classList.remove('drag-over'));
+  editZone?.addEventListener('drop', e => {
+    e.preventDefault();
+    editZone.classList.remove('drag-over');
+    if (e.dataTransfer?.files?.length) {
+      const dt = new DataTransfer();
+      dt.items.add(e.dataTransfer.files[0]);
+      editImgInput2.files = dt.files;
+      editImgInput2.dispatchEvent(new Event('change'));
+    }
+  });
+
+  // Intercept submit: upload new image first if needed
+  editForm?.addEventListener('submit', async (e) => {
+    const file = editImgInput2?.files?.[0];
+    if (!file || editImageUrl2.value) return; // no new file, or already uploaded
+
+    e.preventDefault();
+    editSaveBtn.disabled   = true;
+    editUploadSt.hidden    = false;
+    editUploadSt.textContent = 'Uploading image…';
+
+    try {
+      const collection = document.getElementById('edit-collection').value;
+      const folder     = collection === 'open_mic_events' ? 'open-mic-images' : 'art-night-images';
+      const year       = new Date().getFullYear();
+      const ext        = file.name.split('.').pop();
+      const path       = `${folder}/${year}/event-image-${Date.now()}.${ext}`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      editImageUrl2.value = url;
+      editUploadSt.textContent = 'Saving…';
+      editForm.submit();
+    } catch (err) {
+      editUploadSt.hidden    = false;
+      editUploadSt.textContent = 'Upload failed: ' + (err.message || 'Unknown error');
+      editSaveBtn.disabled   = false;
+    }
+  });
 </script>
 
 <style>

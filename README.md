@@ -437,6 +437,13 @@ Preview URLs are generated for every branch and pull request.
 - `band_application` unpublish resets shell → `confirmed` and band → `assigned` (preserves the band assignment)
 - `open_mic` / `art_night` unpublish resets shell → `shell`
 
+### March 30, 2026 — planning.astro: Replace Image in edit modal
+- Edit modal now shows an image replace section for Open Mic and Art Night shells (collections with `imageUrl`)
+- `openEditModal` accepts a 6th `currentImageUrl` arg; shows current image preview and a drag-and-drop upload zone
+- On submit with a new file chosen, uploads to Storage (`open-mic-images` or `art-night-images` folder) before POSTing
+- `update_shell` POST handler now saves `imageUrl` to Firestore if included in the form
+- Music & Movies and Festival Edit buttons unchanged (no image field)
+
 ### March 30, 2026 — planning.astro: Group Art Night image upload
 - Added image upload zone to Group Art Night form fields (same pattern as Open Mic)
 - Drag-and-drop + file picker; previews before upload

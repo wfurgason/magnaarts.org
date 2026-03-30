@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Band promo photos & tech riders — public upload (call-for-bands form) ──
+    match /band-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── Open Mic event images — public upload (planning page) ──
+    match /open-mic-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── Group Art Night event images — public upload (planning page) ──
+    match /art-night-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── All other paths — deny by default ──
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -56,6 +56,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       eventType:     'group_art_night',
       category:      'Art Night',
       description:   s.description || '',
+      posterUrl:     s.imageUrl || null,
+      photoUrl:      s.imageUrl || null,
       presenterName: s.presenterName || null,
       presenterId:   s.presenterId || null,
       isFree:        true,

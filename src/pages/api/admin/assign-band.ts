@@ -9,8 +9,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
+  let publisher: import('firebase-admin/auth').DecodedIdToken;
   try {
-    await adminAuth.verifySessionCookie(sessionCookie, true);
+    publisher = await adminAuth.verifySessionCookie(sessionCookie, true);
   } catch {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
@@ -199,7 +200,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         movieToken:   s.movieToken || null,
         isFree:       true,
         submissionType: 'band_application',
-        publishedBy:  'admin',
+        publishedBy:  publisher.email,
         publishedAt:  FieldValue.serverTimestamp(),
         shellId,
       });

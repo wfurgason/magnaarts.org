@@ -34,6 +34,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       batch.update(adminDb.collection('park_events').doc(shellId), {
         status: 'confirmed',
         publishedAt: null,
+        publishedBy: null,
       });
       // Reset band application from 'published' → 'assigned'
       if (shellData.bandId) {
@@ -41,8 +42,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           status: 'assigned',
         });
       }
+    } else if (collection === 'festival_events') {
+      // Reset shell to 'confirmed' — band slot assignments are preserved
+      batch.update(adminDb.collection('festival_events').doc(shellId), {
+        status: 'confirmed',
+        publishedAt: null,
+        publishedBy: null,
+      });
+    } else if (collection === 'art_night_events') {
+      // Reset to 'confirmed' — presenter assignment and confirmation are preserved
+      batch.update(adminDb.collection('art_night_events').doc(shellId), {
+        status: 'confirmed',
+        publishedAt: null,
+        publishedBy: null,
+      });
     } else {
-      // open_mic_events or art_night_events — reset to 'shell'
+      // open_mic_events — reset to 'shell'
       batch.update(adminDb.collection(collection).doc(shellId), {
         status: 'shell',
         publishedAt: null,

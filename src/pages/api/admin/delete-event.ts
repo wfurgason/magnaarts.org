@@ -19,17 +19,56 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return new Response(JSON.stringify({ error: 'Event not found' }), { status: 404 });
     }
 
-    const { submissionId, submissionType } = eventDoc.data()!;
-    const collection = submissionType === 'band' ? 'band_applications' : 'program_submissions';
+    const data = eventDoc.data()!;
+    const { submissionType, submissionId, shellId } = data;
+    const batch = adminDb.batch();
 
-    // Reset submission back to approved so it can be re-published
-    await adminDb.collection(collection).doc(submissionId).update({
-      status: 'approved',
-      eventId: null,
-    });
+    // Delete the public event doc
+    batch.delete(adminDb.collection('events').doc(eventId));
 
-    await adminDb.collection('events').doc(eventId).delete();
+    if (submissionType === 'band_application') {
+      // Published via assign-band: reset park_events shell → confirmed, band → assigned
+      const sid = shellId || eventId;
+      batch.update(adminDb.collection('park_events').doc(sid), {
+        status: 'confirmed',
+        publishedAt: null,
+      });
+      if (data.bandId) {
+        batch.update(adminDb.collection('band_applications').doc(data.bandId), {
+          status: 'assigned',
+        });
+      }
+    } else if (submissionType === 'open_mic') {
+      // Published via publish-open-mic: reset shell → shell
+      const sid = shellId || eventId;
+      batch.update(adminDb.collection('open_mic_events').doc(sid), {
+        status: 'shell',
+        publishedAt: null,
+      });
+    } else if (submissionType === 'art_night') {
+      // Published via publish-art-night: reset shell → shell
+      const sid = shellId || eventId;
+      batch.update(adminDb.collection('art_night_events').doc(sid), {
+        status: 'shell',
+        publishedAt: null,
+      });
+    } else if (submissionType === 'band') {
+      // Published via publish-event (legacy band submission)
+      batch.update(adminDb.collection('band_applications').doc(submissionId), {
+        status: 'approved',
+        eventId: null,
+      });
+    } else {
+      // Published via publish-event (program submission)
+      if (submissionId) {
+        batch.update(adminDb.collection('program_submissions').doc(submissionId), {
+          status: 'approved',
+          eventId: null,
+        });
+      }
+    }
 
+    await batch.commit();
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (error) {
     console.error('delete-event error:', error);

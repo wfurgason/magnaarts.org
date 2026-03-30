@@ -420,6 +420,23 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
+### March 30, 2026 — Plan Events flow audit (no code changes)
+- Mapped all 4 event planning flows (Music & Movies, Open Mic, Art Night, Arts Festival) and produced a visual workflow comparison
+- Documented structural inconsistencies: Open Mic skips the confirmation gate (shell → published directly); Music & Movies band assignment happens on /admin/bands, not the planning page
+- Post-publish navigation mismatch: Music & Movies + Festival redirect to /admin/events; Open Mic + Art Night reload the planning page
+- eventDate timestamp hardcoding: Music & Movies uses T19:00:00, Festival uses T12:00:00, Open Mic + Art Night correctly use timeToISO(startTime)
+- publishedBy in assign-band.ts is hardcoded as the string 'admin' instead of publisher.email (unlike all other flows)
+- Festival: band_applications not updated when a band is assigned to a festival slot
+- Art Night: art_class_submissions not updated when event is published
+- Unpublish asymmetry: Music & Movies → confirmed (band preserved); Open Mic + Art Night → shell (presenter lost); Festival shell status is NOT reset (existing bug from prior session)
+
+### March 30, 2026 — delete-event.ts: fix unpublish failing for all event types
+- `delete-event.ts` only handled `submissionType === 'band'` or defaulted to `program_submissions`
+- Events published via `assign-band` use `submissionType: 'band_application'`; open mic uses `'open_mic'`; art night uses `'art_night'` — none were handled, causing "Failed to unpublish"
+- Fixed: switch on `submissionType` and reset the correct shell collection (`park_events`, `open_mic_events`, `art_night_events`) or submission collection (`band_applications`, `program_submissions`) using a Firestore batch
+- `band_application` unpublish resets shell → `confirmed` and band → `assigned` (preserves the band assignment)
+- `open_mic` / `art_night` unpublish resets shell → `shell`
+
 ### March 30, 2026 — planning.astro: Group Art Night image upload
 - Added image upload zone to Group Art Night form fields (same pattern as Open Mic)
 - Drag-and-drop + file picker; previews before upload

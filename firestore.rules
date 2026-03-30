@@ -26,6 +26,12 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // ── Art class submissions — public can create (submit form), only server reads/writes ──
+    match /art_class_submissions/{doc} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
     // ── Admin users — no client-side access at all ──
     match /admin_users/{doc} {
       allow read, write: if false;

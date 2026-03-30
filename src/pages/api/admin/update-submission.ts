@@ -17,11 +17,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const { id, collection, status } = await request.json();
     // collection must be one of the two submission collections
-    const allowed = ['band_applications', 'program_submissions', 'vendor_applications'];
+    const allowed = ['band_applications', 'program_submissions', 'vendor_applications', 'art_class_submissions'];
     if (!allowed.includes(collection)) {
       return new Response(JSON.stringify({ error: 'Invalid collection' }), { status: 400 });
     }
-    const allowedStatuses = ['approved', 'rejected', 'pending', 'good_standing', 'deleted', 'assigned', 'waitlisted', 'paid'];
+    const allowedStatuses = ['approved', 'rejected', 'pending', 'good_standing', 'deleted', 'assigned', 'waitlisted', 'paid', 'contacted', 'scheduled'];
     if (!allowedStatuses.includes(status)) {
       return new Response(JSON.stringify({ error: 'Invalid status' }), { status: 400 });
     }

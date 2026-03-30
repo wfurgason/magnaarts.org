@@ -420,6 +420,12 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
+### March 30, 2026 — planning.astro: Group Art Night image upload
+- Added image upload zone to Group Art Night form fields (same pattern as Open Mic)
+- Drag-and-drop + file picker; previews before upload
+- On submit, uploads to Firebase Storage at `art-night-images/{year}/event-image.{ext}`
+- `anImageUrl` saved to each `art_night_events` shell doc as `imageUrl`
+
 ### March 29, 2026 (3) — planning.astro: calendar CSS fix
 - Root cause: `.cal-dow-row` and `.cal-days` are JS-created elements; `is:global` CSS wasn't reliably applied to them in AdminLayout (which doesn't load global.css)
 - Fix: set `display:grid` and `grid-template-columns` as inline `style.cssText` directly on those elements when building the calendar in JS

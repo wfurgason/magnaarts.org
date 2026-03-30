@@ -82,8 +82,9 @@ if (Astro.request.method === 'POST') {
       flashType = 'success';
 
     } else if (seriesType === 'group_art_night') {
-      const anTitle = form.get('anTitle')?.toString() || 'Group Art Night';
-      const anDesc  = form.get('anDescription')?.toString() || '';
+      const anTitle    = form.get('anTitle')?.toString() || 'Group Art Night';
+      const anImageUrl = form.get('anImageUrl')?.toString() || '';
+      const anDesc     = form.get('anDescription')?.toString() || '';
 
       const existing      = await adminDb.collection('art_night_events').where('season', '==', year).get();
       const existingDates = new Set(existing.docs.map(d => d.data().date));
@@ -96,7 +97,7 @@ if (Astro.request.method === 'POST') {
         const display = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         batch.set(ref, {
           season: year, date, displayDate: display, startTime: start, venue, address,
-          title: anTitle, description: anDesc,
+          title: anTitle, description: anDesc, imageUrl: anImageUrl,
           eventType: 'group_art_night', status: 'shell',
           presenterId: null, presenterName: null, presenterConfirmed: false,
           createdAt: FieldValue.serverTimestamp(),
@@ -461,6 +462,31 @@ const totalShells =
             <label for="anTitle">Event Title</label>
             <input type="text" id="anTitle" name="anTitle" value="Group Art Night" placeholder="Group Art Night" />
           </div>
+
+          <!-- Image upload -->
+          <div class="form-field">
+            <label>
+              Event Image
+              <span class="field-hint">One image used for all dates in this series</span>
+            </label>
+            <input type="hidden" id="anImageUrl" name="anImageUrl" />
+            <div class="upload-zone" id="an-image-zone">
+              <input
+                type="file"
+                id="an-image-input"
+                accept="image/jpeg,image/png,image/webp"
+                class="upload-input"
+              />
+              <label for="an-image-input" class="upload-label">
+                <span class="upload-icon">🖼️</span>
+                <span class="upload-text"><strong>Choose an image</strong> or drag and drop</span>
+                <span class="upload-hint">JPG, PNG or WebP · max 10 MB</span>
+              </label>
+              <div class="upload-preview" id="an-image-preview" hidden></div>
+            </div>
+            <div id="an-upload-status" class="upload-status" hidden></div>
+          </div>
+
           <div class="form-field">
             <label for="anDescription">Description</label>
             <textarea id="anDescription" name="anDescription" rows="3"
@@ -1083,6 +1109,38 @@ const totalShells =
     buildCalendar(parseInt(yearInput.value) || new Date().getFullYear());
   });
 
+  // ── Art Night image upload ─────────────────────────────────────────────
+  const anImageZone    = document.getElementById('an-image-zone');
+  const anImageInput   = document.getElementById('an-image-input');
+  const anImagePreview = document.getElementById('an-image-preview');
+  const anImageUrlEl   = document.getElementById('anImageUrl');
+  const anUploadStatus = document.getElementById('an-upload-status');
+
+  anImageZone.addEventListener('dragover', e => { e.preventDefault(); anImageZone.classList.add('drag-over'); });
+  anImageZone.addEventListener('dragleave', () => anImageZone.classList.remove('drag-over'));
+  anImageZone.addEventListener('drop', e => {
+    e.preventDefault();
+    anImageZone.classList.remove('drag-over');
+    if (e.dataTransfer?.files?.length) {
+      const dt = new DataTransfer();
+      dt.items.add(e.dataTransfer.files[0]);
+      anImageInput.files = dt.files;
+      anImageInput.dispatchEvent(new Event('change'));
+    }
+  });
+
+  anImageInput.addEventListener('change', () => {
+    const file = anImageInput.files?.[0];
+    if (!file) { anImagePreview.hidden = true; return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      anImagePreview.hidden = false;
+      anImagePreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+    };
+    reader.readAsDataURL(file);
+    anImageUrlEl.value = '';
+  });
+
   // ── Open Mic image upload ───────────────────────────────────────────────
   const omImageZone    = document.getElementById('om-image-zone');
   const omImageInput   = document.getElementById('om-image-input');
@@ -1128,6 +1186,33 @@ const totalShells =
     if (mainFormBody && !mainFormBody.hidden && !datesHidden.value.trim()) {
       e.preventDefault();
       alert('Please select at least one date from the calendar.');
+      return;
+    }
+
+    const isArtNight  = typeSelect.value === 'group_art_night';
+    const anFile      = anImageInput.files?.[0];
+
+    // If Art Night with a new file not yet uploaded, intercept and upload first
+    if (isArtNight && anFile && !anImageUrlEl.value) {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitStatus.hidden = false;
+      submitStatus.textContent = 'Uploading image…';
+      try {
+        const year = yearInput.value || '2026';
+        const ext  = anFile.name.split('.').pop();
+        const path = `art-night-images/${year}/event-image.${ext}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, anFile);
+        const url = await getDownloadURL(storageRef);
+        anImageUrlEl.value = url;
+        submitStatus.textContent = 'Saving…';
+        seasonForm.submit();
+      } catch (err) {
+        submitStatus.hidden = true;
+        submitBtn.disabled  = false;
+        alert('Image upload failed: ' + (err.message || 'Unknown error'));
+      }
       return;
     }
 

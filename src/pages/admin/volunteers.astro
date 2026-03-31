@@ -1,0 +1,162 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+const filterParam = Astro.url.searchParams.get('filter') || 'all';
+
+const snap = await adminDb.collection('volunteer_signups')
+  .orderBy('submittedAt', 'desc')
+  .get();
+
+type Volunteer = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  canLift?: string;
+  interests?: string[];
+  status: string;
+  submittedAt?: any;
+  notes?: string;
+};
+
+const filters = ['all', 'new', 'contacted', 'active', 'inactive'];
+
+let volunteers = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Volunteer[];
+if (filterParam !== 'all') {
+  volunteers = volunteers.filter(v => (v.status || 'new') === filterParam);
+}
+
+function fmt(ts: any) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+---
+
+<AdminLayout title="Volunteers" user={user}>
+
+  <div class="page-header">
+    <h1>Volunteer Sign-Ups</h1>
+    <p class="page-sub">{snap.size} total submission{snap.size !== 1 ? 's' : ''}</p>
+    <div class="filter-tabs">
+      {filters.map(f => (
+        <a
+          href={`/admin/volunteers${f === 'all' ? '' : `?filter=${f}`}`}
+          class:list={['filter-tab', { active: filterParam === f }]}
+        >
+          {f.charAt(0).toUpperCase() + f.slice(1)}
+        </a>
+      ))}
+    </div>
+  </div>
+
+  {volunteers.length === 0 ? (
+    <div class="empty-state">
+      <p>No volunteer sign-ups matching this filter.</p>
+    </div>
+  ) : (
+    <div class="submission-list">
+      {volunteers.map(v => (
+        <div class="submission-card" id={v.id}>
+          <div class="submission-header">
+            <div class="submission-title-group">
+              <div>
+                <h2 class="submission-name">{v.fullName}</h2>
+                <span class="submission-meta">
+                  <a href={`mailto:${v.email}`}>{v.email}</a>
+                  {v.phone && <> · {v.phone}</>}
+                  {' · '}Signed up {fmt(v.submittedAt)}
+                </span>
+              </div>
+            </div>
+            <span class={`badge badge-${v.status || 'new'}`}>{v.status || 'new'}</span>
+          </div>
+
+          <div class="submission-body">
+            <div class="detail-grid">
+              <div>
+                <div class="detail-label">Can lift 40 lbs?</div>
+                <p class="detail-value">{v.canLift === 'yes' ? '✓ Yes' : v.canLift === 'no' ? '✗ No' : '—'}</p>
+              </div>
+              {v.interests && v.interests.length > 0 && (
+                <div class="interests-col">
+                  <div class="detail-label">Interested in</div>
+                  <div class="interest-chips">
+                    {v.interests.map(i => (
+                      <span class="interest-chip">{i}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div class="submission-actions">
+            {(v.status === 'new' || !v.status) && (
+              <>
+                <button class="btn btn-primary" data-action="contacted" data-id={v.id}>Mark Contacted</button>
+                <button class="btn btn-success" data-action="active" data-id={v.id}>Mark Active</button>
+                <button class="btn btn-danger" data-action="inactive" data-id={v.id}>Mark Inactive</button>
+              </>
+            )}
+            {v.status === 'contacted' && (
+              <>
+                <button class="btn btn-success" data-action="active" data-id={v.id}>Mark Active</button>
+                <button class="btn btn-danger" data-action="inactive" data-id={v.id}>Mark Inactive</button>
+              </>
+            )}
+            {v.status === 'active' && (
+              <>
+                <button class="btn btn-primary" data-action="contacted" data-id={v.id}>Mark Contacted</button>
+                <button class="btn btn-danger" data-action="inactive" data-id={v.id}>Mark Inactive</button>
+              </>
+            )}
+            {v.status === 'inactive' && (
+              <button class="btn btn-success" data-action="new" data-id={v.id}>Restore to New</button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <style>
+    .page-sub { color: var(--muted, #5a5a7a); font-size: 14px; margin: 4px 0 16px; }
+    .detail-value { font-size: 14px; color: var(--navy, #1a2456); font-weight: 600; margin: 4px 0 0; }
+    .interests-col { grid-column: 1 / -1; }
+    .interest-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .interest-chip {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 100px;
+    }
+    .badge-new       { background: #f1f5f9; color: #64748b; }
+    .badge-contacted { background: #e0f2fe; color: #075985; }
+    .badge-active    { background: #d1fae5; color: #065f46; }
+    .badge-inactive  { background: #fee2e2; color: #991b1b; }
+  </style>
+
+  <script>
+    document.querySelectorAll('[data-action]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var action = btn.dataset.action;
+        var id = btn.dataset.id;
+        btn.disabled = true;
+        var res = await fetch('/api/admin/update-submission', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id, collection: 'volunteer_signups', status: action }),
+        });
+        if (res.ok) window.location.reload();
+        else { alert('Action failed.'); btn.disabled = false; }
+      });
+    });
+  </script>
+
+</AdminLayout>

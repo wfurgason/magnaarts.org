@@ -437,6 +437,14 @@ Preview URLs are generated for every branch and pull request.
 - `band_application` unpublish resets shell → `confirmed` and band → `assigned` (preserves the band assignment)
 - `open_mic` / `art_night` unpublish resets shell → `shell`
 
+### March 30, 2026 — Volunteer sign-up form + admin page
+- Created `/volunteer` public form (name, email, phone, can lift 40lb, interests checkboxes) — saves to `volunteer_signups` Firestore collection
+- Created `/admin/volunteers` review page with filter tabs (new / contacted / active / inactive) and status action buttons
+- Added Volunteers to AdminLayout sidebar nav (between Art Presenters and Vendor Applications)
+- Added `volunteer_signups` public-create rule to `firestore.rules`
+- Replaced both Google Form links on `get-involved.astro` with `/volunteer`
+- Outstanding: run `firebase deploy --only firestore:rules` to push updated rules
+
 ### March 30, 2026 — planning.astro: Replace Image in edit modal
 - Edit modal now shows an image replace section for Open Mic and Art Night shells (collections with `imageUrl`)
 - `openEditModal` accepts a 6th `currentImageUrl` arg; shows current image preview and a drag-and-drop upload zone

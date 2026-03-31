@@ -26,6 +26,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Write to the public events collection using the shell id as the doc id
     // so /events/arts-festival-2026 resolves correctly in [id].astro
+    const bands = (shell.bands || []).map((b: any) => ({
+      slot:     b.slot,
+      time:     b.time || null,
+      bandName: b.bandName || null,
+      confirmed: b.confirmed || false,
+    }));
+
     await adminDb.collection('events').doc(shellId).set({
       title:          shell.title,
       eventDate:      Timestamp.fromDate(new Date(shell.date + 'T12:00:00')),
@@ -36,6 +43,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       image:          shell.image || null,
       eventType:      'festival',
       submissionType: 'festival',
+      bands,
       ticketUrl:      null,
       rsvpUrl:        null,
       posterUrl:      null,

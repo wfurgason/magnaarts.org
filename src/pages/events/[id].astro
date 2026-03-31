@@ -152,21 +152,10 @@ const typeColor: Record<string, string> = {
 
           <!-- Music Schedule -->
           <div class="fest-col reveal">
-            <h2 class="fest-heading">Music Schedule</h2>
-            <div class="music-schedule">
-              <div class="schedule-row">
-                <div class="schedule-time">12:00 PM</div>
-                <div class="schedule-performer">TBA</div>
-              </div>
-              <div class="schedule-row">
-                <div class="schedule-time">2:00 PM</div>
-                <div class="schedule-performer">TBA</div>
-              </div>
-              <div class="schedule-row">
-                <div class="schedule-time">4:00 PM</div>
-                <div class="schedule-performer">TBA</div>
-              </div>
-            </div>
+            <h2 class="fest-heading">Main Stage Schedule</h2>
+            <div id="schedule-loading" class="vendor-loading">Loading schedule…</div>
+            <div id="music-schedule" class="music-schedule" style="display:none"></div>
+            <div id="schedule-empty" class="vendor-empty" style="display:none">Band lineup being announced soon!</div>
           </div>
 
           <!-- Vendor List (dynamic from Firestore) -->
@@ -229,11 +218,43 @@ const typeColor: Record<string, string> = {
   {event.id === 'arts-festival-2026' && (
     <script type="module" define:vars={{ firebaseConfig }}>
       import { initializeApp }                              from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-      import { getFirestore, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+      import { getFirestore, collection, query, where, getDocs, orderBy, getDoc, doc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
       const app = initializeApp(firebaseConfig);
       const db  = getFirestore(app);
 
+      // ── Load main stage schedule from the published events doc ──
+      const scheduleLoading = document.getElementById('schedule-loading');
+      const scheduleEl      = document.getElementById('music-schedule');
+      const scheduleEmpty   = document.getElementById('schedule-empty');
+
+      try {
+        const eventDoc  = await getDoc(doc(db, 'events', 'arts-festival-2026'));
+        const bands     = eventDoc.exists() ? (eventDoc.data().bands || []) : [];
+        const assigned  = bands.filter(b => b.bandName);
+
+        scheduleLoading.style.display = 'none';
+
+        if (assigned.length === 0) {
+          scheduleEmpty.style.display = 'block';
+        } else {
+          scheduleEl.innerHTML = assigned
+            .sort((a, b) => a.slot - b.slot)
+            .map(b => `
+              <div class="schedule-row">
+                <div class="schedule-time">${b.time || 'TBA'}</div>
+                <div class="schedule-performer">${b.bandName}</div>
+              </div>
+            `).join('');
+          scheduleEl.style.display = 'flex';
+        }
+      } catch (err) {
+        scheduleLoading.style.display = 'none';
+        scheduleEmpty.style.display = 'block';
+        console.warn('Could not load schedule:', err);
+      }
+
+      // ── Load vendors ──
       const q    = query(
         collection(db, 'vendor_applications'),
         where('status', '==', 'approved'),
@@ -537,6 +558,7 @@ const typeColor: Record<string, string> = {
 
   /* Music Schedule */
   .music-schedule { display: flex; flex-direction: column; gap: 2px; }
+  #music-schedule { display: none; flex-direction: column; gap: 2px; }
 
   .schedule-row {
     display: grid;

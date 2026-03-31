@@ -675,7 +675,15 @@ const totalShells =
                 </button>
               )}
               {shell.status === 'published' && (
-                <span class="badge badge-published">✓ Published</span>
+                <>
+                  <span class="badge badge-published">✓ Published</span>
+                  <button class="btn-sm btn-outline festival-publish-btn"
+                    data-shell-id={shell.id}
+                    data-republish="true"
+                    title="Update the public festival page with latest bands and info">
+                    Republish ↗
+                  </button>
+                </>
               )}
               {shell.status === 'shell' && (
                 <form method="POST" style="display:inline" onsubmit="return confirm('Delete this festival shell?')">
@@ -1341,7 +1349,11 @@ const totalShells =
       const el      = btn;
       const shellId = el.dataset.shellId;
 
-      if (!confirm('Publish this Arts Festival event to the public site?')) return;
+      const isRepublish = el.dataset.republish === 'true';
+      const confirmMsg = isRepublish
+        ? 'Republish the festival page? This will update bands and info on the public site.'
+        : 'Publish this Arts Festival event to the public site?';
+      if (!confirm(confirmMsg)) return;
       el.disabled    = true;
       el.textContent = 'Publishing…';
 
@@ -1353,12 +1365,12 @@ const totalShells =
         });
 
         if (res.ok) {
-          window.location.href = '/admin/events';
+          isRepublish ? window.location.reload() : (window.location.href = '/admin/events');
         } else {
           const { error } = await res.json().catch(() => ({ error: 'Unknown error' }));
           alert(error || 'Publish failed.');
           el.disabled    = false;
-          el.textContent = 'Publish ↗';
+          el.textContent = isRepublish ? 'Republish ↗' : 'Publish ↗';
         }
       } catch (err) {
         alert('Publish failed: ' + (err.message || 'Unknown error'));

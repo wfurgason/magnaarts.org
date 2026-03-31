@@ -420,6 +420,12 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
+### March 31, 2026 — Arts Festival: dynamic schedule + Republish
+- `publish-festival.ts`: writes `bands` array to the `events` doc on every publish/republish
+- `planning.astro`: published festival shells now show a **Republish ↗** button alongside the Published badge; calls the same endpoint; reloads the page instead of redirecting to /admin/events
+- `[id].astro`: Main Stage Schedule now loads dynamically from `events/arts-festival-2026` (bands field) instead of hardcoded TBA rows; shows "Band lineup being announced soon!" if no bands assigned
+- Workflow: assign + confirm bands on planning page → Publish (first time) or Republish (updates) → public festival page reflects latest lineup
+
 ### March 31, 2026 — teach-an-art-class: replace Links field with Project Image upload
 - Replaced "Links to Your Work" textarea with a drag-and-drop image upload zone labeled "Project Image"
 - Added Firebase Storage import + upload logic; saves download URL as `projectImageUrl` in Firestore

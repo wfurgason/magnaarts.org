@@ -160,13 +160,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
       const s = shellDoc.data()!;
 
-      if (!s.bandConfirmed) {
-        return new Response(
-          JSON.stringify({ error: 'Band confirmation is required before publishing.' }),
-          { status: 409 }
-        );
-      }
-
       const batch = adminDb.batch();
 
       // Write to public events collection (use shellId as the event doc ID for easy cross-reference)

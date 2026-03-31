@@ -29,13 +29,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const s = shellDoc.data()!;
 
-    if (!s.presenterConfirmed) {
-      return new Response(
-        JSON.stringify({ error: 'Presenter must be confirmed before publishing.' }),
-        { status: 409 }
-      );
-    }
-
     const batch = adminDb.batch();
 
     // Publish to the public events collection

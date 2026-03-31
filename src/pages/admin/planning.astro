@@ -571,10 +571,17 @@ const totalShells =
                     Unassign
                   </button>
                 )}
-                {shell.status === 'confirmed' && (
+                {shell.status !== 'published' && (
                   <button class="btn-sm btn-publish action-btn"
                     data-action="publish" data-shell-id={shell.id} data-band-name={shell.bandName}>
                     Publish ↗
+                  </button>
+                )}
+                {shell.status === 'published' && (
+                  <button class="btn-sm btn-publish action-btn"
+                    data-action="publish" data-shell-id={shell.id} data-band-name={shell.bandName}
+                    data-republish="true">
+                    Republish ↗
                   </button>
                 )}
                 {shell.status === 'shell' && (
@@ -624,7 +631,13 @@ const totalShells =
                   </button>
                 )}
                 {shell.status === 'published' && (
-                  <span class="badge badge-published">Published</span>
+                  <>
+                    <span class="badge badge-published">Published</span>
+                    <button class="btn-sm btn-publish om-publish-btn"
+                      data-shell-id={shell.id} data-republish="true">
+                      Republish ↗
+                    </button>
+                  </>
                 )}
                 {shell.status === 'shell' && (
                   <form method="POST" style="display:inline" onsubmit="return confirm('Delete this event shell?')">
@@ -830,9 +843,15 @@ const totalShells =
                     </form>
                   </>
                 )}
-                {shell.status === 'confirmed' && (
+                {shell.status !== 'published' && (
                   <button class="btn-sm btn-publish an-publish-btn" data-shell-id={shell.id}>
                     Publish ↗
+                  </button>
+                )}
+                {shell.status === 'published' && (
+                  <button class="btn-sm btn-publish an-publish-btn"
+                    data-shell-id={shell.id} data-republish="true">
+                    Republish ↗
                   </button>
                 )}
                 {shell.status === 'shell' && (
@@ -1304,7 +1323,8 @@ const totalShells =
       });
 
       if (res.ok) {
-        action === 'publish'
+        const isRepublish = el.dataset.republish === 'true';
+        action === 'publish' && !isRepublish
           ? (window.location.href = '/admin/events')
           : window.location.reload();
       } else {

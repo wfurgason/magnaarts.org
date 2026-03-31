@@ -663,7 +663,7 @@ const totalShells =
         { slot: 2, time: '', bandId: null, bandName: null, confirmed: false },
         { slot: 3, time: '', bandId: null, bandName: null, confirmed: false },
       ];
-      const canPublish = shell.status === 'confirmed' || (shell.status === 'planning' && bands.filter((b:any)=>b.bandId).every((b:any)=>b.confirmed));
+      const canPublish = true;
       return (
         <section class="card fest-card" id={`festival-${shell.id}`}>
 

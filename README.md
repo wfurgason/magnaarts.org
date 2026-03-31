@@ -420,6 +420,11 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
+### March 31, 2026 — storage.rules: add band-promos path
+- Fixed Firebase Storage `storage/unauthorized` error on call-for-bands form
+- `storage.rules` covered `band-images/` but the form uploads to `band-promos/` — added matching rule
+- Run `firebase deploy --only storage` to push the fix
+
 ### March 30, 2026 — Plan Events flow audit (no code changes)
 - Mapped all 4 event planning flows (Music & Movies, Open Mic, Art Night, Arts Festival) and produced a visual workflow comparison
 - Documented structural inconsistencies: Open Mic skips the confirmation gate (shell → published directly); Music & Movies band assignment happens on /admin/bands, not the planning page

@@ -3,6 +3,11 @@ service firebase.storage {
   match /b/{bucket}/o {
 
     // ── Band promo photos & tech riders — public upload (call-for-bands form) ──
+    match /band-promos/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     match /band-images/{allPaths=**} {
       allow read: if true;
       allow write: if true;

@@ -57,92 +57,178 @@ function fmt(ts: any) {
       <p>No volunteer sign-ups matching this filter.</p>
     </div>
   ) : (
-    <div class="submission-list">
-      {volunteers.map(v => (
-        <div class="submission-card" id={v.id}>
-          <div class="submission-header">
-            <div class="submission-title-group">
-              <div>
-                <h2 class="submission-name">{v.fullName}</h2>
-                <span class="submission-meta">
-                  <a href={`mailto:${v.email}`}>{v.email}</a>
-                  {v.phone && <> · {v.phone}</>}
-                  {' · '}Signed up {fmt(v.submittedAt)}
-                </span>
-              </div>
-            </div>
-            <span class={`badge badge-${v.status || 'new'}`}>{v.status || 'new'}</span>
-          </div>
-
-          <div class="submission-body">
-            <div class="detail-grid">
-              <div>
-                <div class="detail-label">Can lift 40 lbs?</div>
-                <p class="detail-value">{v.canLift === 'yes' ? '✓ Yes' : v.canLift === 'no' ? '✗ No' : '—'}</p>
-              </div>
-              {v.interests && v.interests.length > 0 && (
-                <div class="interests-col">
-                  <div class="detail-label">Interested in</div>
+    <div class="vol-table-wrap">
+      <table class="vol-table" id="vol-table">
+        <thead>
+          <tr>
+            <th>
+              <div class="th-label">Name</div>
+              <input class="col-filter" data-col="0" placeholder="Filter…" />
+            </th>
+            <th>
+              <div class="th-label">Email</div>
+              <input class="col-filter" data-col="1" placeholder="Filter…" />
+            </th>
+            <th>
+              <div class="th-label">Phone</div>
+              <input class="col-filter" data-col="2" placeholder="Filter…" />
+            </th>
+            <th>
+              <div class="th-label">Interests</div>
+              <input class="col-filter" data-col="3" placeholder="Filter…" />
+            </th>
+            <th>
+              <div class="th-label">Status</div>
+              <input class="col-filter" data-col="4" placeholder="Filter…" />
+            </th>
+            <th><div class="th-label">Actions</div></th>
+          </tr>
+        </thead>
+        <tbody>
+          {volunteers.map(v => {
+            const status = v.status || 'new';
+            const interests = v.interests?.join(', ') || '—';
+            return (
+              <tr data-id={v.id}>
+                <td class="vol-name">{v.fullName}</td>
+                <td><a href={`mailto:${v.email}`}>{v.email}</a></td>
+                <td>{v.phone || '—'}</td>
+                <td>
                   <div class="interest-chips">
-                    {v.interests.map(i => (
-                      <span class="interest-chip">{i}</span>
-                    ))}
+                    {v.interests && v.interests.length > 0
+                      ? v.interests.map(i => <span class="interest-chip">{i}</span>)
+                      : <span class="muted">—</span>}
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div class="submission-actions">
-            {(v.status === 'new' || !v.status) && (
-              <>
-                <button class="btn btn-primary" data-action="contacted" data-id={v.id}>Mark Contacted</button>
-                <button class="btn btn-success" data-action="active" data-id={v.id}>Mark Active</button>
-                <button class="btn btn-danger" data-action="inactive" data-id={v.id}>Mark Inactive</button>
-              </>
-            )}
-            {v.status === 'contacted' && (
-              <>
-                <button class="btn btn-success" data-action="active" data-id={v.id}>Mark Active</button>
-                <button class="btn btn-danger" data-action="inactive" data-id={v.id}>Mark Inactive</button>
-              </>
-            )}
-            {v.status === 'active' && (
-              <>
-                <button class="btn btn-primary" data-action="contacted" data-id={v.id}>Mark Contacted</button>
-                <button class="btn btn-danger" data-action="inactive" data-id={v.id}>Mark Inactive</button>
-              </>
-            )}
-            {v.status === 'inactive' && (
-              <button class="btn btn-success" data-action="new" data-id={v.id}>Restore to New</button>
-            )}
-          </div>
-        </div>
-      ))}
+                </td>
+                <td><span class={`badge badge-${status}`}>{status}</span></td>
+                <td class="actions-cell">
+                  {(status === 'new') && (
+                    <>
+                      <button class="btn-sm btn-primary" data-action="contacted" data-id={v.id}>Contacted</button>
+                      <button class="btn-sm btn-success" data-action="active" data-id={v.id}>Active</button>
+                      <button class="btn-sm btn-danger" data-action="inactive" data-id={v.id}>Inactive</button>
+                    </>
+                  )}
+                  {status === 'contacted' && (
+                    <>
+                      <button class="btn-sm btn-success" data-action="active" data-id={v.id}>Active</button>
+                      <button class="btn-sm btn-danger" data-action="inactive" data-id={v.id}>Inactive</button>
+                    </>
+                  )}
+                  {status === 'active' && (
+                    <>
+                      <button class="btn-sm btn-primary" data-action="contacted" data-id={v.id}>Contacted</button>
+                      <button class="btn-sm btn-danger" data-action="inactive" data-id={v.id}>Inactive</button>
+                    </>
+                  )}
+                  {status === 'inactive' && (
+                    <button class="btn-sm btn-success" data-action="new" data-id={v.id}>Restore</button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   )}
 
   <style>
     .page-sub { color: var(--muted, #5a5a7a); font-size: 14px; margin: 4px 0 16px; }
-    .detail-value { font-size: 14px; color: var(--navy, #1a2456); font-weight: 600; margin: 4px 0 0; }
-    .interests-col { grid-column: 1 / -1; }
-    .interest-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+    .vol-table-wrap { overflow-x: auto; }
+    .vol-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .vol-table th {
+      background: #f8fafc;
+      padding: 6px 10px 4px;
+      text-align: left;
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    .th-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted, #5a5a7a);
+      margin-bottom: 4px;
+    }
+    .col-filter {
+      width: 100%;
+      padding: 4px 6px;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      outline: none;
+      background: #fff;
+    }
+    .col-filter:focus { border-color: var(--navy, #1a2456); }
+
+    .vol-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    .vol-table tbody tr:hover { background: #f8fafc; }
+    .vol-name { font-weight: 600; color: var(--navy, #1a2456); white-space: nowrap; }
+    .vol-table a { color: var(--blue, #2563b0); text-decoration: none; }
+    .vol-table a:hover { text-decoration: underline; }
+
+    .interest-chips { display: flex; flex-wrap: wrap; gap: 4px; }
     .interest-chip {
-      display: inline-block;
       background: #dbeafe;
       color: #1e40af;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
-      padding: 3px 10px;
+      padding: 2px 8px;
       border-radius: 100px;
+      white-space: nowrap;
     }
+    .muted { color: var(--muted, #5a5a7a); }
+
     .badge-new       { background: #f1f5f9; color: #64748b; }
     .badge-contacted { background: #e0f2fe; color: #075985; }
     .badge-active    { background: #d1fae5; color: #065f46; }
     .badge-inactive  { background: #fee2e2; color: #991b1b; }
+
+    .actions-cell { white-space: nowrap; }
+    .btn-sm {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 4px;
+    }
+    .btn-sm.btn-primary  { background: #dbeafe; color: #1e40af; }
+    .btn-sm.btn-success  { background: #d1fae5; color: #065f46; }
+    .btn-sm.btn-danger   { background: #fee2e2; color: #991b1b; }
+    .btn-sm:hover { filter: brightness(0.93); }
+    .btn-sm:disabled { opacity: .5; cursor: default; }
   </style>
 
   <script>
+    // Column filter
+    document.querySelectorAll('.col-filter').forEach(function(input) {
+      input.addEventListener('input', function() {
+        var col = parseInt(input.dataset.col);
+        var val = input.value.toLowerCase();
+        document.querySelectorAll('#vol-table tbody tr').forEach(function(row) {
+          var cell = row.cells[col];
+          var text = cell ? cell.innerText.toLowerCase() : '';
+          row.style.display = text.includes(val) ? '' : 'none';
+        });
+      });
+    });
+
+    // Status actions
     document.querySelectorAll('[data-action]').forEach(function(btn) {
       btn.addEventListener('click', async function() {
         var action = btn.dataset.action;

@@ -13,6 +13,12 @@ service firebase.storage {
       allow write: if true;
     }
 
+    // ── Band tech riders — public upload (call-for-bands form) ──
+    match /band-tech-riders/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // ── Open Mic event images — public upload (planning page) ──
     match /open-mic-images/{allPaths=**} {
       allow read: if true;
@@ -21,6 +27,12 @@ service firebase.storage {
 
     // ── Group Art Night event images — public upload (planning page) ──
     match /art-night-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── Art class presenter images — public upload (teach-an-art-class form) ──
+    match /art-class-images/{allPaths=**} {
       allow read: if true;
       allow write: if true;
     }

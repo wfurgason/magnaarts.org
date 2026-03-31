@@ -5,9 +5,10 @@ import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
 
 const firebaseConfig = {
-  apiKey:     import.meta.env.PUBLIC_FIREBASE_API_KEY,
-  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId:  import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  apiKey:        import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:    import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:     import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
 };
 ---
 
@@ -113,12 +114,19 @@ const firebaseConfig = {
             </div>
 
             <div class="form-field">
-              <label for="links">
-                Links to Your Work
-                <span class="field-hint">Website, Instagram, YouTube, portfolio — anything that shows your work</span>
+              <label>Project Image
+                <span class="field-hint">Photo of a finished project — used to promote your session (JPG or PNG, max 10 MB)</span>
               </label>
-              <textarea id="links" name="links" rows="3"
-                placeholder="https://instagram.com/yourhandle&#10;https://yourportfolio.com"></textarea>
+              <div class="upload-zone" id="project-image-zone">
+                <input type="file" id="projectImage" name="projectImage"
+                  accept="image/jpeg,image/png,image/webp" class="upload-input" />
+                <label for="projectImage" class="upload-label">
+                  <span class="upload-icon">🖼️</span>
+                  <span class="upload-text"><strong>Choose a photo</strong> or drag and drop</span>
+                  <span class="upload-hint">JPG, PNG or WebP · max 10 MB</span>
+                </label>
+                <div class="upload-preview" id="project-image-preview" hidden></div>
+              </div>
             </div>
 
             <div class="form-field">
@@ -151,9 +159,39 @@ const firebaseConfig = {
     import { initializeApp }           from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import { getFirestore, collection, addDoc, serverTimestamp }
                                        from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+    import { getStorage, ref, uploadBytes, getDownloadURL }
+                                       from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js';
 
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+    const app     = initializeApp(firebaseConfig);
+    const db      = getFirestore(app);
+    const storage = getStorage(app);
+
+    // ── upload zone drag-and-drop ──────────────────────────────────────
+    const zone = document.getElementById('project-image-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      const input = zone.querySelector('.upload-input');
+      if (input && e.dataTransfer?.files.length) {
+        const dt = new DataTransfer(); dt.items.add(e.dataTransfer.files[0]);
+        input.files = dt.files; input.dispatchEvent(new Event('change'));
+      }
+    });
+
+    // ── image preview ─────────────────────────────────────────────────
+    const imgInput   = document.getElementById('projectImage');
+    const imgPreview = document.getElementById('project-image-preview');
+    imgInput.addEventListener('change', () => {
+      const file = imgInput.files?.[0];
+      if (!file) { imgPreview.hidden = true; return; }
+      imgPreview.hidden = false;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        imgPreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+      };
+      reader.readAsDataURL(file);
+    });
 
     const form         = document.getElementById('teach-form');
     const submitBtn    = document.getElementById('submit-btn');
@@ -206,15 +244,28 @@ const firebaseConfig = {
       btnLoading.hidden  = false;
 
       try {
+        // upload project image if provided
+        let projectImageUrl = null;
+        const imgFile = document.getElementById('projectImage').files?.[0];
+        if (imgFile) {
+          btnLoading.textContent = 'Uploading image…';
+          const ext = imgFile.name.split('.').pop();
+          const slug = document.getElementById('fullName').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');
+          const storageRef = ref(storage, `art-class-images/${slug}-${Date.now()}/project.${ext}`);
+          await uploadBytes(storageRef, imgFile);
+          projectImageUrl = await getDownloadURL(storageRef);
+          btnLoading.textContent = 'Submitting…';
+        }
+
         await addDoc(collection(db, 'art_class_submissions'), {
-          fullName:  document.getElementById('fullName').value.trim(),
-          email:     document.getElementById('email').value.trim(),
-          phone:     document.getElementById('phone').value.trim(),
-          artsArea:  document.getElementById('artsArea').value.trim(),
-          links:     document.getElementById('links').value.trim(),
-          materials: document.getElementById('materials').value.trim(),
-          status:    'pending',
-          submittedAt: serverTimestamp(),
+          fullName:        document.getElementById('fullName').value.trim(),
+          email:           document.getElementById('email').value.trim(),
+          phone:           document.getElementById('phone').value.trim(),
+          artsArea:        document.getElementById('artsArea').value.trim(),
+          projectImageUrl,
+          materials:       document.getElementById('materials').value.trim(),
+          status:          'pending',
+          submittedAt:     serverTimestamp(),
         });
 
         // Show success
@@ -430,6 +481,40 @@ const firebaseConfig = {
 
   /* Ensure the HTML `hidden` attribute wins over display:flex above */
   .error-banner[hidden] { display: none; }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    position: relative;
+    border: 2px dashed var(--border, #e5e5e5);
+    border-radius: 8px;
+    background: var(--cream, #f7f5f0);
+    transition: border-color 0.2s, background 0.2s;
+    overflow: hidden;
+  }
+  .upload-zone.drag-over { border-color: var(--green, #2d7a3a); background: #f0fdf4; }
+  .upload-input {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    width: 100% !important; height: 100%; padding: 0 !important; border: none !important;
+  }
+  .upload-label {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 6px; padding: 28px 24px;
+    cursor: pointer; text-align: center;
+  }
+  .upload-icon { font-size: 28px; }
+  .upload-text { font-size: 15px; color: var(--navy, #1a2456); }
+  .upload-text strong { color: var(--green, #2d7a3a); }
+  .upload-hint { font-size: 12px; color: var(--muted, #5a5a7a); }
+  .upload-preview {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: var(--white, #fff);
+    border-top: 1.5px solid var(--border, #e5e5e5);
+    font-size: 13px; color: var(--muted, #5a5a7a);
+    pointer-events: none;
+  }
+  .upload-preview[hidden] { display: none; }
+  .upload-preview img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
 
   /* ── RESPONSIVE ── */
   @media (max-width: 860px) {

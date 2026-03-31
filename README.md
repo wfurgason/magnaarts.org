@@ -420,9 +420,15 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
-### March 31, 2026 — storage.rules: add band-promos path
-- Fixed Firebase Storage `storage/unauthorized` error on call-for-bands form
-- `storage.rules` covered `band-images/` but the form uploads to `band-promos/` — added matching rule
+### March 31, 2026 — teach-an-art-class: replace Links field with Project Image upload
+- Replaced "Links to Your Work" textarea with a drag-and-drop image upload zone labeled "Project Image"
+- Added Firebase Storage import + upload logic; saves download URL as `projectImageUrl` in Firestore
+- Added `art-class-images/` rule to `storage.rules`
+- Run `firebase deploy --only storage` after pushing
+
+### March 31, 2026 — storage.rules: add band-promos + band-tech-riders paths
+- Fixed Firebase Storage `storage/unauthorized` errors on call-for-bands form
+- `storage.rules` only had `band-images/`; form uploads to both `band-promos/` and `band-tech-riders/` — added both rules
 - Run `firebase deploy --only storage` to push the fix
 
 ### March 30, 2026 — Plan Events flow audit (no code changes)

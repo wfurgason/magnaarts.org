@@ -244,24 +244,25 @@ const venueAddress= event.venueAddress|| event.address   || '';
                 {vendors.map((v: any) => {
                   const icon = vendorTypeIcon[v.vendor_type] || '✓';
                   const space = v.space_number || v.booth_number;
+                  const vendorName = v.company_name || v.vendor_name || v.contact_name;
                   return (
-                    <div class="vendor-item">
-                      {v.profile_image_url && (
-                        <div class="vendor-item-img-wrap">
-                          <img src={v.profile_image_url} alt={v.company_name || v.contact_name} class="vendor-item-img" />
-                        </div>
-                      )}
-                      {!v.profile_image_url && <span class="vendor-type-icon">{icon}</span>}
-                      <div class="vendor-item-body">
-                        <div class="vendor-item-name">
-                          {v.company_name || v.vendor_name || v.contact_name}
+                    <div class="vendor-profile-card">
+                      <div class="vendor-photo-col">
+                        {v.profile_image_url
+                          ? <div class="vendor-photo-wrap"><img src={v.profile_image_url} alt={vendorName} class="vendor-photo" /></div>
+                          : <div class="vendor-photo-placeholder">{icon}</div>
+                        }
+                        <h3 class="vendor-name">{vendorName}</h3>
+                      </div>
+                      <div class="vendor-info">
+                        <div class="vendor-meta-row">
                           {space && <span class="vendor-space">Space #{space}</span>}
+                          {v.vendor_type && <div class="vendor-genre">{v.vendor_type}</div>}
+                          {v.website && (
+                            <a href={v.website} target="_blank" rel="noopener" class="band-link">Website ↗</a>
+                          )}
                         </div>
-                        {v.vendor_type && <div class="vendor-item-type">{v.vendor_type}</div>}
-                        {v.description && <div class="vendor-item-desc">{v.description}</div>}
-                        {v.website && (
-                          <a href={v.website} target="_blank" rel="noopener" class="vendor-item-link">Visit ↗</a>
-                        )}
+                        {v.description && <p class="band-bio">{v.description}</p>}
                       </div>
                     </div>
                   );
@@ -441,27 +442,40 @@ const venueAddress= event.venueAddress|| event.address   || '';
 
   /* Vendor list */
   .vendor-loading { font-size: 14px; color: var(--muted); padding: 16px 0; }
-  .vendor-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 14px;
-    margin-bottom: 16px;
-  }
+  .vendor-list { display: flex; flex-direction: column; gap: 32px; margin-bottom: 16px; }
 
-  .vendor-item {
-    display: flex; align-items: flex-start; gap: 12px;
-    background: var(--white); border: 1px solid var(--border);
-    border-radius: 8px; padding: 14px 16px;
+  .vendor-profile-card {
+    display: grid;
+    grid-template-columns: min-content 1fr;
+    gap: 32px;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   }
-  .vendor-type-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
-  .vendor-item-img-wrap { width: 56px; height: 56px; flex-shrink: 0; border-radius: 6px; overflow: hidden; border: 1.5px solid var(--border); }
-  .vendor-item-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .vendor-item-body { display: flex; flex-direction: column; gap: 2px; }
-  .vendor-item-name { font-size: 15px; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .vendor-space { font-size: 11px; font-weight: 600; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 100px; }
-  .vendor-item-type { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-  .vendor-item-desc { font-size: 13px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
-  .vendor-item-link { font-size: 12px; font-weight: 700; color: var(--blue); margin-top: 4px; }
+  .vendor-photo-col { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .vendor-photo-wrap { overflow: hidden; width: 220px; aspect-ratio: 4/3; flex-shrink: 0; }
+  .vendor-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .vendor-photo-placeholder {
+    width: 220px; aspect-ratio: 4/3; display: flex; align-items: center;
+    justify-content: center; font-size: 48px;
+    background: var(--cream); color: var(--border);
+  }
+  .vendor-name {
+    font-family: var(--font-display); font-size: 15px; font-weight: 900;
+    margin: 0; line-height: 1.3; text-align: center;
+    padding: 8px 10px; width: 220px; box-sizing: border-box;
+    background: var(--navy); color: #fff;
+  }
+  .vendor-info { padding: 24px 24px 24px 0; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+  .vendor-meta-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .vendor-space { font-size: 14px; font-weight: 700; color: var(--amber, #c87e0a); font-family: var(--font-display); }
+  .vendor-genre {
+    display: inline-block; font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted); background: #f1f5f9;
+    padding: 3px 10px; border-radius: 100px;
+  }
   .vendor-empty { font-size: 14px; color: var(--muted); padding: 8px 0 16px; line-height: 1.6; }
   .vendor-empty a { color: var(--blue); font-weight: 600; }
   .vendor-apply-link {
@@ -488,5 +502,11 @@ const venueAddress= event.venueAddress|| event.address   || '';
     .band-photo-wrap { width: 100%; }
     .band-name { width: 100%; }
     .band-info { padding: 20px; }
+    .vendor-profile-card { grid-template-columns: 1fr; }
+    .vendor-photo-col { width: 100%; }
+    .vendor-photo-wrap { width: 100%; }
+    .vendor-photo-placeholder { width: 100%; }
+    .vendor-name { width: 100%; }
+    .vendor-info { padding: 20px; }
   }
 </style>

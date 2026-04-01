@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
-import { events, getEventById } from '../../data/events';
+import { adminDb } from '../../lib/firebase-admin';
 
 const firebaseConfig = {
   apiKey:    import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -12,101 +12,101 @@ const firebaseConfig = {
 };
 
 const { id } = Astro.params;
-const event = getEventById(id!);
 
-// 404 if event not found
-if (!event) {
+// Load event from Firestore only
+const eventDoc = await adminDb.collection('events').doc(id!).get();
+if (!eventDoc.exists) {
   return Astro.redirect('/events');
 }
 
-// Find prev/next for navigation
-const idx  = events.findIndex((e) => e.id === id);
-const prev = idx > 0 ? events[idx - 1] : null;
-const next = idx < events.length - 1 ? events[idx + 1] : null;
+const event = { id: eventDoc.id, ...eventDoc.data() } as any;
 
-const typeLabel: Record<string, string> = {
-  concert: 'Concert',
-  film:    'Film',
-  festival:'Festival',
-  class:   'Art Class',
-  openmic: 'Open Mic',
-};
+// For calendar link — normalise date string
+const isoDate = event.date || (event.eventDate?.toDate
+  ? event.eventDate.toDate().toISOString().slice(0, 10)
+  : null);
 
-const typeColor: Record<string, string> = {
-  concert:  'blue',
-  film:     'red',
-  festival: 'amber',
-  class:    'green',
-  openmic:  'green',
-};
+const displayDate = event.displayDate || isoDate || '';
+const eventTime   = event.eventTime   || event.startTime || '';
+const venueName   = event.venueName   || event.venue     || '';
+const venueAddress= event.venueAddress|| event.address   || '';
+
+const isFestival  = event.eventType === 'arts_festival';
 ---
 
 <BaseLayout
   title={`${event.title} — Magna Arts Council`}
-  description={event.description ?? `${event.title} at ${event.location} on ${event.day}.`}
+  description={event.description || `${event.title} at ${venueName} on ${displayDate}.`}
 >
   <Header />
 
   <main>
 
     <!-- ── EVENT HERO ── -->
-    <section class={`event-hero hero-${typeColor[event.type]}`}>
+    <section class={`event-hero ${isFestival ? 'hero-amber' : 'hero-navy'}`}>
       <div class="container hero-inner">
         <div class="hero-left">
           <div class="back-link-wrap">
             <a href="/events" class="back-link">← All Events</a>
           </div>
-          <div class={`type-badge badge-${typeColor[event.type]}`}>
-            {typeLabel[event.type]}
+          <div class="type-badge">
+            {isFestival ? 'Arts Festival' : (event.category || 'Event')}
           </div>
           <h1>{event.title}</h1>
-          {event.subtitle && (
-            <div class="hero-subtitle">
-              {event.subtitleType === 'film' ? '🎬' : '🎵'} {event.subtitle}
-            </div>
+          {event.bandName && !isFestival && (
+            <div class="hero-subtitle">🎵 {event.bandName}</div>
           )}
           <div class="hero-meta">
             <div class="meta-item">
               <span class="meta-icon">🗓</span>
-              <span>{event.day}</span>
+              <span>{displayDate}</span>
             </div>
-            <div class="meta-item">
-              <span class="meta-icon">🕗</span>
-              <span>{event.time}</span>
-            </div>
+            {eventTime && (
+              <div class="meta-item">
+                <span class="meta-icon">🕗</span>
+                <span>{eventTime}</span>
+              </div>
+            )}
             <div class="meta-item">
               <span class="meta-icon">📍</span>
-              <span>{event.location}</span>
+              <span>{venueName}</span>
             </div>
-            {event.address && (
+            {venueAddress && (
               <div class="meta-item meta-address">
                 <span class="meta-icon">↳</span>
                 <a
-                  href={`https://maps.google.com?q=${encodeURIComponent(event.address)}`}
+                  href={`https://maps.google.com?q=${encodeURIComponent(venueAddress)}`}
                   target="_blank"
                   rel="noopener"
                   class="map-link"
                 >
-                  {event.address} (map)
+                  {venueAddress} (map)
                 </a>
               </div>
             )}
           </div>
           <div class="hero-actions">
-            <a
-              href={`https://www.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.isoDate.replace(/-/g,'')}T020000Z/${event.isoDate.replace(/-/g,'')}T055900Z&location=${encodeURIComponent(event.address ?? event.location)}`}
-              target="_blank"
-              rel="noopener"
-              class="btn btn-white"
-            >
-              + Add to Google Calendar
-            </a>
+            {isoDate && (
+              <a
+                href={`https://www.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${isoDate.replace(/-/g,'')}T020000Z/${isoDate.replace(/-/g,'')}T055900Z&location=${encodeURIComponent(venueAddress || venueName)}`}
+                target="_blank"
+                rel="noopener"
+                class="btn btn-white"
+              >
+                + Add to Google Calendar
+              </a>
+            )}
           </div>
         </div>
 
-        {event.image && (
+        {event.image && isFestival && (
           <div class="hero-image-wrap">
             <img src={event.image} alt={event.title} class="hero-image" />
+          </div>
+        )}
+        {event.posterUrl && !isFestival && (
+          <div class="hero-image-wrap">
+            <img src={event.posterUrl} alt={event.title} class="hero-image" />
           </div>
         )}
       </div>
@@ -125,48 +125,88 @@ const typeColor: Record<string, string> = {
               <h3>Event Details</h3>
               <dl>
                 <dt>Date</dt>
-                <dd>{event.day}</dd>
-                <dt>Time</dt>
-                <dd>{event.time}</dd>
+                <dd>{displayDate}</dd>
+                {eventTime && <><dt>Time</dt><dd>{eventTime}</dd></>}
                 <dt>Location</dt>
-                <dd>{event.location}</dd>
-                {event.address && <><dt>Address</dt><dd>{event.address}</dd></>}
+                <dd>{venueName}</dd>
+                {venueAddress && <><dt>Address</dt><dd>{venueAddress}</dd></>}
                 <dt>Admission</dt>
                 <dd>Free — all ages welcome</dd>
               </dl>
             </div>
-            <div class="sidebar-card attend-card">
-              <h3>Planning to Attend?</h3>
-              <p>Let the community know — it helps us secure sponsorship and plan for the season.</p>
-              <a href="/contact" class="btn btn-gold" style="width:100%;justify-content:center;">RSVP / Contact Us</a>
-            </div>
+            {!isFestival && (
+              <div class="sidebar-card attend-card">
+                <h3>Planning to Attend?</h3>
+                <p>Let the community know — it helps us secure sponsorship and plan for the season.</p>
+                <a href="/contact" class="btn btn-gold" style="width:100%;justify-content:center;">RSVP / Contact Us</a>
+              </div>
+            )}
           </div>
         </div>
       </section>
     )}
 
-    <!-- ── FESTIVAL EXTRAS (music schedule + vendors) ── -->
-    {event.id === 'arts-festival-2026' && (
-      <section class="section festival-extras">
-        <div class="container festival-extras-inner">
+    <!-- ── FESTIVAL: BAND PROFILES + VENDORS ── -->
+    {isFestival && (
+      <section class="section festival-body">
+        <div class="container">
 
-          <!-- Music Schedule -->
-          <div class="fest-col reveal">
-            <h2 class="fest-heading">Main Stage Schedule</h2>
-            <div id="schedule-loading" class="vendor-loading">Loading schedule…</div>
-            <div id="music-schedule" class="music-schedule" style="display:none"></div>
-            <div id="schedule-empty" class="vendor-empty" style="display:none">Band lineup being announced soon!</div>
-          </div>
-
-          <!-- Vendor List (dynamic from Firestore) -->
-          <div class="fest-col reveal">
-            <h2 class="fest-heading">Participating Vendors</h2>
-            <div id="vendor-list-wrap">
-              <div id="vendor-loading" class="vendor-loading">Loading vendors…</div>
-              <div id="vendor-list" class="vendor-list" style="display:none"></div>
-              <div id="vendor-empty" class="vendor-empty" style="display:none">
-                Vendor announcements coming soon! <a href="/vendor-application">Apply to be a vendor →</a>
+          <!-- Band Profiles -->
+          {(event.bands || []).filter((b: any) => b.bandId).length > 0 && (
+            <div class="festival-section reveal">
+              <h2 class="festival-section-heading">🎸 Main Stage Lineup</h2>
+              <div class="band-profiles">
+                {(event.bands as any[])
+                  .filter(b => b.bandId)
+                  .sort((a, b) => a.slot - b.slot)
+                  .map((b: any) => (
+                    <div class="band-profile-card">
+                      {b.photoUrl && (
+                        <div class="band-photo-wrap">
+                          <img src={b.photoUrl} alt={b.bandName} class="band-photo" />
+                        </div>
+                      )}
+                      <div class="band-info">
+                        <div class="band-slot-time">
+                          <span class="slot-label">Slot {b.slot}</span>
+                          {b.time && <span class="slot-time">{b.time}</span>}
+                        </div>
+                        <h3 class="band-name">{b.bandName}</h3>
+                        {b.genre && <div class="band-genre">{b.genre}</div>}
+                        {b.bio && <p class="band-bio">{b.bio}</p>}
+                        <div class="band-links">
+                          {b.website && (
+                            <a href={b.website} target="_blank" rel="noopener" class="band-link">
+                              Website ↗
+                            </a>
+                          )}
+                          {b.musicLink && (
+                            <a href={b.musicLink} target="_blank" rel="noopener" class="band-link band-link-music">
+                              🎵 Listen
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
               </div>
+            </div>
+          )}
+
+          {(event.bands || []).filter((b: any) => b.bandId).length === 0 && (
+            <div class="festival-section reveal">
+              <h2 class="festival-section-heading">🎸 Main Stage Lineup</h2>
+              <p class="coming-soon">Band lineup being announced soon — check back!</p>
+            </div>
+          )}
+
+          <!-- Vendor List (loaded client-side from Firestore) -->
+          <div class="festival-section reveal">
+            <h2 class="festival-section-heading">🛒 Participating Vendors</h2>
+            <div id="vendor-loading" class="vendor-loading">Loading vendors…</div>
+            <div id="vendor-list" class="vendor-list" style="display:none"></div>
+            <div id="vendor-empty" class="vendor-empty" style="display:none">
+              Vendor announcements coming soon! <a href="/vendor-application">Apply to be a vendor →</a>
             </div>
             <a href="/vendor-application" class="vendor-apply-link">Apply to be a vendor →</a>
           </div>
@@ -175,8 +215,8 @@ const typeColor: Record<string, string> = {
       </section>
     )}
 
-    <!-- ── PARK INFO ── -->
-    {(event.type === 'concert' || event.type === 'film') && (
+    <!-- ── PARK TIPS (non-festival concerts/films) ── -->
+    {!isFestival && (event.eventType === 'music_movie_in_park') && (
       <section class="park-info reveal">
         <div class="container park-inner">
           <span class="park-icon">🌳</span>
@@ -188,99 +228,49 @@ const typeColor: Record<string, string> = {
       </section>
     )}
 
-    <!-- ── PREV / NEXT ── -->
-    <section class="section nav-section">
-      <div class="container event-nav">
-        {prev ? (
-          <a href={`/events/${prev.id}`} class="nav-card nav-prev reveal">
-            <span class="nav-dir">← Previous</span>
-            <span class="nav-title">{prev.title}</span>
-            <span class="nav-date">{prev.day}</span>
-          </a>
-        ) : <div />}
-
-        <a href="/events" class="nav-all reveal">All Events</a>
-
-        {next ? (
-          <a href={`/events/${next.id}`} class="nav-card nav-next reveal">
-            <span class="nav-dir">Next →</span>
-            <span class="nav-title">{next.title}</span>
-            <span class="nav-date">{next.day}</span>
-          </a>
-        ) : <div />}
-      </div>
-    </section>
-
   </main>
 
   <Footer />
 
-  {event.id === 'arts-festival-2026' && (
+  {isFestival && (
     <script type="module" define:vars={{ firebaseConfig }}>
-      import { initializeApp }                              from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-      import { getFirestore, collection, query, where, getDocs, orderBy, getDoc, doc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+      import { getFirestore, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
       const app = initializeApp(firebaseConfig);
       const db  = getFirestore(app);
-
-      // ── Load main stage schedule from the published events doc ──
-      const scheduleLoading = document.getElementById('schedule-loading');
-      const scheduleEl      = document.getElementById('music-schedule');
-      const scheduleEmpty   = document.getElementById('schedule-empty');
-
-      try {
-        const eventDoc  = await getDoc(doc(db, 'events', 'arts-festival-2026'));
-        const bands     = eventDoc.exists() ? (eventDoc.data().bands || []) : [];
-        const assigned  = bands.filter(b => b.bandName);
-
-        scheduleLoading.style.display = 'none';
-
-        if (assigned.length === 0) {
-          scheduleEmpty.style.display = 'block';
-        } else {
-          scheduleEl.innerHTML = assigned
-            .sort((a, b) => a.slot - b.slot)
-            .map(b => `
-              <div class="schedule-row">
-                <div class="schedule-time">${b.time || 'TBA'}</div>
-                <div class="schedule-performer">${b.bandName}</div>
-              </div>
-            `).join('');
-          scheduleEl.style.display = 'flex';
-        }
-      } catch (err) {
-        scheduleLoading.style.display = 'none';
-        scheduleEmpty.style.display = 'block';
-        console.warn('Could not load schedule:', err);
-      }
-
-      // ── Load vendors ──
-      const q    = query(
-        collection(db, 'vendor_applications'),
-        where('status', '==', 'approved'),
-        orderBy('vendor_name', 'asc')
-      );
 
       const loadingEl = document.getElementById('vendor-loading');
       const listEl    = document.getElementById('vendor-list');
       const emptyEl   = document.getElementById('vendor-empty');
 
       try {
+        const q    = query(
+          collection(db, 'vendor_applications'),
+          where('status', 'in', ['approved', 'paid']),
+          orderBy('vendor_name', 'asc')
+        );
         const snap = await getDocs(q);
         loadingEl.style.display = 'none';
 
         if (snap.empty) {
           emptyEl.style.display = 'block';
         } else {
-          const typeIcon = { 'Individual Artist': '🎨', 'Food Vendor': '🌮', 'Retail / Franchise / non-profit': '🛒', 'Political': '📜' };
+          const typeIcon = {
+            'Individual Artist':            '🎨',
+            'Food Vendor':                  '🌮',
+            'Retail / Franchise / non-profit': '🛒',
+            'Political':                    '📜',
+          };
           listEl.innerHTML = snap.docs.map(d => {
             const v    = d.data();
             const icon = typeIcon[v.vendor_type] || '✓';
+            const space = v.space_number ? `<span class="vendor-space">Space #${v.space_number}</span>` : '';
             return `
               <div class="vendor-item">
                 <span class="vendor-type-icon">${icon}</span>
                 <div class="vendor-item-body">
-                  <div class="vendor-item-name">${v.vendor_name || v.contact_name}</div>
+                  <div class="vendor-item-name">${v.vendor_name || v.contact_name}${space}</div>
                   ${v.vendor_type ? `<div class="vendor-item-type">${v.vendor_type}</div>` : ''}
                   ${v.description ? `<div class="vendor-item-desc">${v.description}</div>` : ''}
                   ${v.website ? `<a href="${v.website}" target="_blank" rel="noopener" class="vendor-item-link">Visit ↗</a>` : ''}
@@ -288,7 +278,7 @@ const typeColor: Record<string, string> = {
               </div>
             `;
           }).join('');
-          listEl.style.display = 'block';
+          listEl.style.display = 'grid';
         }
       } catch (err) {
         loadingEl.style.display = 'none';
@@ -301,16 +291,10 @@ const typeColor: Record<string, string> = {
 </BaseLayout>
 
 <style>
-  /* ── EVENT HERO ── */
-  .event-hero {
-    padding: 64px 0 56px;
-    color: var(--white);
-  }
-
-  .hero-blue   { background: var(--blue); }
-  .hero-red    { background: var(--red); }
-  .hero-amber  { background: #a86300; }
-  .hero-green  { background: var(--green); }
+  /* ── HERO ── */
+  .event-hero { padding: 64px 0 56px; color: var(--white); }
+  .hero-navy  { background: var(--navy, #1a2456); }
+  .hero-amber { background: #a86300; }
 
   .hero-inner {
     display: grid;
@@ -320,344 +304,170 @@ const typeColor: Record<string, string> = {
   }
 
   .back-link-wrap { margin-bottom: 20px; }
-
   .back-link {
-    font-size: 13px;
-    font-weight: 600;
-    color: rgba(255,255,255,0.7);
-    letter-spacing: 0.04em;
-    transition: color 0.2s;
+    font-size: 13px; font-weight: 600;
+    color: rgba(255,255,255,0.7); letter-spacing: 0.04em; transition: color 0.2s;
   }
   .back-link:hover { color: var(--white); }
 
   .type-badge {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 5px 14px;
-    border-radius: 100px;
-    margin-bottom: 16px;
-    background: rgba(255,255,255,0.2);
-    color: var(--white);
+    display: inline-block; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 100px; margin-bottom: 16px;
+    background: rgba(255,255,255,0.2); color: var(--white);
     border: 1px solid rgba(255,255,255,0.3);
   }
 
   .event-hero h1 {
     font-family: var(--font-display);
     font-size: clamp(36px, 5vw, 58px);
-    font-weight: 900;
-    line-height: 1.05;
-    margin-bottom: 10px;
+    font-weight: 900; line-height: 1.05; margin-bottom: 10px;
   }
 
   .hero-subtitle {
-    font-size: 18px;
-    font-weight: 400;
-    color: rgba(255,255,255,0.85);
-    margin-bottom: 28px;
+    font-size: 18px; font-weight: 400;
+    color: rgba(255,255,255,0.85); margin-bottom: 28px;
   }
 
-  .hero-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 32px;
-  }
-
-  .meta-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 15px;
-    color: rgba(255,255,255,0.9);
-  }
-
+  .hero-meta { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
+  .meta-item { display: flex; align-items: center; gap: 10px; font-size: 15px; color: rgba(255,255,255,0.9); }
   .meta-icon { font-size: 16px; flex-shrink: 0; }
   .meta-address { opacity: 0.75; }
-
-  .map-link {
-    color: rgba(255,255,255,0.85);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
+  .map-link { color: rgba(255,255,255,0.85); text-decoration: underline; text-underline-offset: 3px; }
   .map-link:hover { color: var(--white); }
 
   .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
-
-  .hero-image-wrap {
-    width: 320px;
-    flex-shrink: 0;
-  }
-
-  .hero-image {
-    width: 100%;
-    border-radius: var(--radius);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
-    object-fit: cover;
-    aspect-ratio: 1/1;
-  }
+  .hero-image-wrap { width: 320px; flex-shrink: 0; }
+  .hero-image { width: 100%; border-radius: var(--radius); box-shadow: 0 12px 40px rgba(0,0,0,0.3); object-fit: cover; aspect-ratio: 1/1; }
 
   /* ── DESCRIPTION ── */
   .desc-section { background: var(--white); }
-
-  .desc-inner {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 48px;
-    align-items: start;
-  }
-
+  .desc-inner { display: grid; grid-template-columns: 1fr 320px; gap: 48px; align-items: start; }
   .desc-body h2 {
-    font-family: var(--font-display);
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--navy);
-    margin-bottom: 16px;
+    font-family: var(--font-display); font-size: 28px; font-weight: 700;
+    color: var(--navy); margin-bottom: 16px;
   }
-
-  .desc-body p {
-    font-size: 16px;
-    color: var(--muted);
-    line-height: 1.75;
-  }
+  .desc-body p { font-size: 16px; color: var(--muted); line-height: 1.75; }
 
   .sidebar-card {
-    background: var(--cream);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 24px;
-    margin-bottom: 20px;
+    background: var(--cream); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 24px; margin-bottom: 20px;
   }
-
-  .sidebar-card h3 {
-    font-family: var(--font-display);
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--navy);
-    margin-bottom: 16px;
-  }
-
+  .sidebar-card h3 { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
   dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; }
-
-  dt {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--muted);
-    align-self: start;
-    padding-top: 1px;
-  }
-
+  dt { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); align-self: start; padding-top: 1px; }
   dd { font-size: 14px; color: var(--navy); line-height: 1.5; }
-
   .attend-card { background: #fef9ec; border-color: #fde68a; }
   .attend-card h3 { color: var(--amber); }
   .attend-card p { font-size: 14px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
 
-  /* ── PARK INFO ── */
-  .park-info {
-    background: #ecfdf5;
-    border-top: 1px solid #a7f3d0;
-    border-bottom: 1px solid #a7f3d0;
-    padding: 20px 0;
+  /* ── FESTIVAL BODY ── */
+  .festival-body { background: var(--cream); }
+  .festival-section { margin-bottom: 56px; }
+  .festival-section:last-child { margin-bottom: 0; }
+
+  .festival-section-heading {
+    font-family: var(--font-display); font-size: 26px; font-weight: 700;
+    color: var(--navy); margin-bottom: 24px; padding-bottom: 12px;
+    border-bottom: 3px solid var(--amber, #c87e0a);
   }
 
-  .park-inner {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
+  .coming-soon { font-size: 15px; color: var(--muted); padding: 12px 0; }
 
-  .park-icon { font-size: 28px; flex-shrink: 0; }
+  /* Band profiles */
+  .band-profiles { display: flex; flex-direction: column; gap: 32px; }
 
-  .park-inner strong {
-    display: block;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--green);
-    margin-bottom: 4px;
-  }
-
-  .park-inner p { font-size: 14px; color: #065f46; line-height: 1.6; }
-
-  /* ── PREV/NEXT NAV ── */
-  .nav-section { background: var(--cream); padding: 48px 0; }
-
-  .event-nav {
+  .band-profile-card {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 20px;
-    align-items: center;
-  }
-
-  .nav-card {
+    grid-template-columns: 260px 1fr;
+    gap: 32px;
     background: var(--white);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 20px 24px;
-    box-shadow: var(--shadow-card);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    transition: box-shadow 0.2s, transform 0.2s;
-    color: inherit;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   }
 
-  .nav-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-3px); }
+  .band-photo-wrap { position: relative; overflow: hidden; }
+  .band-photo { width: 100%; height: 100%; object-fit: cover; min-height: 220px; display: block; }
 
-  .nav-next { text-align: right; }
+  .band-info { padding: 28px 28px 28px 0; display: flex; flex-direction: column; gap: 10px; }
 
-  .nav-dir {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
+  .band-slot-time { display: flex; align-items: center; gap: 10px; }
+  .slot-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 100px;
   }
-
-  .nav-title {
+  .slot-time {
+    font-size: 15px; font-weight: 700; color: var(--amber, #c87e0a);
     font-family: var(--font-display);
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--navy);
   }
 
-  .nav-date { font-size: 13px; color: var(--muted); }
-
-  .nav-all {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--blue);
-    text-align: center;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
+  .band-name {
+    font-family: var(--font-display); font-size: 28px; font-weight: 900;
+    color: var(--navy); margin: 0; line-height: 1.1;
   }
 
-  /* ── FESTIVAL EXTRAS ── */
-  .festival-extras { background: var(--cream); }
-
-  .festival-extras-inner {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
-    align-items: start;
+  .band-genre {
+    display: inline-block; font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted); background: #f1f5f9;
+    padding: 3px 10px; border-radius: 100px; align-self: flex-start;
   }
 
-  .fest-heading {
-    font-family: var(--font-display);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--navy);
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--amber);
+  .band-bio { font-size: 15px; color: var(--muted); line-height: 1.7; margin: 4px 0 0; }
+
+  .band-links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+  .band-link {
+    font-size: 13px; font-weight: 700; color: var(--blue);
+    text-decoration: none; transition: opacity 0.15s;
   }
+  .band-link:hover { opacity: 0.75; }
+  .band-link-music { color: var(--green, #2d7a3a); }
 
-  /* Music Schedule */
-  .music-schedule { display: flex; flex-direction: column; gap: 2px; }
-  #music-schedule { display: none; flex-direction: column; gap: 2px; }
-
-  .schedule-row {
-    display: grid;
-    grid-template-columns: 90px 1fr;
-    align-items: center;
-    gap: 16px;
-    padding: 14px 16px;
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-  }
-
-  .schedule-time {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--amber);
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-  }
-
-  .schedule-performer {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--navy);
-  }
-
-  /* Vendor List */
+  /* Vendor list */
   .vendor-loading { font-size: 14px; color: var(--muted); padding: 16px 0; }
-
-  .vendor-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .vendor-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+  }
 
   .vendor-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 16px;
   }
-
   .vendor-type-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
-
   .vendor-item-body { display: flex; flex-direction: column; gap: 2px; }
-
-  .vendor-item-name {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--navy);
-  }
-
-  .vendor-item-type {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .vendor-item-desc {
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.5;
-    margin-top: 2px;
-  }
-
-  .vendor-item-link {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--blue);
-    margin-top: 4px;
-  }
-
-  .vendor-empty {
-    font-size: 14px;
-    color: var(--muted);
-    padding: 8px 0 16px;
-    line-height: 1.6;
-  }
+  .vendor-item-name { font-size: 15px; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .vendor-space { font-size: 11px; font-weight: 600; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 100px; }
+  .vendor-item-type { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .vendor-item-desc { font-size: 13px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
+  .vendor-item-link { font-size: 12px; font-weight: 700; color: var(--blue); margin-top: 4px; }
+  .vendor-empty { font-size: 14px; color: var(--muted); padding: 8px 0 16px; line-height: 1.6; }
   .vendor-empty a { color: var(--blue); font-weight: 600; }
-
   .vendor-apply-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13.5px;
-    font-weight: 700;
-    color: var(--amber);
-    transition: gap 0.2s;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 13.5px; font-weight: 700; color: var(--amber, #c87e0a); transition: gap 0.2s;
+    margin-top: 8px;
   }
   .vendor-apply-link:hover { gap: 8px; }
 
+  /* ── PARK TIPS ── */
+  .park-info { background: #ecfdf5; border-top: 1px solid #a7f3d0; border-bottom: 1px solid #a7f3d0; padding: 20px 0; }
+  .park-inner { display: flex; align-items: center; gap: 16px; }
+  .park-icon { font-size: 28px; flex-shrink: 0; }
+  .park-inner strong { display: block; font-size: 14px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
+  .park-inner p { font-size: 14px; color: #065f46; line-height: 1.6; }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 860px) {
-    .hero-inner   { grid-template-columns: 1fr; }
+    .hero-inner { grid-template-columns: 1fr; }
     .hero-image-wrap { display: none; }
-    .desc-inner   { grid-template-columns: 1fr; }
-    .event-nav    { grid-template-columns: 1fr 1fr; }
-    .nav-all      { display: none; }
-    .festival-extras-inner { grid-template-columns: 1fr; }
+    .desc-inner { grid-template-columns: 1fr; }
+    .band-profile-card { grid-template-columns: 1fr; }
+    .band-photo { min-height: 220px; max-height: 280px; }
+    .band-info { padding: 20px; }
   }
 </style>

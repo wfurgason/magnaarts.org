@@ -1494,7 +1494,8 @@ const totalShells =
       festBandIdEl.value   = '';
       festBandNameEl.value = '';
       festSubmitBtn.disabled = true;
-      document.getElementById('fest-modal-time').value = '';
+      const slotDefaults = { '1': '12:00 PM', '2': '3:00 PM', '3': '5:00 PM' };
+      document.getElementById('fest-modal-time').value = slotDefaults[slot] || '';
 
       // Populate band list
       if (bands.length === 0) {

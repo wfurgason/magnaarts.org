@@ -190,6 +190,21 @@ const firebaseConfig = {
             </div>
 
             <div class="field">
+              <label>Upload a Profile Image
+                <span style="font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:6px;">(optional — image that represents you as a vendor)</span>
+              </label>
+              <div id="profile-drop-zone" class="drop-zone">
+                <div id="profile-drop-prompt" class="drop-prompt">
+                  <span class="drop-icon">🖼️</span>
+                  <span>Drag &amp; drop an image here, or <label for="profile_image_input" class="drop-link">browse</label></span>
+                  <span class="drop-hint">JPG, PNG, GIF, WEBP — max 10 MB</span>
+                </div>
+                <img id="profile-preview" src="" alt="Profile image preview" class="drop-preview" style="display:none" />
+                <input type="file" id="profile_image_input" name="profile_image_input" accept="image/*" style="display:none" />
+              </div>
+            </div>
+
+            <div class="field">
               <label for="description">Short Description for Festival Website
                 <span style="font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:6px;">(max 200 chars — shown publicly once approved)</span>
               </label>
@@ -280,9 +295,46 @@ const firebaseConfig = {
   <script type="module">
     import { initializeApp }                    from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+    import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js';
 
-    const app = initializeApp(window.__FIREBASE_CONFIG__);
-    const db  = getFirestore(app);
+    const app     = initializeApp(window.__FIREBASE_CONFIG__);
+    const db      = getFirestore(app);
+    const storage = getStorage(app);
+
+    // Profile image drag-and-drop
+    const profileDropZone  = document.getElementById('profile-drop-zone');
+    const profileInput     = document.getElementById('profile_image_input');
+    const profilePreview   = document.getElementById('profile-preview');
+    const profilePrompt    = document.getElementById('profile-drop-prompt');
+
+    function showProfilePreview(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        profilePreview.src = e.target.result;
+        profilePreview.style.display = 'block';
+        profilePrompt.style.display  = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    profileInput.addEventListener('change', () => showProfilePreview(profileInput.files[0]));
+    profileDropZone.addEventListener('dragover', e => { e.preventDefault(); profileDropZone.classList.add('drag-over'); });
+    profileDropZone.addEventListener('dragleave', () => profileDropZone.classList.remove('drag-over'));
+    profileDropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      profileDropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        profileInput.files = dt.files;
+        showProfilePreview(file);
+      }
+    });
+    profileDropZone.addEventListener('click', e => {
+      if (e.target !== profilePreview) profileInput.click();
+    });
 
     const descEl    = document.getElementById('description');
     const descCount = document.getElementById('desc-count');
@@ -318,6 +370,17 @@ const firebaseConfig = {
 
       try {
         const fd = new FormData(form);
+
+        // Upload profile image if one was selected
+        let profileImageUrl = null;
+        const profileFile = profileInput.files[0];
+        if (profileFile) {
+          const ext = profileFile.name.split('.').pop();
+          const storageRef = ref(storage, `vendor-profiles/${Date.now()}.${ext}`);
+          const snap = await uploadBytes(storageRef, profileFile);
+          profileImageUrl = await getDownloadURL(snap.ref);
+        }
+
         await addDoc(collection(db, 'vendor_applications'), {
           contact_name:        fd.get('contact_name'),
           company_name:        fd.get('company_name'),
@@ -335,6 +398,7 @@ const firebaseConfig = {
           additional_comments: fd.get('additional_comments') || null,
           waiver_agreed:       true,
           signature:           fd.get('signature'),
+          profile_image_url:   profileImageUrl,
           status:              'pending',
           submitted_at:        new Date().toISOString(),
         });
@@ -449,6 +513,17 @@ const firebaseConfig = {
   .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
   .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
   .map-note { font-size: 12px; color: var(--muted); text-align: center; margin: 12px 0 0; line-height: 1.5; }
+
+  /* ── PROFILE IMAGE UPLOAD ── */
+  .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); background: #fafaf8; padding: 28px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: #c87e0a; background: #fffbeb; }
+  .drop-prompt { display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+  .drop-prompt > label.drop-link { pointer-events: all; }
+  .drop-icon { font-size: 32px; }
+  .drop-zone span { font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .drop-link { color: #c87e0a; font-weight: 700; cursor: pointer; text-decoration: underline; }
+  .drop-hint { font-size: 12px !important; color: #aaa !important; }
+  .drop-preview { max-width: 100%; max-height: 220px; border-radius: var(--radius-sm); object-fit: contain; cursor: default; }
 
   @media (max-width: 680px) {
     .field-row { grid-template-columns: 1fr; }

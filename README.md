@@ -420,6 +420,12 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
+### April 1, 2026 — vendor-application: profile image upload
+- Added drag-and-drop image upload zone labeled "Upload a Profile Image" in the Vendor Details fieldset, directly after the "What are you selling / offering?" textarea
+- Uploads to Firebase Storage at `vendor-profiles/{timestamp}.{ext}` on submit; saves download URL as `profile_image_url` in Firestore
+- Added `vendor-profiles/` rule to `storage.rules`
+- Run `firebase deploy --only storage` after pushing to activate the storage rule
+
 ### March 31, 2026 — Arts Festival: dynamic schedule + Republish
 - `publish-festival.ts`: writes `bands` array to the `events` doc on every publish/republish
 - `planning.astro`: published festival shells now show a **Republish ↗** button alongside the Published badge; calls the same endpoint; reloads the page instead of redirecting to /admin/events

@@ -37,6 +37,12 @@ service firebase.storage {
       allow write: if true;
     }
 
+    // ── Vendor profile images — public upload (vendor-application form) ──
+    match /vendor-profiles/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // ── All other paths — deny by default ──
     match /{allPaths=**} {
       allow read, write: if false;

@@ -109,8 +109,10 @@ if (Astro.request.method === 'POST') {
       flashType = 'success';
 
     } else if (seriesType === 'arts_festival') {
-      const afTitle = form.get('afTitle')?.toString() || 'Magna Main Street Arts Festival';
-      const afDesc  = form.get('afDescription')?.toString() || '';
+      const afTitle     = form.get('afTitle')?.toString() || 'Magna Main Street Arts Festival';
+      const afDesc      = form.get('afDescription')?.toString() || '';
+        const afStartTime = form.get('afStartTime')?.toString() || start;
+        const afEndTime   = form.get('afEndTime')?.toString() || '';
 
       if (dates.length !== 1) {
         flashMsg  = 'Please select exactly one date for the Arts Festival.';
@@ -129,7 +131,8 @@ if (Astro.request.method === 'POST') {
         } else {
           const ref = adminDb.collection('festival_events').doc(`arts-festival-${festYear}`);
           await ref.set({
-            season: festYear, date, displayDate: display, startTime: start,
+            season: festYear, date, displayDate: display,
+            startTime: afStartTime, endTime: afEndTime,
             venue, address, title: afTitle, description: afDesc,
             eventType: 'arts_festival', status: 'shell',
             image: '/images/festival/mmsaf.png',
@@ -444,9 +447,19 @@ const totalShells =
 
         <!-- Arts Festival–specific fields -->
         <div id="arts-festival-fields" class="event-extra-fields" style="display:none;">
-          <div class="form-field">
-            <label for="afTitle">Event Title</label>
-            <input type="text" id="afTitle" name="afTitle" value="Magna Main Street Arts Festival" />
+        <div class="form-field">
+        <label for="afTitle">Event Title</label>
+        <input type="text" id="afTitle" name="afTitle" value="Magna Main Street Arts Festival" />
+        </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="afStartTime">Start Time <span class="req">*</span></label>
+              <input type="text" id="afStartTime" name="afStartTime" placeholder="10:00 AM" />
+            </div>
+            <div class="form-field">
+              <label for="afEndTime">End Time <span class="req">*</span></label>
+              <input type="text" id="afEndTime" name="afEndTime" placeholder="6:00 PM" />
+            </div>
           </div>
           <div class="form-field">
             <label for="afDescription">Description <span class="field-hint">(shown on the public event page)</span></label>

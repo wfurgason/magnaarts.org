@@ -54,6 +54,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       title:          shell.title,
       eventDate:      Timestamp.fromDate(new Date(shell.date + 'T12:00:00')),
       eventTime:      shell.startTime,
+      endTime:        shell.endTime || null,
       venueName:      shell.venue,
       venueAddress:   shell.address,
       description:    shell.description || '',

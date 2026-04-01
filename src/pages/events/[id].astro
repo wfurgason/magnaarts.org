@@ -26,12 +26,28 @@ const isoDate = event.date || (event.eventDate?.toDate
   ? event.eventDate.toDate().toISOString().slice(0, 10)
   : null);
 
-const displayDate = event.displayDate || isoDate || '';
-const eventTime   = event.eventTime   || event.startTime || '';
-const venueName   = event.venueName   || event.venue     || '';
-const venueAddress= event.venueAddress|| event.address   || '';
+// Pretty-print date e.g. "August 15th, 2026"
+function ordinal(n: number) {
+  const s = ['th','st','nd','rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+const displayDate = isoDate
+  ? (() => {
+      const [y, m, d] = isoDate.split('-').map(Number);
+      const monthName = new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'long' });
+      return `${monthName} ${ordinal(d)}, ${y}`;
+    })()
+  : (event.displayDate || '');
 
 const isFestival  = event.eventType === 'arts_festival';
+const eventTime   = event.eventTime   || event.startTime || '';
+const endTime     = event.endTime     || null;
+const timeDisplay = isFestival && eventTime && endTime
+  ? `${eventTime} – ${endTime}`
+  : eventTime;
+const venueName   = event.venueName   || event.venue     || '';
+const venueAddress= event.venueAddress|| event.address   || '';
 ---
 
 <BaseLayout
@@ -61,10 +77,10 @@ const isFestival  = event.eventType === 'arts_festival';
               <span class="meta-icon">🗓</span>
               <span>{displayDate}</span>
             </div>
-            {eventTime && (
+            {timeDisplay && (
               <div class="meta-item">
                 <span class="meta-icon">🕗</span>
-                <span>{eventTime}</span>
+                <span>{timeDisplay}</span>
               </div>
             )}
             <div class="meta-item">
@@ -126,7 +142,7 @@ const isFestival  = event.eventType === 'arts_festival';
               <dl>
                 <dt>Date</dt>
                 <dd>{displayDate}</dd>
-                {eventTime && <><dt>Time</dt><dd>{eventTime}</dd></>}
+                {timeDisplay && <><dt>Time</dt><dd>{timeDisplay}</dd></>}
                 <dt>Location</dt>
                 <dd>{venueName}</dd>
                 {venueAddress && <><dt>Address</dt><dd>{venueAddress}</dd></>}

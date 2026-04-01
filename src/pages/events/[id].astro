@@ -41,6 +41,20 @@ const displayDate = isoDate
   : (event.displayDate || '');
 
 const isFestival  = event.eventType === 'arts_festival';
+
+// For festival pages, load approved + paid vendors with a booth assigned
+let vendors: any[] = [];
+if (isFestival) {
+  const vendorSnap = await adminDb.collection('vendor_applications')
+    .where('status', 'in', ['approved', 'paid'])
+    .get();
+  vendors = vendorSnap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter((v: any) =>
+      (v.payment_status === 'paid' || v.status === 'paid') &&
+      (v.space_number || v.booth_number)
+    );
+}
 const eventTime   = event.eventTime   || event.startTime || '';
 const endTime     = event.endTime     || null;
 const timeDisplay = isFestival && eventTime && endTime
@@ -215,14 +229,43 @@ const venueAddress= event.venueAddress|| event.address   || '';
             </div>
           )}
 
-          <!-- Vendor List (loaded client-side from Firestore) -->
+          <!-- Vendor List (server-rendered) -->
           <div class="festival-section reveal">
             <h2 class="festival-section-heading">🛒 Participating Vendors</h2>
-            <div id="vendor-loading" class="vendor-loading">Loading vendors…</div>
-            <div id="vendor-list" class="vendor-list" style="display:none"></div>
-            <div id="vendor-empty" class="vendor-empty" style="display:none">
-              Vendor announcements coming soon! <a href="/vendor-application">Apply to be a vendor →</a>
-            </div>
+            {vendors.length > 0 ? (
+              <div class="vendor-list">
+                {vendors.map((v: any) => {
+                  const typeIcon: Record<string, string> = {
+                    'Individual Artist': '🎨',
+                    'Food Vendor': '🌮',
+                    'Retail / Franchise / non-profit': '🛒',
+                    'Political': '📜',
+                  };
+                  const icon  = typeIcon[v.vendor_type] || '✓';
+                  const space = v.space_number || v.booth_number;
+                  return (
+                    <div class="vendor-item">
+                      <span class="vendor-type-icon">{icon}</span>
+                      <div class="vendor-item-body">
+                        <div class="vendor-item-name">
+                          {v.vendor_name || v.contact_name}
+                          {space && <span class="vendor-space">Space #{space}</span>}
+                        </div>
+                        {v.vendor_type && <div class="vendor-item-type">{v.vendor_type}</div>}
+                        {v.description && <div class="vendor-item-desc">{v.description}</div>}
+                        {v.website && (
+                          <a href={v.website} target="_blank" rel="noopener" class="vendor-item-link">Visit ↗</a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div class="vendor-empty">
+                Vendor announcements coming soon! <a href="/vendor-application">Apply to be a vendor →</a>
+              </div>
+            )}
             <a href="/vendor-application" class="vendor-apply-link">Apply to be a vendor →</a>
           </div>
 
@@ -247,61 +290,7 @@ const venueAddress= event.venueAddress|| event.address   || '';
 
   <Footer />
 
-  {isFestival && (
-    <script type="module" define:vars={{ firebaseConfig }}>
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-      import { getFirestore, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
-      const app = initializeApp(firebaseConfig);
-      const db  = getFirestore(app);
-
-      const loadingEl = document.getElementById('vendor-loading');
-      const listEl    = document.getElementById('vendor-list');
-      const emptyEl   = document.getElementById('vendor-empty');
-
-      try {
-        const q    = query(
-          collection(db, 'vendor_applications'),
-          where('status', 'in', ['approved', 'paid']),
-          orderBy('vendor_name', 'asc')
-        );
-        const snap = await getDocs(q);
-        loadingEl.style.display = 'none';
-
-        if (snap.empty) {
-          emptyEl.style.display = 'block';
-        } else {
-          const typeIcon = {
-            'Individual Artist':            '🎨',
-            'Food Vendor':                  '🌮',
-            'Retail / Franchise / non-profit': '🛒',
-            'Political':                    '📜',
-          };
-          listEl.innerHTML = snap.docs.map(d => {
-            const v    = d.data();
-            const icon = typeIcon[v.vendor_type] || '✓';
-            const space = v.space_number ? `<span class="vendor-space">Space #${v.space_number}</span>` : '';
-            return `
-              <div class="vendor-item">
-                <span class="vendor-type-icon">${icon}</span>
-                <div class="vendor-item-body">
-                  <div class="vendor-item-name">${v.vendor_name || v.contact_name}${space}</div>
-                  ${v.vendor_type ? `<div class="vendor-item-type">${v.vendor_type}</div>` : ''}
-                  ${v.description ? `<div class="vendor-item-desc">${v.description}</div>` : ''}
-                  ${v.website ? `<a href="${v.website}" target="_blank" rel="noopener" class="vendor-item-link">Visit ↗</a>` : ''}
-                </div>
-              </div>
-            `;
-          }).join('');
-          listEl.style.display = 'grid';
-        }
-      } catch (err) {
-        loadingEl.style.display = 'none';
-        emptyEl.style.display = 'block';
-        console.warn('Could not load vendors:', err);
-      }
-    </script>
-  )}
 
 </BaseLayout>
 

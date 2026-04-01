@@ -24,7 +24,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return new Response(JSON.stringify({ error: 'bandId and shellId required' }), { status: 400 });
       }
 
-      // Load both docs
       const [bandDoc, shellDoc] = await Promise.all([
         adminDb.collection('band_applications').doc(bandId).get(),
         adminDb.collection('park_events').doc(shellId).get(),
@@ -39,7 +38,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
       const shellData = shellDoc.data()!;
 
-      // Don't allow reassigning a shell that already has a band
       if (shellData.status !== 'shell') {
         return new Response(
           JSON.stringify({ error: `This date already has a band assigned (${shellData.bandName}). Remove them first.` }),
@@ -50,7 +48,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       const bandData = bandDoc.data()!;
       const batch = adminDb.batch();
 
-      // Update the event shell
       batch.update(adminDb.collection('park_events').doc(shellId), {
         status:        'band_assigned',
         bandId,
@@ -66,7 +63,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         assignedAt:    FieldValue.serverTimestamp(),
       });
 
-      // Update the band application
       batch.update(adminDb.collection('band_applications').doc(bandId), {
         status:          'assigned',
         assignedShellId: shellId,
@@ -83,7 +79,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     if (action === 'unassign') {
-      // Remove band from a shell (in case you need to reassign)
       if (!shellId) {
         return new Response(JSON.stringify({ error: 'shellId required' }), { status: 400 });
       }
@@ -96,7 +91,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       const shellData = shellDoc.data()!;
       const batch = adminDb.batch();
 
-      // Reset shell to empty
       batch.update(adminDb.collection('park_events').doc(shellId), {
         status:        'shell',
         bandId:        null,
@@ -112,7 +106,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         assignedAt:    null,
       });
 
-      // Reset the band application back to approved
       if (shellData.bandId) {
         batch.update(adminDb.collection('band_applications').doc(shellData.bandId), {
           status:          'approved',
@@ -130,7 +123,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     if (action === 'confirm') {
-      // Mark band as confirmed for their date
       if (!shellId) {
         return new Response(JSON.stringify({ error: 'shellId required' }), { status: 400 });
       }
@@ -148,7 +140,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     if (action === 'publish') {
-      // Publish the event shell to the public events collection
       if (!shellId) {
         return new Response(JSON.stringify({ error: 'shellId required' }), { status: 400 });
       }
@@ -159,36 +150,34 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
 
       const s = shellDoc.data()!;
-
       const batch = adminDb.batch();
 
-      // Write to public events collection (use shellId as the event doc ID for easy cross-reference)
-      // Use a proper Firestore Timestamp so orderBy('eventDate') works correctly
-      const eventDateObj = Timestamp.fromDate(new Date(s.date + 'T19:00:00'));
+      // Use timeToISO() — consistent with Open Mic and Art Night
+      const eventDateObj = Timestamp.fromDate(new Date(s.date + 'T' + timeToISO(s.startTime)));
 
       const eventRef = adminDb.collection('events').doc(shellId);
       batch.set(eventRef, {
         title:        `Music & Movie in the Park — ${s.displayDate}`,
-        eventDate:    eventDateObj,          // used by events.astro for sorting/filtering
-        date:         s.date,               // YYYY-MM-DD string, kept for reference
+        eventDate:    eventDateObj,
+        date:         s.date,
         displayDate:  s.displayDate,
-        eventTime:    s.startTime,          // matched to events.astro field name
+        eventTime:    s.startTime,
         startTime:    s.startTime,
-        venueName:    s.venue,              // matched to events.astro field name
-        venueAddress: s.address,            // matched to events.astro field name
+        venueName:    s.venue,
+        venueAddress: s.address,
         venue:        s.venue,
         address:      s.address,
         eventType:    'music_movie_in_park',
         category:     'Concert',
         bandName:     s.bandName,
-        genre:        s.bandGenre,          // matched to events.astro field name
+        genre:        s.bandGenre,
         bandBio:      s.bandBio,
         bandGenre:    s.bandGenre,
         bandWebsite:  s.bandWebsite || null,
         musicLink:    s.bandMusicLink || null,
         photoUrl:     s.bandPhotoUrl || null,
-        posterUrl:    s.bandPhotoUrl || null, // matched to events.astro field name
-        description:  s.bandBio || '',       // matched to events.astro field name
+        posterUrl:    s.bandPhotoUrl || null,
+        description:  s.bandBio || '',
         movie:        s.movie || null,
         movieToken:   s.movieToken || null,
         isFree:       true,
@@ -198,13 +187,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         shellId,
       });
 
-      // Mark shell as published
       batch.update(adminDb.collection('park_events').doc(shellId), {
         status:      'published',
         publishedAt: FieldValue.serverTimestamp(),
       });
 
-      // Mark band application as published
       if (s.bandId) {
         batch.update(adminDb.collection('band_applications').doc(s.bandId), {
           status: 'published',
@@ -226,3 +213,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ error: 'Server error' }), { status: 500 });
   }
 };
+
+// Convert a time string like "7:00 PM" to "19:00:00" for Date parsing
+function timeToISO(timeStr: string): string {
+  try {
+    const [time, meridiem] = timeStr.trim().split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (meridiem?.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+    if (meridiem?.toUpperCase() === 'AM' && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, '0')}:${String(minutes || 0).padStart(2, '0')}:00`;
+  } catch {
+    return '19:00:00';
+  }
+}

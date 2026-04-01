@@ -193,7 +193,8 @@ if (Astro.request.method === 'POST') {
     if (shellId && slot && bandId) {
       const shellRef  = adminDb.collection('festival_events').doc(shellId);
       const shellSnap = await shellRef.get();
-      const bands: any[] = shellSnap.data()?.bands || [
+      const shellData = shellSnap.data()!;
+      const bands: any[] = shellData?.bands || [
         { slot: 1, time: '', bandId: null, bandName: null, confirmed: false },
         { slot: 2, time: '', bandId: null, bandName: null, confirmed: false },
         { slot: 3, time: '', bandId: null, bandName: null, confirmed: false },
@@ -204,7 +205,15 @@ if (Astro.request.method === 'POST') {
       } else {
         bands.push({ slot, time: slotTime, bandId, bandName, confirmed: false });
       }
-      await shellRef.update({ bands, status: 'planning' });
+      const batch = adminDb.batch();
+      batch.update(shellRef, { bands, status: 'planning' });
+      // Mark band application as assigned — consistent with Music & Movies
+      batch.update(adminDb.collection('band_applications').doc(bandId), {
+        status:          'assigned',
+        assignedShellId: shellId,
+        assignedAt:      FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
       flashMsg  = `${bandName} assigned to Stage Slot ${slot}.`;
       flashType = 'success';
     }
@@ -217,11 +226,23 @@ if (Astro.request.method === 'POST') {
     if (shellId && slot) {
       const shellRef  = adminDb.collection('festival_events').doc(shellId);
       const shellSnap = await shellRef.get();
-      const bands: any[] = (shellSnap.data()?.bands || []).map((b: any) =>
+      const shellData = shellSnap.data()!;
+      const bands: any[] = (shellData?.bands || []).map((b: any) =>
         b.slot === slot ? { slot, time: '', bandId: null, bandName: null, confirmed: false } : b
       );
       const allEmpty = bands.every((b: any) => !b.bandId);
-      await shellRef.update({ bands, status: allEmpty ? 'shell' : 'planning' });
+      // Find the bandId being removed to reset its application status
+      const removedBand = (shellData?.bands || []).find((b: any) => b.slot === slot);
+      const batch = adminDb.batch();
+      batch.update(shellRef, { bands, status: allEmpty ? 'shell' : 'planning' });
+      if (removedBand?.bandId) {
+        batch.update(adminDb.collection('band_applications').doc(removedBand.bandId), {
+          status:          'approved',
+          assignedShellId: null,
+          assignedAt:      null,
+        });
+      }
+      await batch.commit();
       flashMsg  = `Slot ${slot} cleared.`;
       flashType = 'success';
     }
@@ -1352,8 +1373,9 @@ const totalShells =
   // ── Open Mic publish buttons ────────────────────────────────────────────
   document.querySelectorAll('.om-publish-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const el      = btn;
-      const shellId = el.dataset.shellId;
+      const el        = btn;
+      const shellId   = el.dataset.shellId;
+      const isRepublish = el.dataset.republish === 'true';
 
       if (!confirm('Publish this Open Mic Night event to the public site?')) return;
       el.disabled    = true;
@@ -1366,7 +1388,7 @@ const totalShells =
       });
 
       if (res.ok) {
-        window.location.reload();
+        isRepublish ? window.location.reload() : (window.location.href = '/admin/events');
       } else {
         const { error } = await res.json().catch(() => ({ error: 'Unknown error' }));
         alert(error || 'Publish failed.');
@@ -1416,7 +1438,8 @@ const totalShells =
   // ── Art Night publish buttons ────────────────────────────────────────────
   document.querySelectorAll('.an-publish-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const shellId = btn.dataset.shellId;
+      const shellId   = btn.dataset.shellId;
+      const isRepublish = btn.dataset.republish === 'true';
       if (!confirm('Publish this Group Art Night event to the public site?')) return;
       btn.disabled    = true;
       btn.textContent = 'Publishing…';
@@ -1427,7 +1450,7 @@ const totalShells =
           body:    JSON.stringify({ shellId }),
         });
         if (res.ok) {
-          window.location.reload();
+          isRepublish ? window.location.reload() : (window.location.href = '/admin/events');
         } else {
           const { error } = await res.json().catch(() => ({ error: 'Unknown error' }));
           alert(error || 'Publish failed.');

@@ -31,7 +31,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const batch = adminDb.batch();
 
-    // Publish to the public events collection
     const eventDateObj = Timestamp.fromDate(new Date(s.date + 'T' + timeToISO(s.startTime)));
     const eventRef = adminDb.collection('events').doc(shellId);
 
@@ -65,6 +64,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       status:      'published',
       publishedAt: FieldValue.serverTimestamp(),
     });
+
+    // Mark art class submission as published
+    if (s.presenterId) {
+      batch.update(adminDb.collection('art_class_submissions').doc(s.presenterId), {
+        status:          'published',
+        assignedShellId: shellId,
+        publishedAt:     FieldValue.serverTimestamp(),
+      });
+    }
 
     await batch.commit();
 

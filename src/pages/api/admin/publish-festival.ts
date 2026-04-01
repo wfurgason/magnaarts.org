@@ -52,7 +52,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     await adminDb.collection('events').doc(shellId).set({
       title:          shell.title,
-      eventDate:      Timestamp.fromDate(new Date(shell.date + 'T12:00:00')),
+      eventDate:      Timestamp.fromDate(new Date(shell.date + 'T' + timeToISO(shell.startTime))),
       eventTime:      shell.startTime,
       endTime:        shell.endTime || null,
       venueName:      shell.venue,
@@ -80,3 +80,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ error: 'Server error' }), { status: 500 });
   }
 };
+
+function timeToISO(timeStr: string): string {
+  try {
+    const [time, meridiem] = timeStr.trim().split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (meridiem?.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+    if (meridiem?.toUpperCase() === 'AM' && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, '0')}:${String(minutes || 0).padStart(2, '0')}:00`;
+  } catch {
+    return '12:00:00';
+  }
+}

@@ -172,9 +172,8 @@ const isFestival  = event.eventType === 'arts_festival';
                           {b.time && <span class="slot-time">{b.time}</span>}
                         </div>
                         <h3 class="band-name">{b.bandName}</h3>
-                        {b.genre && <div class="band-genre">{b.genre}</div>}
-                        {b.bio && <p class="band-bio">{b.bio}</p>}
-                        <div class="band-links">
+                        <div class="band-genre-row">
+                          {b.genre && <div class="band-genre">{b.genre}</div>}
                           {b.website && (
                             <a href={b.website} target="_blank" rel="noopener" class="band-link">
                               Website ↗
@@ -186,6 +185,7 @@ const isFestival  = event.eventType === 'arts_festival';
                             </a>
                           )}
                         </div>
+                        {b.bio && <p class="band-bio">{b.bio}</p>}
                       </div>
                     </div>
                   ))}
@@ -416,7 +416,7 @@ const isFestival  = event.eventType === 'arts_festival';
 
   .band-bio { font-size: 15px; color: var(--muted); line-height: 1.7; margin: 4px 0 0; }
 
-  .band-links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+  .band-genre-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .band-link {
     font-size: 13px; font-weight: 700; color: var(--blue);
     text-decoration: none; transition: opacity 0.15s;

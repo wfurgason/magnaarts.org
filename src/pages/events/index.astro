@@ -133,6 +133,32 @@ const firebaseConfig = {
         const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
         if (dateObj < now) return; // skip past events — past events stay in admin only
 
+        // Arts Festival: expand each assigned band slot into its own card
+        if (d.eventType === 'arts_festival') {
+          const festDate    = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const festVenue   = d.venueName || d.venue || '';
+          const festAddress = d.venueAddress || d.address || '';
+          (d.bands || []).forEach(b => {
+            if (!b.bandId) return; // skip empty slots
+            upcoming.push({
+              id:           doc.id + '-slot' + b.slot,
+              title:        'Magna Main Street Arts Festival',
+              date:         festDate,
+              time:         b.time || d.eventTime || '',
+              venueName:    festVenue,
+              venueAddress: festAddress,
+              description:  b.bio || '',
+              posterUrl:    b.photoUrl || null,
+              bandName:     b.bandName || null,
+              genre:        b.genre || null,
+              musicLink:    b.musicLink || null,
+              ticketUrl:    null,
+              rsvpUrl:      null,
+            });
+          });
+          return; // do not add the parent festival doc
+        }
+
         upcoming.push({
           id:           doc.id,
           title:        d.title,

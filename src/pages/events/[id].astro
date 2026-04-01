@@ -42,6 +42,13 @@ const displayDate = isoDate
 
 const isFestival  = event.eventType === 'arts_festival';
 
+const vendorTypeIcon: Record<string, string> = {
+  'Individual Artist': '🎨',
+  'Food Vendor': '🌮',
+  'Retail / Franchise / non-profit': '🛒',
+  'Political': '📜',
+};
+
 // For festival pages, load approved + paid vendors with a booth assigned
 let vendors: any[] = [];
 if (isFestival) {
@@ -235,13 +242,7 @@ const venueAddress= event.venueAddress|| event.address   || '';
             {vendors.length > 0 ? (
               <div class="vendor-list">
                 {vendors.map((v: any) => {
-                  const typeIcon: Record<string, string> = {
-                    'Individual Artist': '🎨',
-                    'Food Vendor': '🌮',
-                    'Retail / Franchise / non-profit': '🛒',
-                    'Political': '📜',
-                  };
-                  const icon  = typeIcon[v.vendor_type] || '✓';
+                  const icon = vendorTypeIcon[v.vendor_type] || '✓';
                   const space = v.space_number || v.booth_number;
                   return (
                     <div class="vendor-item">

@@ -161,18 +161,17 @@ const isFestival  = event.eventType === 'arts_festival';
                   .sort((a, b) => a.slot - b.slot)
                   .map((b: any) => (
                     <div class="band-profile-card">
-                      {b.photoUrl && (
-                        <div class="band-photo-wrap">
-                          <img src={b.photoUrl} alt={b.bandName} class="band-photo" />
-                        </div>
-                      )}
-                      <div class="band-info">
-                        <div class="band-slot-time">
-                          <span class="slot-label">Slot {b.slot}</span>
-                          {b.time && <span class="slot-time">{b.time}</span>}
-                        </div>
+                      <div class="band-photo-col">
+                        {b.photoUrl && (
+                          <div class="band-photo-wrap">
+                            <img src={b.photoUrl} alt={b.bandName} class="band-photo" />
+                          </div>
+                        )}
                         <h3 class="band-name">{b.bandName}</h3>
+                      </div>
+                      <div class="band-info">
                         <div class="band-genre-row">
+                          {b.time && <span class="slot-time">{b.time}</span>}
                           {b.genre && <div class="band-genre">{b.genre}</div>}
                           {b.website && (
                             <a href={b.website} target="_blank" rel="noopener" class="band-link">
@@ -379,7 +378,7 @@ const isFestival  = event.eventType === 'arts_festival';
 
   .band-profile-card {
     display: grid;
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: min-content 1fr;
     gap: 32px;
     background: var(--white);
     border: 1.5px solid var(--border);
@@ -388,24 +387,29 @@ const isFestival  = event.eventType === 'arts_festival';
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   }
 
-  .band-photo-wrap { position: relative; overflow: hidden; aspect-ratio: 4/3; align-self: start; }
+  .band-photo-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .band-photo-wrap { overflow: hidden; width: 220px; aspect-ratio: 4/3; flex-shrink: 0; }
   .band-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-  .band-info { padding: 28px 28px 28px 0; display: flex; flex-direction: column; gap: 10px; }
+  .band-info { padding: 24px 24px 24px 0; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
 
-  .band-slot-time { display: flex; align-items: center; gap: 10px; }
-  .slot-label {
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-    background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 100px;
-  }
   .slot-time {
-    font-size: 15px; font-weight: 700; color: var(--amber, #c87e0a);
+    font-size: 14px; font-weight: 700; color: var(--amber, #c87e0a);
     font-family: var(--font-display);
   }
 
   .band-name {
-    font-family: var(--font-display); font-size: 28px; font-weight: 900;
-    color: var(--navy); margin: 0; line-height: 1.1;
+    font-family: var(--font-display); font-size: 16px; font-weight: 900;
+    color: var(--navy); margin: 0; line-height: 1.3;
+    text-align: center; padding: 8px 10px;
+    width: 220px; box-sizing: border-box;
+    background: var(--navy); color: #fff;
   }
 
   .band-genre {
@@ -467,7 +471,9 @@ const isFestival  = event.eventType === 'arts_festival';
     .hero-image-wrap { display: none; }
     .desc-inner { grid-template-columns: 1fr; }
     .band-profile-card { grid-template-columns: 1fr; }
-    .band-photo { min-height: 220px; max-height: 280px; }
+    .band-photo-col { width: 100%; }
+    .band-photo-wrap { width: 100%; }
+    .band-name { width: 100%; }
     .band-info { padding: 20px; }
   }
 </style>

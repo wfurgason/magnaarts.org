@@ -225,6 +225,10 @@ function calcTotal(v: Vendor): number {
                 </button>
               )}
 
+              <button class="btn btn-delete" data-action="delete" data-id={v.id} data-company={v.company_name}>
+                🗑 Delete
+              </button>
+
               <div class="submitted-at">
                 Submitted {v.submitted_at ? new Date(v.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
               </div>
@@ -273,9 +277,55 @@ function calcTotal(v: Vendor): number {
     </div>
   </div>
 
+  <!-- ── Delete Confirmation Modal ── -->
+  <div id="delete-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 style="color:#991b1b">🗑 Delete Vendor Record</h2>
+        <button id="delete-modal-close" class="modal-close" aria-label="Close">✕</button>
+      </div>
+      <p class="modal-sub" id="delete-modal-sub"></p>
+      <div style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#991b1b;line-height:1.6;">
+        This will permanently delete the application from Firestore. This action cannot be undone.
+      </div>
+      <div class="modal-actions">
+        <button id="delete-modal-cancel" class="btn btn-muted">Cancel</button>
+        <button id="delete-modal-confirm" class="btn btn-danger">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let pendingPaidId: string | null = null;
     let pendingTotal: number = 0;
+    let pendingDeleteId: string | null = null;
+
+    // ── Delete modal ────────────────────────────────────────────────────
+    function openDeleteModal(id: string, company: string) {
+      pendingDeleteId = id;
+      const sub = document.getElementById('delete-modal-sub');
+      if (sub) sub.textContent = `Delete "${company}"? This record will be permanently removed.`;
+      (document.getElementById('delete-modal') as HTMLElement).style.display = 'flex';
+    }
+    function closeDeleteModal() {
+      (document.getElementById('delete-modal') as HTMLElement).style.display = 'none';
+      pendingDeleteId = null;
+      const confirmBtn = document.getElementById('delete-modal-confirm') as HTMLButtonElement;
+      confirmBtn.disabled    = false;
+      confirmBtn.textContent = 'Yes, Delete';
+    }
+    document.getElementById('delete-modal-close')?.addEventListener('click', closeDeleteModal);
+    document.getElementById('delete-modal-cancel')?.addEventListener('click', closeDeleteModal);
+    document.getElementById('delete-modal')?.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).id === 'delete-modal') closeDeleteModal();
+    });
+    document.getElementById('delete-modal-confirm')?.addEventListener('click', async () => {
+      if (!pendingDeleteId) return;
+      const confirmBtn = document.getElementById('delete-modal-confirm') as HTMLButtonElement;
+      confirmBtn.disabled    = true;
+      confirmBtn.textContent = 'Deleting…';
+      await doVendorAction({ action: 'delete', id: pendingDeleteId });
+    });
 
     // ── Action buttons ────────────────────────────────────────────────────
     document.querySelectorAll('[data-action]').forEach(btn => {
@@ -285,6 +335,8 @@ function calcTotal(v: Vendor): number {
         const id      = el.dataset.id!;
         const company = el.dataset.company || 'this vendor';
         const total   = Number(el.dataset.total || 0);
+
+        if (action === 'delete') { openDeleteModal(id, company); return; }
 
         if (action === 'open-paid-modal') {
           pendingPaidId = id;
@@ -574,6 +626,8 @@ function calcTotal(v: Vendor): number {
     .btn-paid:hover:not(:disabled) { background: #1e40af; }
     .btn-muted   { background: var(--border); color: var(--muted); }
     .btn-muted:hover:not(:disabled) { background: #d1d5db; color: var(--navy); }
+    .btn-delete  { background: #fff0f0; color: #991b1b; border: 1.5px solid #fca5a5; margin-left: auto; }
+    .btn-delete:hover:not(:disabled) { background: #fee2e2; }
 
     /* ── Modal ── */
     .modal-backdrop {

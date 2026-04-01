@@ -420,6 +420,13 @@ Preview URLs are generated for every branch and pull request.
 
 ## Recent Changes
 
+### April 1, 2026 — admin/vendors: delete vendor record
+- Added a 🗑 Delete button to every vendor card (visually separated right with `margin-left:auto`)
+- Clicking opens a confirmation modal; modal shows the vendor name and a permanent-action warning before proceeding
+- Confirmed delete calls `vendor-action.ts` with `action: 'delete'`; API deletes the Firestore doc and reloads the page
+- Added `btn-delete` CSS style (soft red outline, no filled background)
+- Added `delete` to the allowed-actions list and delete handler in `vendor-action.ts`
+
 ### April 1, 2026 — vendor-application: profile image upload
 - Added drag-and-drop image upload zone labeled "Upload a Profile Image" in the Vendor Details fieldset, directly after the "What are you selling / offering?" textarea
 - Uploads to Firebase Storage at `vendor-profiles/{timestamp}.{ext}` on submit; saves download URL as `profile_image_url` in Firestore

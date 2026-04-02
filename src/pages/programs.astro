@@ -428,6 +428,9 @@ const programs = [
   /* ── PROGRAM SECTIONS ── */
   .section-cream { background: var(--cream); }
 
+  /* Offset anchor scroll for sticky header (64px) + sticky program nav (~48px) */
+  .program-section { scroll-margin-top: 112px; }
+
   .program-inner {
     display: grid;
     grid-template-columns: 1fr 360px;

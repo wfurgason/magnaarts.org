@@ -317,10 +317,18 @@ if (Astro.request.method === 'POST') {
     const address   = form.get('address')?.toString();
     const startTime = form.get('startTime')?.toString();
     const col       = form.get('collection')?.toString() || 'park_events';
-    const newImageUrl = form.get('imageUrl')?.toString() || null;
+    const newImageUrl       = form.get('imageUrl')?.toString() || null;
+    const displayType       = form.get('displayType')?.toString() || null;
+    const movieTitle        = form.get('movieTitle')?.toString() || null;
+    const moviePreviewEmbed = form.get('moviePreviewEmbed')?.toString() || null;
     if (shellId) {
       const updateData: Record<string, any> = { venue, address, startTime };
       if (newImageUrl) updateData.imageUrl = newImageUrl;
+      if (col === 'park_events') {
+        updateData.display_type        = displayType || 'music_only';
+        updateData.movie_title         = movieTitle || null;
+        updateData.movie_preview_embed = moviePreviewEmbed || null;
+      }
       await adminDb.collection(col).doc(shellId).update(updateData);
       flashMsg  = 'Event shell updated.';
       flashType = 'success';
@@ -590,7 +598,7 @@ const totalShells =
               <td>{shell.movie ? <span class="check-yes">✓ {shell.movie}</span> : <span class="dim">—</span>}</td>
               <td class="actions-cell">
                 <button class="btn-sm btn-outline"
-                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','park_events')`}>
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','park_events','','${(shell.display_type||'music').replace(/'/g,"\\'")}','${(shell.movie_title||'').replace(/'/g,"\\'")}','${(shell.movie_preview_embed||'').replace(/'/g,"\\'")}')`}>
                   Edit
                 </button>
                 {shell.status === 'band_assigned' && (
@@ -976,6 +984,28 @@ const totalShells =
         <div class="form-field">
           <label for="edit-startTime">Start Time</label>
           <input type="text" id="edit-startTime" name="startTime" required />
+        </div>
+
+        <!-- Movie fields — only shown for park_events -->
+        <div id="edit-movie-section" style="display:none">
+          <div class="form-field">
+            <label for="edit-displayType">Display Type</label>
+            <select id="edit-displayType" name="displayType">
+              <option value="music">Music only</option>
+              <option value="movie">Movie only</option>
+              <option value="both">Music &amp; Movie</option>
+            </select>
+          </div>
+          <div id="edit-movie-fields" style="display:none; flex-direction:column; gap:12px; margin-top:12px">
+            <div class="form-field">
+              <label for="edit-movieTitle">Movie Title</label>
+              <input type="text" id="edit-movieTitle" name="movieTitle" placeholder="e.g. The Princess Bride" />
+            </div>
+            <div class="form-field">
+              <label for="edit-moviePreviewEmbed">Movie Preview Embed <span class="field-hint">YouTube embed src</span></label>
+              <textarea id="edit-moviePreviewEmbed" name="moviePreviewEmbed" rows="3" placeholder="https://www.youtube.com/embed/..."></textarea>
+            </div>
+          </div>
         </div>
 
         <!-- Image replace — only shown for event types that have images -->
@@ -1566,7 +1596,7 @@ const totalShells =
 
   const IMAGE_COLLECTIONS = new Set(['open_mic_events', 'art_night_events']);
 
-  window.openEditModal = function(id, venue, address, startTime, collection, currentImageUrl) {
+  window.openEditModal = function(id, venue, address, startTime, collection, currentImageUrl, displayType, movieTitle, moviePreviewEmbed) {
     document.getElementById('edit-shell-id').value   = id;
     document.getElementById('edit-venue').value      = venue;
     document.getElementById('edit-address').value    = address;
@@ -1595,6 +1625,25 @@ const totalShells =
     } else {
       imageSection.style.display = 'none';
     }
+
+    // Movie fields — only for park_events
+    const movieSection  = document.getElementById('edit-movie-section');
+    const movieFields   = document.getElementById('edit-movie-fields');
+    const displayTypeSel = document.getElementById('edit-displayType');
+    if (collection === 'park_events') {
+      movieSection.style.display = 'block';
+      displayTypeSel.value = displayType || 'music';
+      document.getElementById('edit-movieTitle').value        = movieTitle || '';
+      document.getElementById('edit-moviePreviewEmbed').value = moviePreviewEmbed || '';
+      movieFields.style.display = (displayType === 'movie' || displayType === 'both') ? 'flex' : 'none';
+    } else {
+      movieSection.style.display = 'none';
+    }
+
+    displayTypeSel.onchange = () => {
+      const v = displayTypeSel.value;
+      movieFields.style.display = (v === 'movie' || v === 'both') ? 'flex' : 'none';
+    };
 
     editModal.hidden = false;
   };

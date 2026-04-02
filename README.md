@@ -2,6 +2,23 @@
 
 **Magna, Utah's Designated Local Arts Agency**
 
+---
+
+## 🔧 In Progress
+
+**Feature: Public event card — `display_type` support + movie embed**
+
+- **Relevant files:**
+  - `src/pages/events/index.astro` — public events listing; event card rendering is **inline here**, no separate component file
+  - `src/pages/events/[id].astro` — event detail page (SSR dynamic route)
+- **What's done:** `planning.astro` edit modal already writes `display_type` (`'band'` | `'movie'` | `'both'`) and `movie_preview_embed` (raw iframe string) to Firestore on publish
+- **Next action:** Update `src/pages/events/index.astro` card rendering to:
+  1. `display_type === 'both'` → Double Card: band info (left) + movie info (right) side-by-side
+  2. `display_type === 'movie'` → hide band info entirely, show movie title/description full-width
+  3. `display_type === 'band'` or undefined → existing layout unchanged
+  4. Render `movie_preview_embed` iframe string safely using `<Fragment set:html={event.movie_preview_embed} />` (Astro's trusted HTML injection — no `dangerouslySetInnerHTML` needed)
+- **Design tokens to match:** `--red: #b52626` for film/movie accents (see Design System in this README)
+
 A fast, beautiful, community-focused website for the Magna Arts Council. Built to encourage community participation, gather event data for grant reporting, and manage the full lifecycle of arts programming — from proposal to post-event report.
 
 ---
@@ -557,7 +574,13 @@ All references to `arts-festival-2025` updated across 3 files:
 - **`src/data/events.ts`** — event `id` changed to `arts-festival-2026`; `isoDate` updated to `2026-08-15`; `day` updated to `Saturday, August 15, 2026`; added `image: '/images/festival/mmsaf.png'` so the festival logo appears in the event hero on the detail page; file comment updated to reference 2026
 - **`src/pages/events/[id].astro`** — both `event.id === 'arts-festival-2025'` checks (festival extras section and vendor Firestore script) updated to `arts-festival-2026`
 - **`src/pages/programs.astro`** — `link` updated from `/events/arts-festival-2025` → `/events/arts-festival-2026`
+The modal already had the display_type dropdown and movie fields — but movie title and embed were always visible (when collection = park_events) with no conditional logic, and embed was an <input> not a <textarea>.
+Changes made to planning.astro:
 
+Wrapped movie_title + movie_preview_embed in <div id="edit-movie-fields"> that starts hidden
+Changed movie_preview_embed from <input type="text"> to <textarea rows="3">
+On openEditModal(): show #edit-movie-fields only if displayType is 'movie' or 'both'
+Added displayTypeSel.onchange handler to toggle visibility as user changes the dropdown
 ---
 
 *README maintained throughout active development. Updated with every significant change.*

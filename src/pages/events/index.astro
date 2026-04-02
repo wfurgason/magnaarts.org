@@ -109,6 +109,15 @@ const firebaseConfig = {
     import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import { getFirestore, collection, getDocs, orderBy, query }      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
+    function extractEmbedSrc(val) {
+      if (!val) return null;
+      // If it's already a plain URL, use it directly
+      if (val.trim().startsWith('http')) return val.trim();
+      // Otherwise parse the src out of a full <iframe> snippet
+      const m = val.match(/src=["']([^"']+)["']/);
+      return m ? m[1] : null;
+    }
+
     function truncate(text, max) {
       if (!text || text.length <= max) return { short: text || '', truncated: false };
       return { short: text.slice(0, max).trimEnd(), truncated: true };
@@ -228,7 +237,7 @@ const firebaseConfig = {
                   ${e.moviePreviewEmbed ? `
                   <div class="published-movie-embed">
                     <iframe
-                      src="${e.moviePreviewEmbed}"
+                      src="${extractEmbedSrc(e.moviePreviewEmbed)}"
                       title="${e.movieTitle} trailer"
                       frameborder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

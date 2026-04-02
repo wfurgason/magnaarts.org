@@ -6,18 +6,11 @@
 
 ## 🔧 In Progress
 
-**Feature: Public event card — `display_type` support + movie embed**
-
-- **Relevant files:**
-  - `src/pages/events/index.astro` — public events listing; event card rendering is **inline here**, no separate component file
-  - `src/pages/events/[id].astro` — event detail page (SSR dynamic route)
-- **What's done:** `planning.astro` edit modal already writes `display_type` (`'band'` | `'movie'` | `'both'`) and `movie_preview_embed` (raw iframe string) to Firestore on publish
-- **Next action:** Update `src/pages/events/index.astro` card rendering to:
-  1. `display_type === 'both'` → Double Card: band info (left) + movie info (right) side-by-side
-  2. `display_type === 'movie'` → hide band info entirely, show movie title/description full-width
-  3. `display_type === 'band'` or undefined → existing layout unchanged
-  4. Render `movie_preview_embed` iframe string safely using `<Fragment set:html={event.movie_preview_embed} />` (Astro's trusted HTML injection — no `dangerouslySetInnerHTML` needed)
-- **Design tokens to match:** `--red: #b52626` for film/movie accents (see Design System in this README)
+//Not Done.
+Install the resend npm package
+Add RESEND_API_KEY to your .env
+Create /src/pages/api/contact.ts — receives the form POST and sends the email via Resend
+Update contact.astro — remove the Netlify form attributes, post to the new API endpoint via JS, and show a success/error message inline
 
 A fast, beautiful, community-focused website for the Magna Arts Council. Built to encourage community participation, gather event data for grant reporting, and manage the full lifecycle of arts programming — from proposal to post-event report.
 

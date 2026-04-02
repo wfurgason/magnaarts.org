@@ -34,8 +34,7 @@ import '../styles/global.css';
           <h2>Send a Message</h2>
           <p class="form-sub">We read every message and respond within a few days.</p>
 
-          <form class="contact-form" name="contact" method="POST" data-netlify="true" action="/contact?success=true">
-            <input type="hidden" name="form-name" value="contact" />
+          <form class="contact-form" id="contact-form" novalidate>
 
             <div class="field-row">
               <div class="field">
@@ -66,7 +65,8 @@ import '../styles/global.css';
               <textarea id="message" name="message" rows="5" placeholder="Tell us what's on your mind…" required></textarea>
             </div>
 
-            <button type="submit" class="btn btn-gold submit-btn">Send Message →</button>
+            <button type="submit" class="btn btn-gold submit-btn" id="submit-btn">Send Message →</button>
+            <p id="form-status" class="form-status" aria-live="polite"></p>
           </form>
         </div>
 
@@ -124,6 +124,45 @@ import '../styles/global.css';
 
   <Footer />
 </BaseLayout>
+
+<script>
+  const form     = document.getElementById('contact-form') as HTMLFormElement;
+  const btn      = document.getElementById('submit-btn')  as HTMLButtonElement;
+  const status   = document.getElementById('form-status') as HTMLParagraphElement;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    btn.disabled   = true;
+    btn.textContent = 'Sending…';
+    status.textContent = '';
+    status.className   = 'form-status';
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        body: new FormData(form),
+      });
+
+      const json = await res.json();
+
+      if (res.ok) {
+        status.textContent = '✓ Message sent! We\'ll be in touch soon.';
+        status.classList.add('status-ok');
+        form.reset();
+      } else {
+        status.textContent = json.error ?? 'Something went wrong. Please try again.';
+        status.classList.add('status-err');
+      }
+    } catch {
+      status.textContent = 'Network error. Please try again.';
+      status.classList.add('status-err');
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Send Message →';
+    }
+  });
+</script>
 
 <style>
   /* ── PAGE HERO ── */
@@ -245,6 +284,14 @@ import '../styles/global.css';
     font-size: 15px;
     padding: 14px 32px;
   }
+
+  .form-status {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0;
+  }
+  .status-ok  { color: #15803d; }
+  .status-err { color: #dc2626; }
 
   /* ── INFO SIDEBAR ── */
   .contact-info {

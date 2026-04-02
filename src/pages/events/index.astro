@@ -170,9 +170,11 @@ const firebaseConfig = {
           posterUrl:    d.posterUrl || d.photoUrl || null,
           bandName:     d.bandName || null,
           genre:        d.genre || d.bandGenre || null,
-          musicLink:    d.musicLink || d.bandMusicLink || null,
-          ticketUrl:    d.ticketUrl || null,
-          rsvpUrl:      d.rsvpUrl || null,
+          musicLink:         d.musicLink || d.bandMusicLink || null,
+          ticketUrl:         d.ticketUrl || null,
+          rsvpUrl:           d.rsvpUrl || null,
+          movieTitle:        d.movieTitle || null,
+          moviePreviewEmbed: d.moviePreviewEmbed || null,
         });
       });
 
@@ -218,6 +220,22 @@ const firebaseConfig = {
                 <div class="published-bio">
                   <div class="published-bio-label">About the Band</div>
                   <p class="published-desc">${bio.short}${bio.truncated ? `<span class="bio-ellipsis">… <a href="#" class="bio-more-link" data-full="${e.description.replace(/"/g,'&quot;')}">more</a></span>` : ''}</p>
+                </div>` : ''}
+              ${e.movieTitle ? `
+                <div class="published-movie">
+                  <div class="published-movie-label">🎬 Tonight's Movie</div>
+                  <div class="published-movie-title">${e.movieTitle}</div>
+                  ${e.moviePreviewEmbed ? `
+                  <div class="published-movie-embed">
+                    <iframe
+                      src="${e.moviePreviewEmbed}"
+                      title="${e.movieTitle} trailer"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowfullscreen
+                      loading="lazy"
+                    ></iframe>
+                  </div>` : ''}
                 </div>` : ''}
               ${(e.ticketUrl || e.rsvpUrl) ? `
               <div class="published-links">
@@ -406,6 +424,43 @@ const firebaseConfig = {
   .bio-ellipsis { color: var(--muted); }
   .bio-more-link { color: var(--blue); font-weight: 600; text-decoration: none; }
   .bio-more-link:hover { text-decoration: underline; }
+
+  /* Movie section */
+  .published-movie {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .published-movie-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+  .published-movie-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .published-movie-embed {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #000;
+  }
+  .published-movie-embed iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
 
   /* Bottom action links */
   .published-links {

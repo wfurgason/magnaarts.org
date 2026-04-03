@@ -40,6 +40,17 @@ if (filterParam !== 'all') {
 ---
 
 <AdminLayout title="Art Presenters" user={user}>
+  <Fragment slot="head">
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet" />
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    <style>
+      .ql-toolbar  { border-radius: 7px 7px 0 0 !important; border-color: var(--border,#e5e5e5) !important; background: var(--cream,#f7f5f0); }
+      .ql-container{ border-radius: 0 0 7px 7px !important; border-color: var(--border,#e5e5e5) !important; font-family: inherit; font-size: 14px; }
+      .ql-editor    { min-height: 72px; }
+      .quill-focused .ql-toolbar,
+      .quill-focused .ql-container { border-color: var(--navy,#1a2456) !important; box-shadow: 0 0 0 3px rgba(26,36,86,.1); }
+    </style>
+  </Fragment>
   <div class="page-header">
     <h1>Art Presenters</h1>
     <div class="filter-tabs">
@@ -87,12 +98,12 @@ if (filterParam !== 'all') {
             <div class="detail-grid">
               <div>
                 <div class="detail-label">Arts Area &amp; Experience</div>
-                <p class="detail-text">{p.artsArea}</p>
+                <p class="detail-text" set:html={p.artsArea}></p>
               </div>
               {p.projectDescription && (
                 <div>
                   <div class="detail-label">Project Description</div>
-                  <p class="detail-text">{p.projectDescription}</p>
+                  <p class="detail-text" set:html={p.projectDescription}></p>
                 </div>
               )}
               {p.projectImageUrl && (
@@ -108,7 +119,7 @@ if (filterParam !== 'all') {
               {p.materials && (
                 <div>
                   <div class="detail-label">Materials &amp; Resources</div>
-                  <p class="detail-text">{p.materials}</p>
+                  <p class="detail-text" set:html={p.materials}></p>
                 </div>
               )}
               {p.links && (
@@ -187,18 +198,18 @@ if (filterParam !== 'all') {
         </div>
 
         <div class="edit-field">
-          <label for="edit-artsArea">Arts Area &amp; Experience</label>
-          <textarea id="edit-artsArea" name="artsArea" rows="4"></textarea>
+          <label>Arts Area &amp; Experience</label>
+          <div id="quill-artsArea" class="quill-wrap"></div>
         </div>
 
         <div class="edit-field">
-          <label for="edit-projectDescription">Project Description</label>
-          <textarea id="edit-projectDescription" name="projectDescription" rows="5"></textarea>
+          <label>Project Description</label>
+          <div id="quill-projectDescription" class="quill-wrap"></div>
         </div>
 
         <div class="edit-field">
-          <label for="edit-materials">Materials &amp; Resources</label>
-          <textarea id="edit-materials" name="materials" rows="3"></textarea>
+          <label>Materials &amp; Resources</label>
+          <div id="quill-materials" class="quill-wrap"></div>
         </div>
 
         <!-- Image section -->
@@ -231,7 +242,7 @@ if (filterParam !== 'all') {
   </div>
 
   <style>
-    .detail-text { font-size: 14px; color: var(--text, #1a1a1a); line-height: 1.65; margin: 4px 0 0; white-space: pre-wrap; }
+    .detail-text { font-size: 14px; color: var(--text, #1a1a1a); line-height: 1.65; margin: 4px 0 0; }
     .link-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; font-size: 14px; }
     .muted { color: var(--muted, #5a5a7a); }
     .badge-contacted { background: #e0f2fe; color: #075985; }
@@ -344,19 +355,38 @@ if (filterParam !== 'all') {
     const hiddenImgUrl  = document.getElementById('edit-image-url');
     const zoneText      = document.getElementById('upload-zone-text');
 
+    // ── Quill editors (init once; populated on open) ─────────────────
+    const BASIC_TOOLBAR = [['bold','italic','underline'],['link'],['clean']];
+    const LIST_TOOLBAR  = [['bold','italic','underline'],[{ list: 'bullet' },{ list: 'ordered' }],['link'],['clean']];
+
+    const qArtsArea    = new Quill('#quill-artsArea',           { theme: 'snow', modules: { toolbar: BASIC_TOOLBAR } });
+    const qProjectDesc = new Quill('#quill-projectDescription', { theme: 'snow', modules: { toolbar: BASIC_TOOLBAR } });
+    const qMaterials   = new Quill('#quill-materials',          { theme: 'snow', modules: { toolbar: LIST_TOOLBAR  } });
+
+    [
+      [qArtsArea,    'quill-artsArea'],
+      [qProjectDesc, 'quill-projectDescription'],
+      [qMaterials,   'quill-materials'],
+    ].forEach(([q, wrId]) => {
+      const wrap = document.getElementById(wrId);
+      q.on('selection-change', range => wrap.classList.toggle('quill-focused', !!range));
+    });
+
     // ── Open modal ───────────────────────────────────────────────────
     function openModal(id) {
       const p = PRESENTERS[id];
       if (!p) return;
 
-      editForm.querySelector('#edit-id').value                 = id;
-      editForm.querySelector('#edit-fullName').value           = p.fullName;
-      editForm.querySelector('#edit-email').value              = p.email;
-      editForm.querySelector('#edit-phone').value              = p.phone;
-      editForm.querySelector('#edit-artsArea').value           = p.artsArea;
-      editForm.querySelector('#edit-projectDescription').value = p.projectDescription;
-      editForm.querySelector('#edit-materials').value          = p.materials;
+      editForm.querySelector('#edit-id').value       = id;
+      editForm.querySelector('#edit-fullName').value   = p.fullName;
+      editForm.querySelector('#edit-email').value      = p.email;
+      editForm.querySelector('#edit-phone').value      = p.phone;
       hiddenImgUrl.value = p.projectImageUrl;
+
+      // Populate Quill editors
+      qArtsArea.root.innerHTML    = p.artsArea           || '';
+      qProjectDesc.root.innerHTML = p.projectDescription || '';
+      qMaterials.root.innerHTML   = p.materials          || '';
 
       // Reset upload zone
       fileInput.value = '';
@@ -440,9 +470,9 @@ if (filterParam !== 'all') {
           fullName:           editForm.querySelector('#edit-fullName').value.trim(),
           email:              editForm.querySelector('#edit-email').value.trim(),
           phone:              editForm.querySelector('#edit-phone').value.trim(),
-          artsArea:           editForm.querySelector('#edit-artsArea').value.trim(),
-          projectDescription: editForm.querySelector('#edit-projectDescription').value.trim(),
-          materials:          editForm.querySelector('#edit-materials').value.trim(),
+          artsArea:           qArtsArea.getText().trim()    ? qArtsArea.root.innerHTML    : '',
+          projectDescription: qProjectDesc.getText().trim() ? qProjectDesc.root.innerHTML : '',
+          materials:          qMaterials.getText().trim()   ? qMaterials.root.innerHTML   : '',
           projectImageUrl:    hiddenImgUrl.value,
         };
 

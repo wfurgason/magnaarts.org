@@ -16,6 +16,19 @@ const firebaseConfig = {
   title="Teach an Art Class — Magna Arts Council"
   description="Share your artistic expertise with the Magna community. Apply to lead a Group Art Night session at the Magna Library."
 >
+  <Fragment slot="head">
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet" />
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    <style>
+      .ql-toolbar { border-radius: 8px 8px 0 0 !important; border-color: var(--border, #e5e5e5) !important; background: var(--cream, #f7f5f0); }
+      .ql-container { border-radius: 0 0 8px 8px !important; border-color: var(--border, #e5e5e5) !important; font-family: inherit; font-size: 15px; min-height: 120px; }
+      .ql-editor { min-height: 120px; }
+      .quill-focused .ql-toolbar { border-color: var(--green, #2d7a3a) !important; box-shadow: 0 0 0 3px rgba(45,122,58,0.12); }
+      .quill-focused .ql-container { border-color: var(--green, #2d7a3a) !important; box-shadow: 0 0 0 3px rgba(45,122,58,0.12); }
+      .quill-error .ql-toolbar { border-color: var(--red, #b52626) !important; }
+      .quill-error .ql-container { border-color: var(--red, #b52626) !important; }
+    </style>
+  </Fragment>
   <Header />
 
   <main>
@@ -104,22 +117,20 @@ const firebaseConfig = {
             <h2 class="form-heading">About Your Session</h2>
 
             <div class="form-field">
-              <label for="artsArea">
+              <label>
                 Arts Area &amp; Experience <span class="req">*</span>
                 <span class="field-hint">What would you like to present? Briefly describe your background and credentials.</span>
               </label>
-              <textarea id="artsArea" name="artsArea" rows="5" required
-                placeholder="e.g. I've been painting with watercolors for 15 years and have taught beginner workshops at the community center…"></textarea>
+              <div id="artsArea-editor" class="quill-wrap"></div>
               <span class="field-error" id="err-artsArea"></span>
             </div>
 
             <div class="form-field">
-              <label for="projectDescription">
+              <label>
                 Project Description <span class="req">*</span>
                 <span class="field-hint">Describe the specific project or activity you'd like to lead. What will participants make or learn?</span>
               </label>
-              <textarea id="projectDescription" name="projectDescription" rows="5" required
-                placeholder="e.g. Participants will paint a simple landscape using wet-on-wet watercolor techniques. No experience necessary — I'll guide everyone step by step through composition, color mixing, and basic brush strokes…"></textarea>
+              <div id="projectDescription-editor" class="quill-wrap"></div>
               <span class="field-error" id="err-projectDescription"></span>
             </div>
 
@@ -140,12 +151,11 @@ const firebaseConfig = {
             </div>
 
             <div class="form-field">
-              <label for="materials">
+              <label>
                 Materials &amp; Resources Required
                 <span class="field-hint">List anything participants will need. The Arts Council covers supply costs.</span>
               </label>
-              <textarea id="materials" name="materials" rows="4"
-                placeholder="e.g. Watercolor paper (9×12"), basic watercolor paint sets, brushes, water cups…"></textarea>
+              <div id="materials-editor" class="quill-wrap"></div>
             </div>
 
             <div class="form-actions">
@@ -175,6 +185,24 @@ const firebaseConfig = {
     const app     = initializeApp(firebaseConfig);
     const db      = getFirestore(app);
     const storage = getStorage(app);
+
+    // ── Init Quill editors ─────────────────────────────────────────────
+    const BASIC_TOOLBAR = [['bold','italic','underline'],['link'],['clean']];
+    const LIST_TOOLBAR  = [['bold','italic','underline'],[{ list: 'bullet' },{ list: 'ordered' }],['link'],['clean']];
+
+    const quillArtsArea    = new Quill('#artsArea-editor',           { theme: 'snow', modules: { toolbar: BASIC_TOOLBAR } });
+    const quillProjectDesc = new Quill('#projectDescription-editor', { theme: 'snow', modules: { toolbar: BASIC_TOOLBAR } });
+    const quillMaterials   = new Quill('#materials-editor',          { theme: 'snow', modules: { toolbar: LIST_TOOLBAR  } });
+
+    // Focus ring via CSS class
+    [
+      [quillArtsArea,    'artsArea-editor'],
+      [quillProjectDesc, 'projectDescription-editor'],
+      [quillMaterials,   'materials-editor'],
+    ].forEach(([quill, wrId]) => {
+      const wrap = document.getElementById(wrId);
+      quill.on('selection-change', range => wrap.classList.toggle('quill-focused', !!range));
+    });
 
     // ── upload zone drag-and-drop ──────────────────────────────────────
     const zone = document.getElementById('project-image-zone');
@@ -211,21 +239,23 @@ const firebaseConfig = {
     const errorBanner  = document.getElementById('error-banner');
     const errorMsg     = document.getElementById('error-message');
 
-    // ── Inline validation helpers ────────────────────────────────────────
+    // ── Validation helpers ────────────────────────────────────────────
     function setError(id, msg) {
-      const el = document.getElementById('err-' + id);
-      const input = document.getElementById(id);
-      if (el) el.textContent = msg;
-      if (input) input.classList.toggle('input-error', !!msg);
+      const errEl     = document.getElementById('err-' + id);
+      const quillWrap = document.getElementById(id + '-editor');
+      const inputEl   = document.getElementById(id);
+      if (errEl)     errEl.textContent = msg;
+      if (quillWrap) quillWrap.classList.toggle('quill-error', !!msg);
+      if (inputEl)   inputEl.classList.toggle('input-error', !!msg);
     }
 
     function validate() {
       let ok = true;
-      const fullName          = document.getElementById('fullName').value.trim();
-      const email             = document.getElementById('email').value.trim();
-      const phone             = document.getElementById('phone').value.trim();
-      const artsArea          = document.getElementById('artsArea').value.trim();
-      const projectDescription = document.getElementById('projectDescription').value.trim();
+      const fullName     = document.getElementById('fullName').value.trim();
+      const email        = document.getElementById('email').value.trim();
+      const phone        = document.getElementById('phone').value.trim();
+      const artsAreaText = quillArtsArea.getText().trim();
+      const projDescText = quillProjectDesc.getText().trim();
 
       setError('fullName', fullName ? '' : 'Full name is required.');
       if (!fullName) ok = false;
@@ -237,14 +267,23 @@ const firebaseConfig = {
       setError('phone', phone ? '' : 'Phone number is required.');
       if (!phone) ok = false;
 
-      setError('artsArea', artsArea ? '' : 'Please describe your arts area and experience.');
-      if (!artsArea) ok = false;
+      setError('artsArea', artsAreaText ? '' : 'Please describe your arts area and experience.');
+      if (!artsAreaText) ok = false;
 
-      setError('projectDescription', projectDescription ? '' : 'Please describe the project or activity you plan to lead.');
-      if (!projectDescription) ok = false;
+      setError('projectDescription', projDescText ? '' : 'Please describe the project or activity you plan to lead.');
+      if (!projDescText) ok = false;
 
       return ok;
     }
+
+    // Clear errors on Quill text-change
+    quillArtsArea.on('text-change',    () => setError('artsArea', ''));
+    quillProjectDesc.on('text-change', () => setError('projectDescription', ''));
+
+    // Clear errors on plain inputs
+    ['fullName','email','phone'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', () => setError(id, ''));
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -252,40 +291,43 @@ const firebaseConfig = {
 
       if (!validate()) return;
 
-      // Loading state
       submitBtn.disabled = true;
       btnText.hidden     = true;
       btnLoading.hidden  = false;
 
       try {
-        // upload project image if provided
+        // Upload project image if provided
         let projectImageUrl = null;
         const imgFile = document.getElementById('projectImage').files?.[0];
         if (imgFile) {
           btnLoading.textContent = 'Uploading image…';
-          const ext = imgFile.name.split('.').pop();
-          const slug = document.getElementById('fullName').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');
+          const ext  = imgFile.name.split('.').pop();
+          const slug = document.getElementById('fullName').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
           const storageRef = ref(storage, `art-class-images/${slug}-${Date.now()}/project.${ext}`);
           await uploadBytes(storageRef, imgFile);
           projectImageUrl = await getDownloadURL(storageRef);
           btnLoading.textContent = 'Submitting…';
         }
 
+        // Read Quill HTML; treat empty-editor placeholder as empty string
+        const materialsHtml = quillMaterials.getText().trim()
+          ? quillMaterials.root.innerHTML
+          : '';
+
         await addDoc(collection(db, 'art_class_submissions'), {
           fullName:           document.getElementById('fullName').value.trim(),
           email:              document.getElementById('email').value.trim(),
           phone:              document.getElementById('phone').value.trim(),
-          artsArea:           document.getElementById('artsArea').value.trim(),
-          projectDescription: document.getElementById('projectDescription').value.trim(),
+          artsArea:           quillArtsArea.root.innerHTML,
+          projectDescription: quillProjectDesc.root.innerHTML,
           projectImageUrl,
-          materials:          document.getElementById('materials').value.trim(),
+          materials:          materialsHtml,
           status:             'pending',
           submittedAt:        serverTimestamp(),
         });
 
-        // Show success
-        form.hidden          = true;
-        successState.hidden  = false;
+        form.hidden         = true;
+        successState.hidden = false;
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
       } catch (err) {
@@ -296,11 +338,6 @@ const firebaseConfig = {
         btnText.hidden       = false;
         btnLoading.hidden    = true;
       }
-    });
-
-    // Clear errors on input
-    ['fullName','email','phone','artsArea','projectDescription'].forEach(id => {
-      document.getElementById(id)?.addEventListener('input', () => setError(id, ''));
     });
   </script>
 

@@ -16,7 +16,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   try {
     const body = await request.json();
-    const { id, fullName, email, phone, artsArea, materials, projectImageUrl } = body;
+    const { id, fullName, email, phone, artsArea, projectDescription, materials, projectImageUrl } = body;
 
     if (!id || typeof id !== 'string') {
       return new Response(JSON.stringify({ error: 'Missing id' }), { status: 400 });
@@ -27,8 +27,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (fullName        !== undefined) update.fullName        = fullName;
     if (email           !== undefined) update.email           = email;
     if (phone           !== undefined) update.phone           = phone;
-    if (artsArea        !== undefined) update.artsArea        = artsArea;
-    if (materials       !== undefined) update.materials       = materials;
+    if (artsArea            !== undefined) update.artsArea            = artsArea;
+    if (projectDescription  !== undefined) update.projectDescription  = projectDescription;
+    if (materials           !== undefined) update.materials           = materials;
     if (projectImageUrl !== undefined) update.projectImageUrl = projectImageUrl;
 
     if (Object.keys(update).length === 0) {

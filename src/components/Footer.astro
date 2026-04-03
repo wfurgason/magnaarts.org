@@ -5,15 +5,24 @@
 <footer>
   <div class="container footer-inner">
     <div class="footer-brand">
-      <span class="logo">Magna Arts Council</span>
-      <p>Magna, Utah's Designated Local Arts Agency</p>
+      <img src="/images/ArtsCouncil_logo.png" alt="Magna Arts Council logo" class="brand-logo" />
+      <div>
+        <span class="logo">Magna Arts Council</span>
+        <p>Magna, Utah's Designated Local Arts Agency</p>
+      </div>
     </div>
     <nav class="footer-nav" aria-label="Footer navigation">
-      <a href="/events">Events</a>
-      <a href="/programs">Programs</a>
-      <a href="/get-involved">Get Involved</a>
-      <a href="/about">About</a>
-      <a href="/contact">Contact</a>
+      <div class="footer-nav-row">
+        <a href="/events">Events</a>
+        <a href="/programs">Programs</a>
+        <a href="/get-involved">Get Involved</a>
+        <a href="/about">About</a>
+        <a href="/contact">Contact</a>
+      </div>
+      <div class="footer-nav-row footer-nav-sub">
+        <a href="/call-for-bands">Band Application</a>
+        <a href="/vendor-application">Vendor Application</a>
+      </div>
     </nav>
   </div>
   <div class="footer-bottom">
@@ -45,6 +54,19 @@
     padding-bottom: 40px;
   }
 
+  .footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .brand-logo {
+    height: 48px;
+    width: auto;
+    display: block;
+    flex-shrink: 0;
+  }
+
   .logo {
     font-family: var(--font-body);
     font-weight: 700;
@@ -53,20 +75,36 @@
     text-transform: uppercase;
     color: var(--white);
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
   }
 
   .footer-brand p {
     font-size: 13px;
     color: rgba(255, 255, 255, 0.45);
+    margin: 0;
   }
 
   .footer-nav {
     display: flex;
-    gap: 28px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .footer-nav-row {
+    display: flex;
+    gap: 24px;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
   }
+
+  .footer-nav-sub a {
+    color: rgba(255, 255, 255, 0.38) !important;
+    font-size: 12px !important;
+  }
+
+  .footer-nav-sub a:hover { color: var(--gold-lt) !important; }
 
   .footer-nav a {
     font-size: 13px;

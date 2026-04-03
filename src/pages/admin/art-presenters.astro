@@ -22,6 +22,7 @@ type Presenter = {
   email: string;
   phone: string;
   artsArea: string;
+  projectDescription?: string;
   links?: string;
   materials?: string;
   projectImageUrl?: string;
@@ -65,6 +66,7 @@ if (filterParam !== 'all') {
           id={p.id}
           data-phone={p.phone ?? ''}
           data-arts-area={p.artsArea ?? ''}
+          data-project-description={p.projectDescription ?? ''}
           data-materials={p.materials ?? ''}
           data-image-url={p.projectImageUrl ?? ''}
         >
@@ -87,6 +89,12 @@ if (filterParam !== 'all') {
                 <div class="detail-label">Arts Area &amp; Experience</div>
                 <p class="detail-text">{p.artsArea}</p>
               </div>
+              {p.projectDescription && (
+                <div>
+                  <div class="detail-label">Project Description</div>
+                  <p class="detail-text">{p.projectDescription}</p>
+                </div>
+              )}
               {p.projectImageUrl && (
                 <div>
                   <div class="detail-label">Project Image</div>
@@ -180,7 +188,12 @@ if (filterParam !== 'all') {
 
         <div class="edit-field">
           <label for="edit-artsArea">Arts Area &amp; Experience</label>
-          <textarea id="edit-artsArea" name="artsArea" rows="5"></textarea>
+          <textarea id="edit-artsArea" name="artsArea" rows="4"></textarea>
+        </div>
+
+        <div class="edit-field">
+          <label for="edit-projectDescription">Project Description</label>
+          <textarea id="edit-projectDescription" name="projectDescription" rows="5"></textarea>
         </div>
 
         <div class="edit-field">
@@ -305,12 +318,13 @@ if (filterParam !== 'all') {
     const PRESENTERS = {};
     document.querySelectorAll('.submission-card').forEach(card => {
       PRESENTERS[card.id] = {
-        fullName:        card.querySelector('.submission-name')?.textContent?.trim() ?? '',
-        email:           card.querySelector('a[href^="mailto"]')?.textContent?.trim() ?? '',
-        phone:           card.dataset.phone ?? '',
-        artsArea:        card.dataset.artsArea ?? '',
-        materials:       card.dataset.materials ?? '',
-        projectImageUrl: card.dataset.imageUrl ?? '',
+        fullName:           card.querySelector('.submission-name')?.textContent?.trim() ?? '',
+        email:              card.querySelector('a[href^="mailto"]')?.textContent?.trim() ?? '',
+        phone:              card.dataset.phone ?? '',
+        artsArea:           card.dataset.artsArea ?? '',
+        projectDescription: card.dataset.projectDescription ?? '',
+        materials:          card.dataset.materials ?? '',
+        projectImageUrl:    card.dataset.imageUrl ?? '',
       };
     });
 
@@ -335,12 +349,13 @@ if (filterParam !== 'all') {
       const p = PRESENTERS[id];
       if (!p) return;
 
-      editForm.querySelector('#edit-id').value        = id;
-      editForm.querySelector('#edit-fullName').value  = p.fullName;
-      editForm.querySelector('#edit-email').value     = p.email;
-      editForm.querySelector('#edit-phone').value     = p.phone;
-      editForm.querySelector('#edit-artsArea').value  = p.artsArea;
-      editForm.querySelector('#edit-materials').value = p.materials;
+      editForm.querySelector('#edit-id').value                 = id;
+      editForm.querySelector('#edit-fullName').value           = p.fullName;
+      editForm.querySelector('#edit-email').value              = p.email;
+      editForm.querySelector('#edit-phone').value              = p.phone;
+      editForm.querySelector('#edit-artsArea').value           = p.artsArea;
+      editForm.querySelector('#edit-projectDescription').value = p.projectDescription;
+      editForm.querySelector('#edit-materials').value          = p.materials;
       hiddenImgUrl.value = p.projectImageUrl;
 
       // Reset upload zone
@@ -421,13 +436,14 @@ if (filterParam !== 'all') {
         btnLoading.textContent = 'Saving…';
 
         const payload = {
-          id:              editForm.querySelector('#edit-id').value,
-          fullName:        editForm.querySelector('#edit-fullName').value.trim(),
-          email:           editForm.querySelector('#edit-email').value.trim(),
-          phone:           editForm.querySelector('#edit-phone').value.trim(),
-          artsArea:        editForm.querySelector('#edit-artsArea').value.trim(),
-          materials:       editForm.querySelector('#edit-materials').value.trim(),
-          projectImageUrl: hiddenImgUrl.value,
+          id:                 editForm.querySelector('#edit-id').value,
+          fullName:           editForm.querySelector('#edit-fullName').value.trim(),
+          email:              editForm.querySelector('#edit-email').value.trim(),
+          phone:              editForm.querySelector('#edit-phone').value.trim(),
+          artsArea:           editForm.querySelector('#edit-artsArea').value.trim(),
+          projectDescription: editForm.querySelector('#edit-projectDescription').value.trim(),
+          materials:          editForm.querySelector('#edit-materials').value.trim(),
+          projectImageUrl:    hiddenImgUrl.value,
         };
 
         const res = await fetch('/api/admin/update-presenter', {

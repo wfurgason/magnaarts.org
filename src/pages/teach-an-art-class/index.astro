@@ -114,6 +114,16 @@ const firebaseConfig = {
             </div>
 
             <div class="form-field">
+              <label for="projectDescription">
+                Project Description <span class="req">*</span>
+                <span class="field-hint">Describe the specific project or activity you'd like to lead. What will participants make or learn?</span>
+              </label>
+              <textarea id="projectDescription" name="projectDescription" rows="5" required
+                placeholder="e.g. Participants will paint a simple landscape using wet-on-wet watercolor techniques. No experience necessary — I'll guide everyone step by step through composition, color mixing, and basic brush strokes…"></textarea>
+              <span class="field-error" id="err-projectDescription"></span>
+            </div>
+
+            <div class="form-field">
               <label>Project Image
                 <span class="field-hint">Photo of a finished project — used to promote your session (JPG or PNG, max 10 MB)</span>
               </label>
@@ -211,10 +221,11 @@ const firebaseConfig = {
 
     function validate() {
       let ok = true;
-      const fullName = document.getElementById('fullName').value.trim();
-      const email    = document.getElementById('email').value.trim();
-      const phone    = document.getElementById('phone').value.trim();
-      const artsArea = document.getElementById('artsArea').value.trim();
+      const fullName          = document.getElementById('fullName').value.trim();
+      const email             = document.getElementById('email').value.trim();
+      const phone             = document.getElementById('phone').value.trim();
+      const artsArea          = document.getElementById('artsArea').value.trim();
+      const projectDescription = document.getElementById('projectDescription').value.trim();
 
       setError('fullName', fullName ? '' : 'Full name is required.');
       if (!fullName) ok = false;
@@ -228,6 +239,9 @@ const firebaseConfig = {
 
       setError('artsArea', artsArea ? '' : 'Please describe your arts area and experience.');
       if (!artsArea) ok = false;
+
+      setError('projectDescription', projectDescription ? '' : 'Please describe the project or activity you plan to lead.');
+      if (!projectDescription) ok = false;
 
       return ok;
     }
@@ -258,14 +272,15 @@ const firebaseConfig = {
         }
 
         await addDoc(collection(db, 'art_class_submissions'), {
-          fullName:        document.getElementById('fullName').value.trim(),
-          email:           document.getElementById('email').value.trim(),
-          phone:           document.getElementById('phone').value.trim(),
-          artsArea:        document.getElementById('artsArea').value.trim(),
+          fullName:           document.getElementById('fullName').value.trim(),
+          email:              document.getElementById('email').value.trim(),
+          phone:              document.getElementById('phone').value.trim(),
+          artsArea:           document.getElementById('artsArea').value.trim(),
+          projectDescription: document.getElementById('projectDescription').value.trim(),
           projectImageUrl,
-          materials:       document.getElementById('materials').value.trim(),
-          status:          'pending',
-          submittedAt:     serverTimestamp(),
+          materials:          document.getElementById('materials').value.trim(),
+          status:             'pending',
+          submittedAt:        serverTimestamp(),
         });
 
         // Show success
@@ -284,7 +299,7 @@ const firebaseConfig = {
     });
 
     // Clear errors on input
-    ['fullName','email','phone','artsArea'].forEach(id => {
+    ['fullName','email','phone','artsArea','projectDescription'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => setError(id, ''));
     });
   </script>

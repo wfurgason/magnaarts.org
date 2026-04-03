@@ -31,6 +31,12 @@ service firebase.storage {
       allow write: if true;
     }
 
+    // ── Music & Movies in the Park event images — public upload (planning page) ──
+    match /mmpark-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // ── Art class presenter images — public upload (teach-an-art-class form) ──
     match /art-class-images/{allPaths=**} {
       allow read: if true;

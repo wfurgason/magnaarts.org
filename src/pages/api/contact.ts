@@ -19,7 +19,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     await resend.emails.send({
-      from: 'Magna Arts Council <onboarding@resend.dev>',
+      from: 'Magna Arts Council <wfurgason@magnaarts.org>',
       to:   'wfurgason@gmail.com',
       replyTo: email,
       subject: `[Contact] ${subject} — from ${name}`,

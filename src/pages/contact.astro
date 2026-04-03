@@ -147,16 +147,20 @@ import '../styles/global.css';
       const json = await res.json();
 
       if (res.ok) {
-        status.textContent = '✓ Message sent! We\'ll be in touch soon.';
-        status.classList.add('status-ok');
+        status.innerHTML = '<strong>✓ Message sent!</strong> Thanks — we\'ll be in touch within a few days.';
+        status.className = 'form-status status-ok';
+        status.style.display = 'block';
         form.reset();
+        status.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } else {
-        status.textContent = json.error ?? 'Something went wrong. Please try again.';
-        status.classList.add('status-err');
+        status.innerHTML = '<strong>Error:</strong> ' + (json.error ?? 'Something went wrong. Please try again.');
+        status.className = 'form-status status-err';
+        status.style.display = 'block';
       }
     } catch {
-      status.textContent = 'Network error. Please try again.';
-      status.classList.add('status-err');
+      status.innerHTML = '<strong>Network error.</strong> Please try again.';
+      status.className = 'form-status status-err';
+      status.style.display = 'block';
     } finally {
       btn.disabled    = false;
       btn.textContent = 'Send Message →';
@@ -286,12 +290,16 @@ import '../styles/global.css';
   }
 
   .form-status {
-    font-size: 14px;
+    display: none;
+    font-size: 15px;
     font-weight: 500;
     margin: 0;
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    line-height: 1.5;
   }
-  .status-ok  { color: #15803d; }
-  .status-err { color: #dc2626; }
+  .status-ok  { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+  .status-err { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
 
   /* ── INFO SIDEBAR ── */
   .contact-info {

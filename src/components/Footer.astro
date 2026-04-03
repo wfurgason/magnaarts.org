@@ -17,10 +17,14 @@
     </nav>
   </div>
   <div class="footer-bottom">
-    <div class="container">
-      © {new Date().getFullYear()} Magna Arts Council &nbsp;·&nbsp;
-      <a href="/privacy">Privacy</a> &nbsp;·&nbsp;
-      Powered by ZAP
+    <div class="container footer-bottom-inner">
+      <span>© {new Date().getFullYear()} Magna Arts Council &nbsp;·&nbsp;
+      <a href="/privacy">Privacy</a></span>
+      <img
+        src="/images/ZAPLogoHorizontal_PrimaryColor_White.png"
+        alt="Funded by ZAP — Zoo, Arts & Parks"
+        class="zap-logo"
+      />
     </div>
   </div>
 </footer>
@@ -77,8 +81,22 @@
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     padding: 16px 0;
     font-size: 12px;
-    text-align: center;
     color: rgba(255, 255, 255, 0.3);
+  }
+
+  .footer-bottom-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .zap-logo {
+    height: 28px;
+    width: auto;
+    opacity: 0.85;
+    display: block;
   }
 
   .footer-bottom a {

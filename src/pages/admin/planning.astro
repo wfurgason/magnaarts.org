@@ -598,7 +598,7 @@ const totalShells =
               <td>{shell.movie ? <span class="check-yes">✓ {shell.movie}</span> : <span class="dim">—</span>}</td>
               <td class="actions-cell">
                 <button class="btn-sm btn-outline"
-                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','park_events','','${(shell.display_type||'music').replace(/'/g,"\\'")}','${(shell.movie_title||'').replace(/'/g,"\\'")}','${(shell.movie_preview_embed||'').replace(/'/g,"\\'")}')`}>
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','park_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}','${(shell.display_type||'music').replace(/'/g,"\\'")}','${(shell.movie_title||'').replace(/'/g,"\\'")}','${(shell.movie_preview_embed||'').replace(/'/g,"\\'")}')`}>
                   Edit
                 </button>
                 {shell.status === 'band_assigned' && (
@@ -1308,6 +1308,33 @@ const totalShells =
       return;
     }
 
+    const isMMP      = typeSelect.value === 'music_in_park';
+    const mmpFile    = document.getElementById('mmp-image-input')?.files?.[0];
+    const mmpUrlEl   = document.getElementById('mmpImageUrl');
+
+    if (isMMP && mmpFile && !mmpUrlEl?.value) {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitStatus.hidden = false;
+      submitStatus.textContent = 'Uploading image…';
+      try {
+        const year = yearInput.value || '2026';
+        const ext  = mmpFile.name.split('.').pop();
+        const path = `mmpark-images/${year}/event-image.${ext}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, mmpFile);
+        const url = await getDownloadURL(storageRef);
+        mmpUrlEl.value = url;
+        submitStatus.textContent = 'Saving…';
+        seasonForm.submit();
+      } catch (err) {
+        submitStatus.hidden = true;
+        submitBtn.disabled  = false;
+        alert('Image upload failed: ' + (err.message || 'Unknown error'));
+      }
+      return;
+    }
+
     const isArtNight  = typeSelect.value === 'group_art_night';
     const anFile      = anImageInput.files?.[0];
 
@@ -1594,7 +1621,7 @@ const totalShells =
   // ── Edit modal ──────────────────────────────────────────────────────────
   const editModal = document.getElementById('edit-modal');
 
-  const IMAGE_COLLECTIONS = new Set(['open_mic_events', 'art_night_events']);
+  const IMAGE_COLLECTIONS = new Set(['open_mic_events', 'art_night_events', 'park_events']);
 
   window.openEditModal = function(id, venue, address, startTime, collection, currentImageUrl, displayType, movieTitle, moviePreviewEmbed) {
     document.getElementById('edit-shell-id').value   = id;
@@ -1701,7 +1728,9 @@ const totalShells =
 
     try {
       const collection = document.getElementById('edit-collection').value;
-      const folder     = collection === 'open_mic_events' ? 'open-mic-images' : 'art-night-images';
+      const folder     = collection === 'open_mic_events' ? 'open-mic-images'
+                       : collection === 'park_events'      ? 'mmpark-images'
+                       : 'art-night-images';
       const year       = new Date().getFullYear();
       const ext        = file.name.split('.').pop();
       const path       = `${folder}/${year}/event-image-${Date.now()}.${ext}`;

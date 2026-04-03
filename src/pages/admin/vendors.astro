@@ -33,6 +33,7 @@ type Vendor = {
   submitted_at: string;
   reviewedBy?: string;
   paidAt?: any;
+  profile_image_url?: string;
 };
 
 let vendors = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Vendor[];
@@ -164,6 +165,13 @@ function calcTotal(v: Vendor): number {
                 <div class="detail-bio">
                   <div class="detail-label">Public Website Description</div>
                   <p>{v.description}</p>
+                </div>
+              )}
+
+              {v.profile_image_url && (
+                <div class="detail-bio">
+                  <div class="detail-label">Profile Image</div>
+                  <img src={v.profile_image_url} alt={`${v.company_name} profile`} class="vendor-profile-img" />
                 </div>
               )}
 
@@ -563,6 +571,16 @@ function calcTotal(v: Vendor): number {
 
     .detail-bio { margin-top: 12px; font-size: 14px; line-height: 1.65; color: var(--text); }
     .detail-bio p { margin: 4px 0 0; }
+
+    .vendor-profile-img {
+      margin-top: 6px;
+      max-width: 220px;
+      max-height: 165px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      display: block;
+    }
 
     .location-request {
       background: #eff6ff;

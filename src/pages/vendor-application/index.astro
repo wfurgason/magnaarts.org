@@ -201,6 +201,10 @@ const firebaseConfig = {
                   <span class="drop-hint">JPG, PNG, GIF, WEBP — max 10 MB</span>
                 </div>
                 <img id="profile-preview" src="" alt="Profile image preview" class="drop-preview" style="display:none" />
+                <div id="profile-preview-actions" class="drop-preview-actions" style="display:none">
+                  <button type="button" id="profile-change-btn" class="drop-action-btn">🔄 Change image</button>
+                  <button type="button" id="profile-remove-btn" class="drop-action-btn drop-action-remove">✕ Remove</button>
+                </div>
                 <input type="file" id="profile_image_input" name="profile_image_input" accept="image/*" style="display:none" />
               </div>
             </div>
@@ -303,23 +307,37 @@ const firebaseConfig = {
     const storage = getStorage(app);
 
     // Profile image drag-and-drop
-    const profileDropZone  = document.getElementById('profile-drop-zone');
-    const profileInput     = document.getElementById('profile_image_input');
-    const profilePreview   = document.getElementById('profile-preview');
-    const profilePrompt    = document.getElementById('profile-drop-prompt');
+    const profileDropZone    = document.getElementById('profile-drop-zone');
+    const profileInput         = document.getElementById('profile_image_input');
+    const profilePreview       = document.getElementById('profile-preview');
+    const profilePrompt        = document.getElementById('profile-drop-prompt');
+    const profileActions       = document.getElementById('profile-preview-actions');
+    const profileChangeBtn     = document.getElementById('profile-change-btn');
+    const profileRemoveBtn     = document.getElementById('profile-remove-btn');
 
     function showProfilePreview(file) {
       if (!file || !file.type.startsWith('image/')) return;
       const reader = new FileReader();
       reader.onload = e => {
-        profilePreview.src = e.target.result;
-        profilePreview.style.display = 'block';
-        profilePrompt.style.display  = 'none';
+        profilePreview.src         = e.target.result;
+        profilePreview.style.display  = 'block';
+        profilePrompt.style.display   = 'none';
+        profileActions.style.display  = 'flex';
       };
       reader.readAsDataURL(file);
     }
 
+    function clearProfileImage() {
+      profilePreview.src            = '';
+      profilePreview.style.display  = 'none';
+      profilePrompt.style.display   = 'flex';
+      profileActions.style.display  = 'none';
+      profileInput.value            = '';
+    }
+
     profileInput.addEventListener('change', () => showProfilePreview(profileInput.files[0]));
+    profileChangeBtn.addEventListener('click', () => profileInput.click());
+    profileRemoveBtn.addEventListener('click', clearProfileImage);
     profileDropZone.addEventListener('dragover', e => { e.preventDefault(); profileDropZone.classList.add('drag-over'); });
     profileDropZone.addEventListener('dragleave', () => profileDropZone.classList.remove('drag-over'));
     profileDropZone.addEventListener('drop', e => {
@@ -334,7 +352,8 @@ const firebaseConfig = {
       }
     });
     profileDropZone.addEventListener('click', e => {
-      if (e.target !== profilePreview) profileInput.click();
+      if (e.target === profilePreview || e.target === profileChangeBtn || e.target === profileRemoveBtn) return;
+      if (profileInput.files.length === 0) profileInput.click();
     });
 
     const descEl    = document.getElementById('description');
@@ -406,6 +425,7 @@ const firebaseConfig = {
 
         form.reset();
         descCount.textContent = '0';
+        clearProfileImage();
         successEl.style.display = 'flex';
         successEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
@@ -525,6 +545,30 @@ const firebaseConfig = {
   .drop-link { color: #c87e0a; font-weight: 700; cursor: pointer; text-decoration: underline; }
   .drop-hint { font-size: 12px !important; color: #aaa !important; }
   .drop-preview { max-width: 100%; max-height: 220px; border-radius: var(--radius-sm); object-fit: contain; cursor: default; }
+
+  .drop-preview-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  .drop-action-btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    background: var(--white);
+    color: var(--navy);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .drop-action-btn:hover { background: var(--cream); border-color: var(--navy); }
+  .drop-action-remove { color: #991b1b; border-color: #fca5a5; }
+  .drop-action-remove:hover { background: #fee2e2; border-color: #f87171; }
 
   @media (max-width: 680px) {
     .field-row { grid-template-columns: 1fr; }

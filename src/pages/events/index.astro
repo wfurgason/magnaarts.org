@@ -123,6 +123,12 @@ const firebaseConfig = {
       return { short: text.slice(0, max).trimEnd(), truncated: true };
     }
 
+    function stripHtml(html) {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      return div.textContent || div.innerText || '';
+    }
+
     function mapsLink(address) {
       return 'https://maps.google.com/?q=' + encodeURIComponent(address);
     }
@@ -179,11 +185,14 @@ const firebaseConfig = {
           posterUrl:    d.posterUrl || d.photoUrl || null,
           bandName:     d.bandName || null,
           genre:        d.genre || d.bandGenre || null,
-          musicLink:         d.musicLink || d.bandMusicLink || null,
-          ticketUrl:         d.ticketUrl || null,
-          rsvpUrl:           d.rsvpUrl || null,
-          movieTitle:        d.movieTitle || null,
-          moviePreviewEmbed: d.moviePreviewEmbed || null,
+          musicLink:                   d.musicLink || d.bandMusicLink || null,
+          ticketUrl:                   d.ticketUrl || null,
+          rsvpUrl:                     d.rsvpUrl || null,
+          movieTitle:                  d.movieTitle || null,
+          moviePreviewEmbed:           d.moviePreviewEmbed || null,
+          eventType:                   d.eventType || null,
+          presenterArtsArea:           d.presenterArtsArea || null,
+          presenterProjectDescription: d.presenterProjectDescription || null,
         });
       });
 
@@ -199,6 +208,9 @@ const firebaseConfig = {
         grid.innerHTML = upcoming.map(e => {
           const bio      = truncate(e.description, 150);
           const fullAddr = [e.venueName, e.venueAddress].filter(Boolean).join(', ');
+          const isArtNight         = e.eventType === 'group_art_night';
+          const artNightBioHtml    = isArtNight ? (e.presenterArtsArea || e.presenterProjectDescription || '') : '';
+          const artNightNeedsTrunc = isArtNight && artNightBioHtml && stripHtml(artNightBioHtml).length > 300;
 
           return `
           <article class="published-card">
@@ -225,7 +237,14 @@ const firebaseConfig = {
               <div class="published-date">${e.date}${e.time ? ' · ' + e.time : ''}</div>
               <h3 class="published-title">${e.title}</h3>
               ${fullAddr ? `<div class="published-venue">📍 <a href="${mapsLink(fullAddr)}" target="_blank" rel="noopener">${fullAddr}</a></div>` : ''}
-              ${e.description ? `
+              ${isArtNight && artNightBioHtml ? `
+                <div class="published-bio">
+                  <div class="published-bio-label">About the Presenter</div>
+                  <div class="presenter-html-bio${artNightNeedsTrunc ? ' is-clamped' : ''}">
+                    ${artNightBioHtml}
+                  </div>
+                  ${artNightNeedsTrunc ? `<button class="bio-more-btn">more</button>` : ''}
+                </div>` : (!isArtNight && e.description) ? `
                 <div class="published-bio">
                   <div class="published-bio-label">About the Band</div>
                   <p class="published-desc">${bio.short}${bio.truncated ? `<span class="bio-ellipsis">… <a href="#" class="bio-more-link" data-full="${e.description.replace(/"/g,'&quot;')}">more</a></span>` : ''}</p>
@@ -256,12 +275,20 @@ const firebaseConfig = {
           </article>`;
         }).join('');
 
-        // Wire up ...more links
+        // Wire up ...more links (band bio)
         grid.querySelectorAll('.bio-more-link').forEach(link => {
           link.addEventListener('click', ev => {
             ev.preventDefault();
             const p = link.closest('p');
             p.innerHTML = link.dataset.full;
+          });
+        });
+
+        // Wire up presenter bio expand buttons
+        grid.querySelectorAll('.bio-more-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            btn.previousElementSibling.classList.remove('is-clamped');
+            btn.remove();
           });
         });
 
@@ -433,6 +460,34 @@ const firebaseConfig = {
   .bio-ellipsis { color: var(--muted); }
   .bio-more-link { color: var(--blue); font-weight: 600; text-decoration: none; }
   .bio-more-link:hover { text-decoration: underline; }
+
+  /* Presenter HTML bio (Quill-formatted content) */
+  .presenter-html-bio {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .presenter-html-bio.is-clamped {
+    max-height: 7.5em;
+    overflow: hidden;
+    position: relative;
+  }
+  .presenter-html-bio.is-clamped::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2.5em;
+    background: linear-gradient(transparent, var(--white));
+    pointer-events: none;
+  }
+  .presenter-html-bio p { margin: 0 0 6px; }
+  .presenter-html-bio p:last-child { margin-bottom: 0; }
+  .bio-more-btn {
+    background: none; border: none; padding: 4px 0;
+    color: var(--blue); font-weight: 600; font-size: 13px;
+    cursor: pointer; font-family: inherit;
+  }
+  .bio-more-btn:hover { text-decoration: underline; }
 
   /* Movie section */
   .published-movie {

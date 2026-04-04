@@ -29,6 +29,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const s = shellDoc.data()!;
 
+    // Fetch presenter submission data if assigned
+    let presenterArtsArea: string | null = null;
+    let presenterProjectDescription: string | null = null;
+    if (s.presenterId) {
+      const presSnap = await adminDb.collection('art_class_submissions').doc(s.presenterId).get();
+      if (presSnap.exists) {
+        const pData = presSnap.data()!;
+        presenterArtsArea = pData.artsArea || null;
+        presenterProjectDescription = pData.projectDescription || null;
+      }
+    }
+
     const batch = adminDb.batch();
 
     const eventDateObj = Timestamp.fromDate(new Date(s.date + 'T' + timeToISO(s.startTime)));
@@ -50,8 +62,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       description:   s.description || '',
       posterUrl:     s.imageUrl || null,
       photoUrl:      s.imageUrl || null,
-      presenterName: s.presenterName || null,
-      presenterId:   s.presenterId || null,
+      presenterName:               s.presenterName || null,
+      presenterId:                 s.presenterId || null,
+      presenterArtsArea,
+      presenterProjectDescription,
       isFree:        true,
       submissionType: 'art_night',
       publishedBy:   publisher.email,

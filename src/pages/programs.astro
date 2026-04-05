@@ -165,6 +165,17 @@ const programs = [
             {p.body.map((para) => (
               <p class="program-body">{para}</p>
             ))}
+            {p.id === 'festival' && (
+              <div class="events-glance">
+                <h3 class="glance-heading">Festival Lineup</h3>
+                <div id="fest-glance-loading" class="glance-loading">Loading lineup…</div>
+                <ul id="fest-glance-list" class="glance-list" style="display:none"></ul>
+                <div id="fest-glance-empty" class="glance-empty" style="display:none">
+                  Lineup coming soon — <a href="/events">check back closer to the festival</a>.
+                </div>
+              </div>
+            )}
+
             {p.id === 'art-night' && (
               <>
                 <a href="/teach-an-art-class" class={`program-link link-${p.color}`} style="display:block; margin-bottom:12px;">
@@ -317,6 +328,7 @@ const programs = [
       const concertEvents  = [];
       const openMicEvents  = [];
       const artNightEvents = [];
+      const festivalItems  = [];
 
       snap.forEach(doc => {
         const d       = doc.data();
@@ -335,6 +347,19 @@ const programs = [
           openMicEvents.push(item);
         } else if (d.eventType === 'group_art_night') {
           artNightEvents.push(item);
+        } else if (d.eventType === 'arts_festival') {
+          // Expand each assigned band slot into its own ticket
+          const festDate = dateObj;
+          (d.bands || []).forEach(b => {
+            if (!b.bandId) return; // skip empty slots
+            festivalItems.push({
+              id:      doc.id + '-slot' + b.slot,
+              rawDate: festDate.toISOString(),
+              time:    b.time || '',
+              title:   b.bandName || 'TBA',
+              type:    'arts_festival',
+            });
+          });
         } else {
           concertEvents.push(item);
         }
@@ -349,13 +374,16 @@ const programs = [
       // Group Art Night glance
       renderGlance('an-glance-loading', 'an-glance-list', 'an-glance-empty', artNightEvents);
 
+      // Arts Festival lineup
+      renderGlance('fest-glance-loading', 'fest-glance-list', 'fest-glance-empty', festivalItems);
+
     } catch (err) {
       // Fail silently — show empty state for both
-      ['glance-loading', 'om-glance-loading', 'an-glance-loading'].forEach(id => {
+      ['glance-loading', 'om-glance-loading', 'an-glance-loading', 'fest-glance-loading'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
-      ['glance-empty', 'om-glance-empty', 'an-glance-empty'].forEach(id => {
+      ['glance-empty', 'om-glance-empty', 'an-glance-empty', 'fest-glance-empty'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'block';
       });

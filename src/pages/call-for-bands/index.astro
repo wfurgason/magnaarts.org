@@ -56,7 +56,7 @@ const firebaseConfig = {
           <span class="strip-icon">📅</span>
           <div>
             <div class="strip-label">2026 Season</div>
-            <div class="strip-val">June 12 – August 7</div>
+            <div class="strip-val">June 12 – August 15</div>
           </div>
         </div>
         <div class="strip-item">
@@ -225,7 +225,7 @@ const firebaseConfig = {
             <div class="field">
               <label>
                 Available Dates <span class="req">*</span>
-                <span class="label-hint">(select all that work — minimum 2 required)</span>
+                <span class="label-hint">(select all that work — minimum 1 required)</span>
               </label>
               <div class="date-checkboxes" id="date-checkboxes">
                 <label class="date-check"><input type="checkbox" name="available_dates" value="2026-06-12" /> Fri, June 12, 2026</label>
@@ -235,8 +235,9 @@ const firebaseConfig = {
                 <label class="date-check"><input type="checkbox" name="available_dates" value="2026-07-17" /> Fri, July 17, 2026</label>
                 <label class="date-check"><input type="checkbox" name="available_dates" value="2026-07-31" /> Fri, July 31, 2026</label>
                 <label class="date-check"><input type="checkbox" name="available_dates" value="2026-08-07" /> Fri, August 7, 2026</label>
+                <label class="date-check date-check--festival"><input type="checkbox" name="available_dates" value="2026-08-15" /> Sat, August 15, 2026 — Arts Festival</label>
               </div>
-              <div id="date-error" class="field-error" hidden>Please select at least 2 available dates.</div>
+              <div id="date-error" class="field-error" hidden>Please select at least 1 available date.</div>
             </div>
 
             <div class="field">
@@ -425,7 +426,7 @@ const firebaseConfig = {
       // Require at least 2 date selections
       const checkedDates = form.querySelectorAll('input[name="available_dates"]:checked');
       const dateError = document.getElementById('date-error');
-      if (checkedDates.length < 2) {
+      if (checkedDates.length < 1) {
         dateError.hidden = false;
         document.getElementById('date-checkboxes').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
@@ -890,6 +891,19 @@ const firebaseConfig = {
     border-color: var(--blue);
     background: #eff6ff;
     color: var(--blue);
+  }
+
+  .date-check--festival {
+    border-color: var(--amber);
+    background: #fffbeb;
+    color: #92400e;
+    font-weight: 600;
+  }
+
+  .date-check--festival:has(input:checked) {
+    border-color: var(--amber);
+    background: #fef3c7;
+    color: #92400e;
   }
 
   .date-check input[type="checkbox"] {

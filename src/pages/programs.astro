@@ -166,9 +166,19 @@ const programs = [
               <p class="program-body">{para}</p>
             ))}
             {p.id === 'art-night' && (
-              <a href="/teach-an-art-class" class={`program-link link-${p.color}`} style="display:block; margin-bottom:12px;">
-                Want to Teach a Session? Apply Here →
-              </a>
+              <>
+                <a href="/teach-an-art-class" class={`program-link link-${p.color}`} style="display:block; margin-bottom:12px;">
+                  Want to Teach a Session? Apply Here →
+                </a>
+                <div class="events-glance">
+                  <h3 class="glance-heading">Upcoming Group Art Nights</h3>
+                  <div id="an-glance-loading" class="glance-loading">Loading schedule…</div>
+                  <ul id="an-glance-list" class="glance-list" style="display:none"></ul>
+                  <div id="an-glance-empty" class="glance-empty" style="display:none">
+                    Schedule coming soon — <a href="/events">check the events page</a> for updates.
+                  </div>
+                </div>
+              </>
             )}
             <a href={p.link} class={`program-link link-${p.color}`}>{p.linkLabel}</a>
 
@@ -306,6 +316,7 @@ const programs = [
 
       const concertEvents  = [];
       const openMicEvents  = [];
+      const artNightEvents = [];
 
       snap.forEach(doc => {
         const d       = doc.data();
@@ -316,12 +327,14 @@ const programs = [
           id:      doc.id,
           rawDate: dateObj.toISOString(),
           time:    d.eventTime || d.startTime || '',
-          title:   d.bandName || d.title || 'TBA',
+          title:   d.presenterName || d.bandName || d.title || 'TBA',
           type:    d.eventType || '',
         };
 
         if (d.eventType === 'open_mic') {
           openMicEvents.push(item);
+        } else if (d.eventType === 'group_art_night') {
+          artNightEvents.push(item);
         } else {
           concertEvents.push(item);
         }
@@ -333,13 +346,16 @@ const programs = [
       // Open Mic glance
       renderGlance('om-glance-loading', 'om-glance-list', 'om-glance-empty', openMicEvents);
 
+      // Group Art Night glance
+      renderGlance('an-glance-loading', 'an-glance-list', 'an-glance-empty', artNightEvents);
+
     } catch (err) {
       // Fail silently — show empty state for both
-      ['glance-loading', 'om-glance-loading'].forEach(id => {
+      ['glance-loading', 'om-glance-loading', 'an-glance-loading'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
-      ['glance-empty', 'om-glance-empty'].forEach(id => {
+      ['glance-empty', 'om-glance-empty', 'an-glance-empty'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'block';
       });

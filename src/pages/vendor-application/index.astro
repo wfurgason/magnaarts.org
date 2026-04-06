@@ -277,6 +277,11 @@ const firebaseConfig = {
           </fieldset>
 
           <div class="form-footer">
+            <!-- honeypot (bots fill this, humans never see it) -->
+            <div class="hp-field" aria-hidden="true">
+              <label for="company_website">Leave this blank</label>
+              <input type="text" id="company_website" name="company_website" tabindex="-1" autocomplete="off" />
+            </div>
             <p class="form-disclaimer">
               Submission does not guarantee acceptance. Accepted vendors will receive a PayPal invoice to confirm their spot.
             </p>
@@ -374,6 +379,9 @@ const firebaseConfig = {
       e.preventDefault();
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
+      // Honeypot check — bots fill this, humans don't
+      if ((form.querySelector('#company_website') as HTMLInputElement)?.value) return;
+
       const waiverCheck = document.getElementById('waiver_agreed');
       const waiverError = document.getElementById('waiver-error');
       if (!waiverCheck.checked) {
@@ -449,6 +457,18 @@ const firebaseConfig = {
     color: var(--white);
     padding: 72px 0 64px;
     text-align: center;
+  }
+
+  /* ── HONEYPOT ── */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
   }
   .hero-badge {
     display: inline-block;

@@ -56,6 +56,11 @@ import '../../styles/global.css';
           action="/propose/confirmation"
         >
           <input type="hidden" name="form-name" value="proposal" />
+          <!-- honeypot: bots fill this, humans don't -->
+          <div class="hp-field" aria-hidden="true">
+            <label for="full_name_hp">Leave this blank</label>
+            <input type="text" id="full_name_hp" name="full_name_hp" tabindex="-1" autocomplete="off" />
+          </div>
 
           <!-- ── STEP 1: About You ── -->
           <div class="form-step active" id="step1">
@@ -240,6 +245,18 @@ import '../../styles/global.css';
 </BaseLayout>
 
 <style>
+  /* ── HONEYPOT ── */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
   /* ── PAGE HERO ── */
   .page-hero {
     background: var(--navy);
@@ -531,6 +548,12 @@ import '../../styles/global.css';
 </style>
 
 <script>
+  // Honeypot: block submit if the hidden field is filled
+  document.getElementById('proposeForm')?.addEventListener('submit', (e) => {
+    const hp = document.getElementById('full_name_hp') as HTMLInputElement;
+    if (hp?.value) e.preventDefault();
+  });
+
   // Multi-step navigation
   const form = document.getElementById('proposeForm');
   const steps = document.querySelectorAll('.form-step');

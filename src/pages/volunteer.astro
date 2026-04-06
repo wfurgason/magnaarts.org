@@ -13,13 +13,17 @@ let errorMsg  = '';
 if (Astro.request.method === 'POST') {
   try {
     const form = await Astro.request.formData();
+    const honeypot  = form.get('full_name_hp')?.toString() || '';
     const fullName  = form.get('fullName')?.toString().trim()  || '';
     const email     = form.get('email')?.toString().trim()     || '';
     const phone     = form.get('phone')?.toString().trim()     || '';
     const canLift   = form.get('canLift')?.toString()          || '';
     const interests = form.getAll('interests').map(v => v.toString());
 
-    if (!fullName || !email) {
+    if (honeypot) {
+      // Bot submission — silently succeed
+      submitted = true;
+    } else if (!fullName || !email) {
       errorMsg = 'Please provide your name and email.';
     } else {
       // Reuse existing admin app if already initialized
@@ -83,6 +87,12 @@ if (Astro.request.method === 'POST') {
           </div>
         ) : (
           <form method="POST" class="volunteer-form">
+
+            <!-- honeypot: bots fill this, humans don't -->
+            <div class="hp-field" aria-hidden="true">
+              <label for="full_name_hp">Leave this blank</label>
+              <input type="text" id="full_name_hp" name="full_name_hp" tabindex="-1" autocomplete="off" />
+            </div>
 
             {errorMsg && <div class="form-error">{errorMsg}</div>}
 
@@ -192,6 +202,18 @@ if (Astro.request.method === 'POST') {
   }
 
   .form-section { background: var(--cream); }
+
+  /* ── HONEYPOT ── */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
 
   .form-wrap {
     max-width: 640px;

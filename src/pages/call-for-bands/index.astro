@@ -308,6 +308,12 @@ const firebaseConfig = {
             </div>
           </fieldset>
 
+          <!-- ── honeypot (bots fill this, humans never see it) ── -->
+          <div class="hp-field" aria-hidden="true">
+            <label for="website_url">Leave this blank</label>
+            <input type="text" id="website_url" name="website_url" tabindex="-1" autocomplete="off" />
+          </div>
+
           <!-- ─── SUBMIT ─── -->
           <div class="form-footer">
             <p class="form-disclaimer">
@@ -423,6 +429,9 @@ const firebaseConfig = {
       e.preventDefault();
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
+      // Honeypot check — bots fill this field, humans don't
+      if ((form.querySelector('#website_url') as HTMLInputElement)?.value) return;
+
       // Require at least 2 date selections
       const checkedDates = form.querySelectorAll('input[name="available_dates"]:checked');
       const dateError = document.getElementById('date-error');
@@ -514,6 +523,18 @@ const firebaseConfig = {
   /* ── GLOBAL HIDDEN FIX ── */
   /* Prevents display:flex/.status-banner from overriding the HTML hidden attribute */
   [hidden] { display: none !important; }
+
+  /* ── HONEYPOT ── */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
 
   /* ── PAGE HERO ── */
   .page-hero {

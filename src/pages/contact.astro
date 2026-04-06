@@ -36,6 +36,12 @@ import '../styles/global.css';
 
           <form class="contact-form" id="contact-form" novalidate>
 
+            <!-- honeypot: bots fill this, humans don't -->
+            <div class="hp-field" aria-hidden="true">
+              <label for="contact_url">Leave this blank</label>
+              <input type="text" id="contact_url" name="contact_url" tabindex="-1" autocomplete="off" />
+            </div>
+
             <div class="field-row">
               <div class="field">
                 <label for="name">Your Name</label>
@@ -133,6 +139,10 @@ import '../styles/global.css';
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    // Honeypot check
+    const hp = form.querySelector('#contact_url') as HTMLInputElement;
+    if (hp?.value) return;
+
     btn.disabled   = true;
     btn.textContent = 'Sending…';
     status.textContent = '';
@@ -169,6 +179,18 @@ import '../styles/global.css';
 </script>
 
 <style>
+  /* ── HONEYPOT ── */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
   /* ── PAGE HERO ── */
   .page-hero {
     background: var(--navy);

@@ -26,6 +26,7 @@ const pinnedItems = [
     href:        '/lens-of-magna',
     badgeText:   '3rd Annual · Photography Contest',
     icon:        '📷',
+    logoSrc:     '/images/lens-of-magna/lmm-logo.png',
     label:       'Lens of Magna 2026',
     sublabel:    'Main Street in Motion',
     meta:        'Entry Deadline: April 11  ·  Exhibit: April 16',
@@ -107,7 +108,10 @@ const roles = [
             {activePinned.map(item => (
               <a href={item.href} class={`pinned-tile ${item.colorClass}`}>
                 <span class="pinned-tile-badge">{item.badgeText}</span>
-                <span class="pinned-tile-icon" aria-hidden="true">{item.icon}</span>
+                {item.logoSrc
+                  ? <img src={item.logoSrc} alt="" class="pinned-tile-logo" aria-hidden="true" />
+                  : <span class="pinned-tile-icon" aria-hidden="true">{item.icon}</span>
+                }
                 <span class="pinned-tile-label">{item.label}</span>
                 <span class="pinned-tile-sublabel">{item.sublabel}</span>
                 <span class="pinned-tile-meta">{item.meta}</span>
@@ -467,6 +471,16 @@ const roles = [
   .pinned-tile-icon {
     font-size: 32px;
     line-height: 1;
+    margin-bottom: 2px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .pinned-tile-logo {
+    width: auto;
+    max-width: 140px;
+    max-height: 72px;
+    object-fit: contain;
     margin-bottom: 2px;
     position: relative;
     z-index: 1;

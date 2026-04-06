@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
+
 // Firebase public config — events collection is publicly readable
 const firebaseConfig = {
   apiKey:     import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -10,6 +11,40 @@ const firebaseConfig = {
   projectId:  import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
 };
 
+// ── PINNED HERO CONTENT ──────────────────────────────────────────────────────
+// Add items here to feature them in the hero tiles section.
+// Set expiresDate to the day AFTER the event ends — the tile disappears automatically.
+// Remove or comment out an item to stop showing it early.
+// Once all items expire (or none exist), the standard colored program tiles show instead.
+//
+// Available colors: tile-blue | tile-green | tile-red | tile-amber | tile-gold | tile-navy
+// ────────────────────────────────────────────────────────────────────────────
+const pinnedItems = [
+  {
+    id:          'lens-of-magna-2026',
+    expiresDate: new Date('2026-04-17T00:00:00'), // day after the April 16 exhibit
+    href:        '/lens-of-magna',
+    badgeText:   '3rd Annual · Photography Contest',
+    icon:        '📷',
+    label:       'Lens of Magna 2026',
+    sublabel:    'Main Street in Motion',
+    meta:        'Entry Deadline: April 11  ·  Exhibit: April 16',
+    cta:         'Enter Free at lensofmagna.com →',
+    colorClass:  'tile-pin-gold',
+  },
+  // Add more pinned items here following the same shape ↑
+];
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const activePinned = pinnedItems.filter(p => {
+  const exp = new Date(p.expiresDate);
+  exp.setHours(0, 0, 0, 0);
+  return today < exp;
+});
+const showPinned = activePinned.length > 0;
+
+// ── ROLES GRID ───────────────────────────────────────────────────────────────
 const roles = [
   {
     key: 'attend',
@@ -66,24 +101,40 @@ const roles = [
           </div>
         </div>
 
-        <div class="program-tiles">
-          <a href="/programs#music-movies" class="tile tile-blue">
-            <span class="tile-icon">♪</span>
-            <span class="tile-label">Free Concerts</span>
-          </a>
-          <a href="/programs/#art-night" class="tile tile-green">
-            <span class="tile-icon">✦</span>
-            <span class="tile-label">Art Classes</span>
-          </a>
-          <a href="/programs#music-movies" class="tile tile-red">
-            <span class="tile-icon">▶</span>
-            <span class="tile-label">Movies in the Park</span>
-          </a>
-          <a href="/programs#festival" class="tile tile-amber">
-            <span class="tile-icon">★</span>
-            <span class="tile-label">Arts Festival</span>
-          </a>
-        </div>
+        <!-- Right column: pinned content OR standard program tiles -->
+        {showPinned ? (
+          <div class={`pinned-tiles ${activePinned.length === 1 ? 'pinned-tiles--single' : ''}`}>
+            {activePinned.map(item => (
+              <a href={item.href} class={`pinned-tile ${item.colorClass}`}>
+                <span class="pinned-tile-badge">{item.badgeText}</span>
+                <span class="pinned-tile-icon" aria-hidden="true">{item.icon}</span>
+                <span class="pinned-tile-label">{item.label}</span>
+                <span class="pinned-tile-sublabel">{item.sublabel}</span>
+                <span class="pinned-tile-meta">{item.meta}</span>
+                <span class="pinned-tile-cta">{item.cta}</span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="program-tiles">
+            <a href="/programs#music-movies" class="tile tile-blue">
+              <span class="tile-icon">♪</span>
+              <span class="tile-label">Free Concerts</span>
+            </a>
+            <a href="/programs/#art-night" class="tile tile-green">
+              <span class="tile-icon">✦</span>
+              <span class="tile-label">Art Classes</span>
+            </a>
+            <a href="/programs#music-movies" class="tile tile-red">
+              <span class="tile-icon">▶</span>
+              <span class="tile-label">Movies in the Park</span>
+            </a>
+            <a href="/programs#festival" class="tile tile-amber">
+              <span class="tile-icon">★</span>
+              <span class="tile-label">Arts Festival</span>
+            </a>
+          </div>
+        )}
       </div>
     </section>
 
@@ -238,14 +289,6 @@ const roles = [
     align-items: center;
   }
 
-  .hero-logo {
-    height: 80px;
-    width: auto;
-    display: block;
-    margin-bottom: 20px;
-    animation: fadeUp 0.5s ease both;
-  }
-
   .hero-badge {
     display: inline-block;
     background: rgba(232, 160, 32, 0.18);
@@ -292,7 +335,7 @@ const roles = [
     animation: fadeUp 0.6s 0.3s ease both;
   }
 
-  /* Program tiles */
+  /* ── STANDARD PROGRAM TILES ── */
   .program-tiles {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -335,6 +378,146 @@ const roles = [
   .tile-red   { background: var(--red); }
   .tile-amber { background: #c87a0a; }
 
+  /* ── PINNED CONTENT TILES ── */
+  .pinned-tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    animation: fadeUp 0.7s 0.25s ease both;
+  }
+
+  /* Single pinned item fills the full column */
+  .pinned-tiles--single {
+    grid-template-columns: 1fr;
+  }
+
+  .pinned-tile {
+    border-radius: var(--radius);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-align: left;
+    padding: 24px 22px;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+    min-height: 254px; /* fills ~2 tile heights + gap */
+  }
+
+  .pinned-tiles--single .pinned-tile {
+    min-height: 254px;
+  }
+
+  .pinned-tile:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Shimmer overlay on hover */
+  .pinned-tile::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0);
+    transition: background 0.2s;
+  }
+  .pinned-tile:hover::after { background: rgba(255, 255, 255, 0.04); }
+
+  /* Gold pinned tile */
+  .tile-pin-gold {
+    background: linear-gradient(145deg, #0b1535 0%, #162060 55%, #1d2d7a 100%);
+    border: 1.5px solid rgba(232, 160, 32, 0.5);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(232,160,32,0.15);
+  }
+
+  /* Top decorative accent line */
+  .tile-pin-gold::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold) 0%, var(--gold-lt) 100%);
+  }
+
+  /* Pin badge — top left pill */
+  .pinned-tile-badge {
+    position: absolute;
+    top: 18px;
+    left: 22px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: rgba(232, 160, 32, 0.2);
+    border: 1px solid rgba(232, 160, 32, 0.5);
+    color: var(--gold-lt);
+    padding: 4px 10px;
+    border-radius: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100% - 44px);
+  }
+
+  .pinned-tile-icon {
+    font-size: 32px;
+    line-height: 1;
+    margin-bottom: 2px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .pinned-tile-label {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--white);
+    position: relative;
+    z-index: 1;
+  }
+
+  .pinned-tile-sublabel {
+    font-size: 14px;
+    font-style: italic;
+    font-weight: 600;
+    color: var(--gold-lt);
+    line-height: 1.2;
+    position: relative;
+    z-index: 1;
+  }
+
+  .pinned-tile-meta {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.4;
+    margin-top: 2px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .pinned-tile-cta {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    z-index: 1;
+    transition: gap 0.2s, color 0.15s;
+  }
+  .pinned-tile:hover .pinned-tile-cta {
+    gap: 8px;
+    color: var(--gold-lt);
+  }
+
   /* ── EVENTS ── */
   .section-header {
     display: flex;
@@ -363,7 +546,7 @@ const roles = [
     grid-template-columns: repeat(3, 1fr);
     gap: 22px;
     padding: 20px;
-}
+  }
 
   .event-card {
     background: var(--white);
@@ -575,15 +758,18 @@ const roles = [
 
   /* ── RESPONSIVE ── */
   @media (max-width: 900px) {
-    .hero-inner       { grid-template-columns: 1fr; }
-    .program-tiles    { max-width: 360px; }
-    .events-grid      { grid-template-columns: 1fr; }
-    .roles-grid       { grid-template-columns: 1fr 1fr; }
-    .donate-inner     { flex-direction: column; align-items: flex-start; }
+    .hero-inner         { grid-template-columns: 1fr; }
+    .program-tiles      { max-width: 360px; }
+    .pinned-tiles       { max-width: 480px; grid-template-columns: 1fr; }
+    .pinned-tile        { min-height: 200px; }
+    .events-grid        { grid-template-columns: 1fr; }
+    .roles-grid         { grid-template-columns: 1fr 1fr; }
+    .donate-inner       { flex-direction: column; align-items: flex-start; }
   }
 
   @media (max-width: 600px) {
     .hero { padding: 48px 0 56px; }
     .roles-grid { grid-template-columns: 1fr; }
+    .pinned-tile-label { font-size: 18px; }
   }
 </style>

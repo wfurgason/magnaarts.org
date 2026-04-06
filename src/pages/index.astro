@@ -108,10 +108,8 @@ const roles = [
             {activePinned.map(item => (
               <a href={item.href} class={`pinned-tile ${item.colorClass}`}>
                 <span class="pinned-tile-badge">{item.badgeText}</span>
-                {item.logoSrc
-                  ? <img src={item.logoSrc} alt="" class="pinned-tile-logo" aria-hidden="true" />
-                  : <span class="pinned-tile-icon" aria-hidden="true">{item.icon}</span>
-                }
+                {item.logoSrc && <img src={item.logoSrc} alt="" class="pinned-tile-logo" aria-hidden="true" />}
+                <span class="pinned-tile-icon" aria-hidden="true">{item.icon}</span>
                 <span class="pinned-tile-label">{item.label}</span>
                 <span class="pinned-tile-sublabel">{item.sublabel}</span>
                 <span class="pinned-tile-meta">{item.meta}</span>
@@ -477,13 +475,17 @@ const roles = [
   }
 
   .pinned-tile-logo {
+    position: absolute;
+    bottom: 0;
+    right: -8px;
     width: auto;
-    max-width: 140px;
-    max-height: 72px;
+    max-width: 160px;
+    max-height: 180px;
     object-fit: contain;
-    margin-bottom: 2px;
-    position: relative;
-    z-index: 1;
+    object-position: bottom right;
+    opacity: 0.18;
+    pointer-events: none;
+    z-index: 0;
   }
 
   .pinned-tile-label {

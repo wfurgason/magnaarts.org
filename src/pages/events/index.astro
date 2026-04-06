@@ -80,10 +80,8 @@ const hasFeatured = featuredEvents.length > 0;
             {featuredEvents.map(e => (
               <article class={`featured-card ${e.accentColor}`}>
                 <div class="featured-card-aside">
-                  {e.logoSrc
-                    ? <img src={e.logoSrc} alt="" class="featured-card-logo" aria-hidden="true" />
-                    : <div class="featured-card-icon" aria-hidden="true">{e.icon}</div>
-                  }
+                  {e.logoSrc && <img src={e.logoSrc} alt="" class="featured-card-logo" aria-hidden="true" />}
+                  <div class="featured-card-icon" aria-hidden="true">{e.icon}</div>
                 </div>
                 <div class="featured-card-body">
                   <span class="featured-badge">{e.badge}</span>
@@ -433,10 +431,19 @@ const hasFeatured = featuredEvents.length > 0;
   }
 
   .featured-card-logo {
-    width: auto;
-    max-width: 72px;
-    max-height: 80px;
+    width: 72px;
+    height: auto;
+    max-height: 100px;
     object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .featured-card-logo {
+    width: 64px;
+    height: auto;
+    max-height: 90px;
+    object-fit: contain;
+    flex-shrink: 0;
   }
 
   /* Gold accent */

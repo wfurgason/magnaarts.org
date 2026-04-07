@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
+import { adminDb } from '../lib/firebase-admin';
 
 // Firebase public config — events collection is publicly readable
 const firebaseConfig = {
@@ -11,38 +12,42 @@ const firebaseConfig = {
   projectId:  import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
 };
 
-// ── PINNED HERO CONTENT ──────────────────────────────────────────────────────
-// Add items here to feature them in the hero tiles section.
-// Set expiresDate to the day AFTER the event ends — the tile disappears automatically.
-// Remove or comment out an item to stop showing it early.
-// Once all items expire (or none exist), the standard colored program tiles show instead.
-//
-// Available colors: tile-blue | tile-green | tile-red | tile-amber | tile-gold | tile-navy
-// ────────────────────────────────────────────────────────────────────────────
-const pinnedItems = [
-  {
-    id:          'lens-of-magna-2026',
-    expiresDate: new Date('2026-04-17T00:00:00'), // day after the April 16 exhibit
-    href:        '/lens-of-magna',
-    badgeText:   '3rd Annual · Photography Contest',
-    icon:        '📷',
-    logoSrc:     '/images/lens-of-magna/lmm-logo.png',
-    label:       'Lens of Magna 2026',
-    sublabel:    'Main Street in Motion',
-    meta:        'Entry Deadline: April 11  ·  Exhibit: April 16',
-    cta:         'Enter Free at lensofmagna.com →',
-    colorClass:  'tile-pin-gold',
-  },
-  // Add more pinned items here following the same shape ↑
-];
-
+// ── PINNED HERO CONTENT — sourced from Firestore `pinned_content` collection ──
+// Manage pinned items from the admin panel at /admin/pinned-content.
+// Items appear in the hero tiles when active=true and not yet expired.
+// ─────────────────────────────────────────────────────────────────────────────
 const today = new Date();
 today.setHours(0, 0, 0, 0);
-const activePinned = pinnedItems.filter(p => {
-  const exp = new Date(p.expiresDate);
-  exp.setHours(0, 0, 0, 0);
-  return today < exp;
-});
+
+const pinnedSnap = await adminDb
+  .collection('pinned_content')
+  .where('active', '==', true)
+  .orderBy('createdAt', 'desc')
+  .get();
+
+const activePinned = pinnedSnap.docs
+  .map(d => ({ id: d.id, ...d.data() }))
+  .filter(item => {
+    if (!item.expiresDate) return true;
+    const exp = item.expiresDate.toDate ? item.expiresDate.toDate() : new Date(item.expiresDate);
+    exp.setHours(0, 0, 0, 0);
+    return today < exp;
+  })
+  .filter(item => !item.showOn || item.showOn === 'home' || item.showOn === 'both')
+  .map(item => ({
+    id:         item.id,
+    href:       item.href || '/',
+    badgeText:  item.badge || '',
+    icon:       item.icon || '📌',
+    logoSrc:    item.logoSrc || null,
+    label:      item.title || '',
+    sublabel:   item.sublabel || '',
+    meta:       item.meta || '',
+    cta:        item.ctaText ? item.ctaText + ' →' : '',
+    colorClass: item.colorClass || 'tile-pin-gold',
+    ctaExternal: !!item.ctaExternal,
+  }));
+
 const showPinned = activePinned.length > 0;
 
 // ── ROLES GRID ───────────────────────────────────────────────────────────────

@@ -22,11 +22,15 @@ today.setHours(0, 0, 0, 0);
 const pinnedSnap = await adminDb
   .collection('pinned_content')
   .where('active', '==', true)
-  .orderBy('createdAt', 'desc')
   .get();
 
 const activePinned = pinnedSnap.docs
   .map(d => ({ id: d.id, ...d.data() }))
+  .sort((a, b) => {
+    const aTs = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+    const bTs = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+    return bTs - aTs; // newest first
+  })
   .filter(item => {
     if (!item.expiresDate) return true;
     const exp = item.expiresDate.toDate ? item.expiresDate.toDate() : new Date(item.expiresDate);

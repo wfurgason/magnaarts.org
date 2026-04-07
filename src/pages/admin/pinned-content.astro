@@ -448,6 +448,22 @@ const itemsJson = JSON.stringify(items.map(item => ({
 </AdminLayout>
 
 <style>
+  /* ── Site variable aliases (admin pages only load admin.css) ── */
+  :root {
+    --white:        #ffffff;
+    --navy:         #1a2456;
+    --muted:        #5a5a7a;
+    --border:       #e2e0d8;
+    --cream:        #f7f5f0;
+    --red:          #b52626;
+    --gold:         #e8a020;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --radius:       8px;
+    --radius-sm:    6px;
+    --shadow-card:  0 2px 12px rgba(26, 36, 86, 0.08);
+    --shadow-hover: 0 4px 20px rgba(26, 36, 86, 0.14);
+  }
+
   /* ── Page header ── */
   .page-subtitle {
     font-size: 14px;

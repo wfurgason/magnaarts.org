@@ -156,6 +156,14 @@ function getTitle(p: Program): string {
             )}
 
             <button
+              class="btn btn-delete"
+              data-action="delete"
+              data-id={prog.id}
+              data-name={getTitle(prog)}
+            >
+              Delete
+            </button>
+            <button
               class="btn btn-edit"
               data-action="edit"
               data-id={prog.id}
@@ -417,6 +425,28 @@ function getTitle(p: Program): string {
       await uploadBytes(storageRef, file);
       return getDownloadURL(storageRef);
     }
+
+    // ── Delete actions ──────────────────────────────────────────────────────
+    document.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name || 'this proposal';
+        if (!confirm(`Permanently delete "${name}"? This cannot be undone.`)) return;
+        btn.disabled = true;
+        btn.textContent = 'Deleting…';
+        const res = await fetch('/api/admin/delete-proposal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: btn.dataset.id }),
+        });
+        if (res.ok) {
+          document.getElementById(`card-${btn.dataset.id}`)?.remove();
+        } else {
+          alert('Delete failed.');
+          btn.disabled = false;
+          btn.textContent = 'Delete';
+        }
+      });
+    });
 
     // ── Status actions (approve / reject) ─────────────────────────────────
     document.querySelectorAll('[data-action="approve"], [data-action="reject"]').forEach(btn => {
@@ -782,6 +812,8 @@ function getTitle(p: Program): string {
     .btn-edit    { background: #f0f3ff; color: var(--navy); border: 1.5px solid #c7d2fe; }
     .btn-edit:hover:not(:disabled)    { background: #e0e7ff; }
     .btn-ghost   { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
+    .btn-delete  { background: transparent; border: 1.5px solid #fca5a5; color: #dc2626; }
+    .btn-delete:hover:not(:disabled) { background: #fee2e2; border-color: #dc2626; }
 
     /* ── Modals ── */
     .modal-backdrop {
@@ -798,7 +830,7 @@ function getTitle(p: Program): string {
     .modal-box {
       background: #fff;
       border-radius: 12px;
-      padding: 32px;
+      padding: 0;
       width: 100%;
       max-width: 520px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.25);
@@ -812,7 +844,13 @@ function getTitle(p: Program): string {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 20px;
+      padding: 20px 24px 16px;
+      border-bottom: 1.5px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 1;
+      border-radius: 12px 12px 0 0;
     }
 
     .modal-header h2 { font-size: 20px; font-weight: 700; color: var(--navy); margin: 0; }
@@ -829,7 +867,7 @@ function getTitle(p: Program): string {
 
     .modal-close:hover { background: #f7f5f0; }
 
-    .modal-body { display: flex; flex-direction: column; gap: 0; }
+    .modal-body { display: flex; flex-direction: column; gap: 0; padding: 20px 24px; }
 
     .modal-section-label {
       font-size: 11px;
@@ -855,10 +893,11 @@ function getTitle(p: Program): string {
     }
 
     .modal-field label {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--navy);
-      letter-spacing: 0.04em;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
     }
 
     .modal-field input,
@@ -879,7 +918,7 @@ function getTitle(p: Program): string {
 
     .modal-field input:focus,
     .modal-field select:focus,
-    .modal-field textarea:focus { border-color: var(--navy); }
+    .modal-field textarea:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(26,36,86,0.1); }
 
     .modal-field textarea { resize: vertical; min-height: 80px; }
 
@@ -991,8 +1030,13 @@ function getTitle(p: Program): string {
     .modal-actions {
       display: flex;
       gap: 10px;
-      margin-top: 24px;
       justify-content: flex-end;
+      padding: 16px 24px;
+      border-top: 1.5px solid var(--border);
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+      border-radius: 0 0 12px 12px;
     }
 
     /* Publish modal fields */

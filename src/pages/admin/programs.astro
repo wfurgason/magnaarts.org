@@ -554,7 +554,7 @@ function getTitle(p: Program): string {
       const reader = new FileReader();
       reader.onload = ev => {
         editImagePreview.hidden = false;
-        editImagePreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+        editImagePreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" style="width:44px;height:44px;object-fit:cover;border-radius:5px;flex-shrink:0;" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
       };
       reader.readAsDataURL(file);
     });
@@ -880,7 +880,7 @@ function getTitle(p: Program): string {
       margin: 20px 0 14px;
     }
 
-    .modal-section-label:first-child { margin-top: 0; }
+    .modal-section-label:first-of-type { margin-top: 0; }
 
     .modal-row { display: flex; gap: 14px; }
     .modal-row.two-col > * { flex: 1; }

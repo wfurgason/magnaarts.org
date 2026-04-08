@@ -3,6 +3,15 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
+
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
 ---
 
 <BaseLayout
@@ -52,8 +61,7 @@ import '../../styles/global.css';
           class="propose-form"
           id="proposeForm"
           name="proposal"
-          method="POST"
-          action="/propose/confirmation"
+          novalidate
         >
           <input type="hidden" name="form-name" value="proposal" />
           <!-- honeypot: bots fill this, humans don't -->
@@ -219,6 +227,26 @@ import '../../styles/global.css';
                 rows="3"
                 placeholder="Collaborators, special needs, timing constraints, questions for the board…"
               ></textarea>
+            </div>
+
+            <div class="field">
+              <label>Program Image <span class="field-hint-inline">(optional)</span></label>
+              <p class="field-hint">A photo of your program in action, or a logo. Helps the board visualize your idea.</p>
+              <div class="upload-zone" id="proposalUploadZone">
+                <input
+                  type="file"
+                  id="proposalImage"
+                  name="proposalImage"
+                  class="upload-input"
+                  accept="image/*"
+                />
+                <div class="upload-label">
+                  <span class="upload-icon">🖼️</span>
+                  <p class="upload-text"><strong>Click to upload</strong> or drag and drop</p>
+                  <p class="upload-hint">JPG, PNG, WEBP &middot; Max 5 MB</p>
+                </div>
+              </div>
+              <div id="image-preview" class="upload-preview" hidden></div>
             </div>
 
             <div class="notice-box">
@@ -538,6 +566,87 @@ import '../../styles/global.css';
 
   .submit-btn { font-size: 16px; padding: 14px 32px; }
 
+  /* ── UPLOAD ZONE ── */
+  .field-hint-inline {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .upload-zone {
+    position: relative;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    background: var(--cream);
+    transition: border-color 0.2s, background 0.2s;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .upload-zone.drag-over {
+    border-color: var(--navy);
+    background: #f0f3ff;
+  }
+
+  .upload-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100% !important;
+    height: 100%;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  .upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 28px 24px;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .upload-icon { font-size: 28px; }
+
+  .upload-text {
+    font-size: 14px;
+    color: var(--navy);
+    margin: 0;
+  }
+
+  .upload-text strong { color: var(--gold); }
+
+  .upload-hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .upload-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .upload-preview img {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 600px) {
     .propose-form { padding: 28px 20px; }
@@ -547,20 +656,70 @@ import '../../styles/global.css';
   }
 </style>
 
-<script>
-  // Honeypot: block submit if the hidden field is filled
-  document.getElementById('proposeForm')?.addEventListener('submit', (e) => {
-    const hp = document.getElementById('full_name_hp') as HTMLInputElement;
-    if (hp?.value) e.preventDefault();
+<script define:vars={{ firebaseConfig }}>
+  window.__FIREBASE_CONFIG__ = firebaseConfig;
+</script>
+
+<script type="module">
+  import { initializeApp }   from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+  import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+  import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js';
+
+  const app     = initializeApp(window.__FIREBASE_CONFIG__);
+  const db      = getFirestore(app);
+  const storage = getStorage(app);
+
+  function uniquePrefix() {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  async function firebaseUpload(path, file) {
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+  }
+
+  // ── Honeypot: block submit if the hidden field is filled ──
+  // (handled in submit listener below)
+
+  // ── Upload zone drag-and-drop ──
+  const uploadZone = document.getElementById('proposalUploadZone');
+  if (uploadZone) {
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      const input = uploadZone.querySelector('.upload-input');
+      if (input && e.dataTransfer && e.dataTransfer.files.length) {
+        const dt = new DataTransfer();
+        dt.items.add(e.dataTransfer.files[0]);
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+  }
+
+  // ── Image preview ──
+  const imageInput   = document.getElementById('proposalImage');
+  const imagePreview = document.getElementById('image-preview');
+  imageInput?.addEventListener('change', () => {
+    const file = imageInput.files && imageInput.files[0];
+    if (!file) { imagePreview.hidden = true; return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      imagePreview.hidden = false;
+      imagePreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+    };
+    reader.readAsDataURL(file);
   });
 
-  // Multi-step navigation
-  const form = document.getElementById('proposeForm');
-  const steps = document.querySelectorAll('.form-step');
+  // ── Multi-step navigation ──
+  const steps         = document.querySelectorAll('.form-step');
   const progressSteps = document.querySelectorAll('.progress-step');
   const progressLines = document.querySelectorAll('.progress-line');
 
-  function goToStep(n: number) {
+  function goToStep(n) {
     steps.forEach((s, i) => s.classList.toggle('active', i === n - 1));
     progressSteps.forEach((s, i) => {
       s.classList.toggle('active', i === n - 1);
@@ -570,36 +729,89 @@ import '../../styles/global.css';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  document.querySelectorAll('.next-btn').forEach((btn) => {
+  document.querySelectorAll('.next-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const next = parseInt((btn as HTMLElement).dataset.next || '2');
-      // Basic validation: check required fields in current step
+      const next = parseInt(btn.dataset.next || '2');
       const currentStep = document.getElementById(`step${next - 1}`);
       const invalid = currentStep?.querySelectorAll('[required]');
       let allValid = true;
-      invalid?.forEach((el) => {
-        if (!(el as HTMLInputElement).checkValidity()) {
-          (el as HTMLInputElement).reportValidity();
-          allValid = false;
-        }
+      invalid?.forEach(el => {
+        if (!el.checkValidity()) { el.reportValidity(); allValid = false; }
       });
-      // Radio group validation
       if (next === 3) {
-        const radios = document.querySelectorAll('input[name="eventType"]');
-        const checked = [...radios].some((r) => (r as HTMLInputElement).checked);
-        if (!checked) {
-          alert('Please select an event type.');
-          allValid = false;
-        }
+        const radios  = document.querySelectorAll('input[name="eventType"]');
+        const checked = [...radios].some(r => r.checked);
+        if (!checked) { alert('Please select an event type.'); allValid = false; }
       }
       if (allValid) goToStep(next);
     });
   });
 
-  document.querySelectorAll('.back-btn').forEach((btn) => {
+  document.querySelectorAll('.back-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const back = parseInt((btn as HTMLElement).dataset.back || '1');
+      const back = parseInt(btn.dataset.back || '1');
       goToStep(back);
     });
+  });
+
+  // ── Form submit ──
+  const form      = document.getElementById('proposeForm');
+  const submitBtn = form?.querySelector('.submit-btn');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Honeypot check
+    const hp = document.getElementById('full_name_hp');
+    if (hp?.value) return;
+
+    submitBtn.disabled    = true;
+    submitBtn.textContent = 'Submitting…';
+
+    try {
+      const fd = new FormData(form);
+      const prefix = uniquePrefix();
+
+      // Upload image if provided
+      let image_url = null;
+      const imgFile = imageInput?.files && imageInput.files[0];
+      if (imgFile) {
+        submitBtn.textContent = 'Uploading image…';
+        const ext = imgFile.name.split('.').pop();
+        image_url = await firebaseUpload(`proposal-images/${prefix}/image.${ext}`, imgFile);
+      }
+
+      // Save to Firestore
+      submitBtn.textContent = 'Saving proposal…';
+      const firstName = (fd.get('firstName') || '').toString().trim();
+      const lastName  = (fd.get('lastName')  || '').toString().trim();
+
+      await addDoc(collection(db, 'program_submissions'), {
+        contact_name:       `${firstName} ${lastName}`.trim(),
+        contact_email:      fd.get('email') || null,
+        contact_phone:      fd.get('phone') || null,
+        connection:         fd.get('connection') || null,
+        event_type:         fd.get('eventType') || null,
+        program_title:      fd.get('eventTitle') || null,
+        description:        fd.get('description') || null,
+        proposed_date:      fd.get('proposedDate') || null,
+        proposed_time:      fd.get('proposedTime') || null,
+        proposed_venue:     fd.get('location') || null,
+        estimated_attendance: fd.get('attendance') || null,
+        budget:             fd.get('budget') || null,
+        additional_notes:   fd.get('anythingElse') || null,
+        image_url,
+        status:             'pending',
+        submittedAt:        new Date().toISOString(),
+      });
+
+      window.location.href = '/propose/confirmation';
+
+    } catch (err) {
+      console.error('Proposal submit error:', err);
+      alert('Something went wrong submitting your proposal. Please try again or email us directly.');
+      submitBtn.disabled    = false;
+      submitBtn.textContent = 'Submit Proposal →';
+    }
   });
 </script>

@@ -49,6 +49,18 @@ service firebase.storage {
       allow write: if true;
     }
 
+    // ── Program proposal images — public upload (propose-a-program form) ──
+    match /proposal-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── Program proposal images — public upload (propose-a-program form) ──
+    match /proposal-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // ── All other paths — deny by default ──
     match /{allPaths=**} {
       allow read, write: if false;

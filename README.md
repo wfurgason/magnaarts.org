@@ -122,35 +122,58 @@ magnaarts.org/
 │   │   └── firebase-admin.ts   # Firebase Admin SDK init (adminAuth + adminDb exports)
 │   ├── middleware.ts            # SSR auth middleware — protects /admin/* routes
 │   └── pages/
-│       ├── index.astro         # Homepage
+│       ├── index.astro              # Homepage — Firestore-driven pinned tiles + Next Up
 │       ├── about.astro
 │       ├── contact.astro
 │       ├── get-involved.astro
 │       ├── programs.astro
+│       ├── present.astro            # Presenter landing page (links to sub-forms)
+│       ├── volunteer.astro          # Public volunteer sign-up form
+│       ├── lens-of-magna.astro      # Lens of Magna photography contest page
 │       ├── events/
-│       │   ├── index.astro     # Events listing
-│       │   └── [id].astro      # SSR dynamic event detail (prev/next, calendar link)
+│       │   ├── index.astro          # Events listing (Firestore-driven)
+│       │   └── [id].astro           # SSR dynamic event detail (prev/next, calendar link)
 │       ├── call-for-bands/
-│       │   └── index.astro     # Band application form (Firebase backend)
+│       │   └── index.astro          # Band application form with file uploads
+│       ├── teach-an-art-class/
+│       │   └── index.astro          # Art class proposal form → art_class_submissions
+│       ├── vendor-application/
+│       │   └── index.astro          # Arts Festival vendor application form
 │       ├── propose/
-│       │   ├── index.astro     # Multi-step proposal wizard (3 steps)
+│       │   ├── index.astro          # Multi-step proposal wizard (3 steps)
 │       │   └── confirmation.astro
 │       ├── admin/
-│       │   ├── index.astro     # Login page (Firebase email/password → session cookie)
-│       │   ├── dashboard.astro # Summary stats + recent activity
-│       │   ├── bands.astro     # Band application review queue
-│       │   ├── programs.astro  # Program proposal review queue
-│       │   ├── events.astro    # Published events management
-│       │   └── users.astro     # Board user management (super_admin only)
+│       │   ├── index.astro          # Login (Firebase email/password → session cookie)
+│       │   ├── dashboard.astro      # Summary stats + recent activity
+│       │   ├── bands.astro          # Band application review queue
+│       │   ├── programs.astro       # Program proposal review queue
+│       │   ├── planning.astro       # Event planning (Music & Movies, Open Mic, Art Night, Festival)
+│       │   ├── seasons.astro        # 301 redirect → /admin/planning
+│       │   ├── events.astro         # Published events management
+│       │   ├── art-presenters.astro # Art class submission review + Quill edit modal
+│       │   ├── volunteers.astro     # Volunteer sign-up review queue
+│       │   ├── vendors.astro        # Vendor application review queue
+│       │   ├── pinned-content.astro # Homepage pinned tile manager
+│       │   └── users.astro          # Board user management (super_admin only)
 │       └── api/
 │           ├── auth/
-│           │   ├── session.ts  # POST — creates Firebase session cookie from ID token
-│           │   └── logout.ts   # GET — deletes session cookie, redirects to /admin
+│           │   ├── session.ts       # POST — creates Firebase session cookie from ID token
+│           │   └── logout.ts        # GET — deletes session cookie, redirects to /admin
 │           └── admin/
-│               ├── update-submission.ts  # POST — approve/reject/status proposals & bands
-│               ├── publish-event.ts      # POST — publish an approved event
-│               ├── delete-event.ts       # POST — delete an event
-│               └── manage-user.ts        # POST — create/update board users (super_admin)
+│               ├── update-submission.ts   # POST — approve/reject proposals & bands
+│               ├── publish-event.ts       # POST — publish Music & Movies event
+│               ├── publish-open-mic.ts    # POST — publish Open Mic event
+│               ├── publish-art-night.ts   # POST — publish Group Art Night event
+│               ├── publish-festival.ts    # POST — publish/republish Arts Festival
+│               ├── unpublish-event.ts     # POST — unpublish any event type
+│               ├── delete-event.ts        # POST — delete a published event
+│               ├── assign-band.ts         # POST — assign/unassign/confirm/publish bands
+│               ├── update-presenter.ts    # POST — update art class submission fields
+│               ├── delete-presenter.ts    # POST — delete art class submission
+│               ├── vendor-action.ts       # POST — approve/reject/pay/delete vendor apps
+│               ├── save-pinned-item.ts    # POST — create/update pinned content item
+│               ├── delete-pinned-item.ts  # POST — delete pinned content item
+│               └── manage-user.ts         # POST — create/update board users (super_admin)
 ├── src/data/
 │   └── events.ts               # Single source of truth for 2025 event data
 ├── astro.config.mjs            # Vercel adapter, SSR output, site URL
@@ -333,6 +356,29 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [ ] Movie info token-protected form for licensor
   - [ ] Update public `/events/[id]` to render band + movie combined layout
 
+- [x] **Phase 3.7 — Vendor Application**
+  - [x] Public vendor application form (`/vendor-application`) — business name, contact, products/services, space preference, profile image upload
+  - [x] Submissions saved to Firestore `vendor_applications` collection
+  - [x] Profile image upload to Firebase Storage (`vendor-profiles/`)
+  - [x] Admin vendor review page (`/admin/vendors`) — approval, payment tracking, space number assignment, delete
+  - [x] `vendor-action.ts` API route — handles approve/reject/pay/delete actions
+
+- [x] **Phase 3.8 — Volunteer Sign-Up**
+  - [x] Public volunteer form (`/volunteer`) — name, email, phone, can-lift checkbox, interest checkboxes
+  - [x] Submissions saved to Firestore `volunteer_signups` collection
+  - [x] Admin volunteers page (`/admin/volunteers`) — searchable/filterable table, status tabs (new/contacted/active/inactive)
+  - [x] Added Volunteers to AdminLayout sidebar nav
+  - [x] Replaced Google Form links on `get-involved.astro` with `/volunteer`
+
+- [x] **Phase 3.9 — Pinned Content**
+  - [x] Admin pinned content page (`/admin/pinned-content`) — slide-in drawer form, live preview tile, emoji picker
+  - [x] Fields: title, subtitle, badge, icon, detail line, URL, CTA text, external link toggle, show-on selector, expiry date, active toggle
+  - [x] `save-pinned-item.ts` — create/update `pinned_content` Firestore docs
+  - [x] `delete-pinned-item.ts` — delete `pinned_content` docs
+  - [x] `index.astro` homepage now reads `pinned_content` from Firestore server-side; replaces hardcoded `pinnedItems` array
+  - [x] Items filtered by `active: true`, expiry date, and `showOn` (home / events / both)
+  - [x] Added Pinned Content to AdminLayout sidebar nav
+
 - [ ] **Phase 4 — Planning Checklist**
   - [ ] Sponsor + presenter shared checklist
   - [ ] Auto-publish trigger when checklist complete
@@ -352,7 +398,14 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
 | `band_applications` | Call-for-bands submissions; status: `pending` → `approved` / `declined` / `waitlisted` / `published` |
 | `program_submissions` | Proposal wizard submissions; status: `pending` → `approved` / `rejected` |
 | `events` | Published events with date/time/location |
+| `park_seasons` | One doc per season year; holds year + array of event shell IDs |
+| `park_events` | Music & Movies in the Park event shells; status: `shell` → `band_assigned` → `confirmed` → `published` |
+| `open_mic_events` | Open Mic Night event shells; status: `shell` → `published` |
+| `art_night_events` | Group Art Night event shells; status: `shell` → `published` |
+| `art_class_submissions` | Teach an Art Class proposals from the public form; status: `pending` → `approved` / `rejected` |
 | `vendor_applications` | Arts Festival vendor applications; status: `pending` → `approved` → `paid` / `rejected`; `space_number` assigned on payment |
+| `volunteer_signups` | Public volunteer sign-up submissions; status: `new` → `contacted` → `active` / `inactive` |
+| `pinned_content` | Homepage hero pinned tiles; fields: `title`, `badge`, `icon`, `sublabel`, `meta`, `href`, `ctaText`, `ctaExternal`, `colorClass`, `showOn`, `active`, `expiresDate`, `createdAt` |
 
 ### Planned collections (Phase 4–5)
 
@@ -469,9 +522,17 @@ Preview URLs are generated for every branch and pull request.
 
 ---
 
----
-
 ## Recent Changes
+
+### April 7, 2026 — Pinned Content admin + homepage Firestore hookup
+- Created `/admin/pinned-content` — slide-in drawer form to create/edit/delete homepage hero tiles
+- Fields: title, subtitle, badge, icon, detail line, URL, CTA text, external-link toggle, show-on (home/events/both), expiry date, active toggle; live preview tile updates as you type
+- `save-pinned-item.ts` — upserts docs in `pinned_content` collection; converts `expiresDate` string to Firestore Timestamp
+- `delete-pinned-item.ts` — deletes a `pinned_content` doc by ID
+- Added Pinned Content link to AdminLayout sidebar nav
+- `index.astro` homepage now queries `pinned_content` server-side via Admin SDK; replaced hardcoded `pinnedItems` array entirely
+- Query filters: `active == true`, expiry date not yet passed, `showOn` is `home` or `both`; sorted newest-first in JS (avoids composite index requirement)
+- CSS variable aliases added to `pinned-content.astro` `<style>` block — admin pages only load `admin.css`, so site tokens (`--white`, `--navy`, `--border`, etc.) were undefined and rendering dim/invisible
 
 ### April 1, 2026 — admin/vendors: delete vendor record
 - Added a 🗑 Delete button to every vendor card (visually separated right with `margin-left:auto`)
@@ -584,39 +645,6 @@ Preview URLs are generated for every branch and pull request.
 - All field names confirmed to match `publish-event.ts` output (`eventDate`, `eventTime`, `venueName`, `venueAddress`, `bandName`)
 - Firestore rules confirmed: `events` collection has `allow read: if true` — public reads work
 
----
-
-## Recent Changes
-
-### March 28, 2026 — programs.astro `#music-movies` glance list fix
-- Renamed **"Events at a Glance"** heading → **"Upcoming Events"**
-- Expanded glance list items to show **Date · Time**, **Band Name**, and **Venue · Address** (previously only showed Date + title link)
-- Added `getApps()`/`getApp()` Firebase deduplication guard so duplicate `initializeApp` calls don't silently crash the script and leave "Loading schedule…" stuck
-- Replaced top-level module `return` guard with a safe `display:none` fallback for the loading element
-- All Firestore field names confirmed to match `publish-event.ts` output (`eventDate`, `eventTime`, `venueName`, `venueAddress`, `bandName`)
-- Firestore rules confirmed: `events` collection has `allow read: if true` — public reads OK
-
-### March 29, 2026 (3) — programs.astro festival image fix + arts-festival-2025 → 2026 rename
-
-**Festival image fix (`programs.astro`)**
-- New festival image (`/images/festival/mmsaf.png`) was being cropped because the `.program-img` style uses `aspect-ratio: 4/3` with `object-fit: cover`, clipping the subject
-- Image was created at 1:1 (square), so fix was to add a `.program-img--top` modifier class that overrides `aspect-ratio` to `1/1` for the festival image only
-- Applied via conditional class: `p.id === 'festival' ? ' program-img--top' : ''` — all other program images unaffected
-
-**Festival page rename: 2025 → 2026**
-
-All references to `arts-festival-2025` updated across 3 files:
-
-- **`src/data/events.ts`** — event `id` changed to `arts-festival-2026`; `isoDate` updated to `2026-08-15`; `day` updated to `Saturday, August 15, 2026`; added `image: '/images/festival/mmsaf.png'` so the festival logo appears in the event hero on the detail page; file comment updated to reference 2026
-- **`src/pages/events/[id].astro`** — both `event.id === 'arts-festival-2025'` checks (festival extras section and vendor Firestore script) updated to `arts-festival-2026`
-- **`src/pages/programs.astro`** — `link` updated from `/events/arts-festival-2025` → `/events/arts-festival-2026`
-The modal already had the display_type dropdown and movie fields — but movie title and embed were always visible (when collection = park_events) with no conditional logic, and embed was an <input> not a <textarea>.
-Changes made to planning.astro:
-
-Wrapped movie_title + movie_preview_embed in <div id="edit-movie-fields"> that starts hidden
-Changed movie_preview_embed from <input type="text"> to <textarea rows="3">
-On openEditModal(): show #edit-movie-fields only if displayType is 'movie' or 'both'
-Added displayTypeSel.onchange handler to toggle visibility as user changes the dropdown
 ---
 
 *README maintained throughout active development. Updated with every significant change.*

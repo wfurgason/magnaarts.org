@@ -15,6 +15,7 @@ const programs = [
     id: 'music-movies',
     icon: '♪',
     color: 'blue',
+    navLabel: 'Concerts',
     title: 'Music & Movies in the Park',
     tagline: 'Most Fridays · June–August · Free',
     image: '/images/concerts/Creature Vs.1.png',
@@ -35,6 +36,7 @@ const programs = [
     id: 'festival',
     icon: '★',
     color: 'amber',
+    navLabel: 'Festival',
     title: 'Magna Main Street Arts Festival',
     tagline: 'Annual · August · Historic Magna Main Street',
     image: '/images/festival/mmsaf.png',
@@ -57,6 +59,7 @@ const programs = [
     id: 'open-mic',
     icon: '🎤',
     color: 'red',
+    navLabel: 'Open Mic',
     title: 'Open Mic Night',
     tagline: '8–10 events per year · Magna Library',
     image: null,
@@ -79,6 +82,7 @@ const programs = [
     id: 'art-night',
     icon: '✦',
     color: 'green',
+    navLabel: 'Art Night',
     title: 'Group Art Night',
     tagline: 'Ongoing · Magna Library · ~20 participants',
     image: '/images/classes/ArtAtLib-1.png',
@@ -100,6 +104,7 @@ const programs = [
     id: 'writing-group',
     icon: '✍️',
     color: 'teal',
+    navLabel: 'Writing',
     title: 'Magna Library Writing Group',
     tagline: 'Monthly · First Tuesday · 7 PM · Magna Library',
     image: null,
@@ -122,6 +127,7 @@ const programs = [
     id: 'seminar',
     icon: '📚',
     color: 'purple',
+    navLabel: 'Seminar',
     title: 'Annual Arts Seminar',
     tagline: 'Annual · Magna Library',
     image: null,
@@ -168,7 +174,7 @@ const programs = [
         {programs.map((p) => (
           <a href={`#${p.id}`} class={`pnav-item pnav-${p.color}`}>
             <span>{p.icon}</span>
-            <span>{p.title}</span>
+            <span>{p.navLabel}</span>
           </a>
         ))}
       </div>
@@ -709,7 +715,7 @@ const programs = [
   }
 
   @media (max-width: 600px) {
-    .pnav-item span:last-child { display: none; }
+    .pnav-item { padding: 14px 12px; font-size: 12px; }
   }
 
   /* ── UPCOMING EVENTS / TICKET LIST ── */

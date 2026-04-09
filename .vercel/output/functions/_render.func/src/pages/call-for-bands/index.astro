@@ -1,0 +1,953 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import '../../styles/global.css';
+
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
+---
+
+<BaseLayout
+  title="Call for Bands — Magna Arts Council"
+  description="Apply to perform at Magna Arts Council's Music in the Park Concert Series at Pleasant Green Park. Submit your band application, promo photos, and tech rider."
+>
+  <Header />
+
+  <main>
+
+    <!-- ── PAGE HERO ── -->
+    <section class="page-hero">
+      <div class="container">
+        <div class="hero-badge">Music in the Park</div>
+        <h1>Call for Bands</h1>
+        <p class="hero-sub">
+          Apply to perform at Pleasant Green Park as part of Magna Arts Council's
+          free outdoor concert series. We welcome all genres and skill levels —
+          local talent is our priority.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── SERIES INFO STRIP ── -->
+    <section class="series-strip">
+      <div class="container series-strip-inner">
+        <div class="strip-item">
+          <span class="strip-icon">📍</span>
+          <div>
+            <div class="strip-label">Venue</div>
+            <div class="strip-val">Pleasant Green Park, Magna UT</div>
+          </div>
+        </div>
+        <div class="strip-item">
+          <span class="strip-icon">🎸</span>
+          <div>
+            <div class="strip-label">Format</div>
+            <div class="strip-val">Outdoor Stage, Free Admission</div>
+          </div>
+        </div>
+        <div class="strip-item">
+          <span class="strip-icon">📅</span>
+          <div>
+            <div class="strip-label">2026 Season</div>
+            <div class="strip-val">June 12 – August 15</div>
+          </div>
+        </div>
+        <div class="strip-item">
+          <span class="strip-icon">⏱️</span>
+          <div>
+            <div class="strip-label">Set Length</div>
+            <div class="strip-val">45–60 minutes</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── APPLICATION FORM ── -->
+    <section class="section form-section">
+      <div class="container form-outer">
+
+        <div class="form-intro reveal">
+          <h2>Band Application</h2>
+          <p>Fill out all required fields, upload a promotional photo and your tech rider, and hit submit. We review every application and will be in touch within two weeks.</p>
+        </div>
+
+        <!-- Status messages -->
+        <div id="form-success" class="status-banner status-success" style="display:none">
+          <span>🎉</span>
+          <div>
+            <strong>Application submitted!</strong>
+            <p>Thanks for applying. We'll review your submission and be in touch within two weeks.</p>
+          </div>
+        </div>
+        <div id="form-error" class="status-banner status-error" style="display:none">
+          <span>⚠️</span>
+          <div>
+            <strong>Something went wrong.</strong>
+            <p id="error-detail">Please try again or email us at <a href="mailto:wfurgason@gmail.com">wfurgason@gmail.com</a>.</p>
+          </div>
+        </div>
+
+        <form id="band-form" class="band-form reveal" novalidate>
+
+          <!-- ─── SECTION 1: CONTACT INFO ─── -->
+          <fieldset class="form-group">
+            <legend class="group-legend">
+              <span class="legend-num">1</span> Contact Information
+            </legend>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="band_name">Band / Artist Name <span class="req">*</span></label>
+                <input type="text" id="band_name" name="band_name" placeholder="The Magna Echoes" required />
+              </div>
+              <div class="field">
+                <label for="contact_name">Primary Contact Name <span class="req">*</span></label>
+                <input type="text" id="contact_name" name="contact_name" placeholder="Jane Smith" required />
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="contact_email">Email Address <span class="req">*</span></label>
+                <input type="email" id="contact_email" name="contact_email" placeholder="band@example.com" required />
+              </div>
+              <div class="field">
+                <label for="contact_phone">Phone Number</label>
+                <input type="tel" id="contact_phone" name="contact_phone" placeholder="(801) 555-0100" />
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- ─── SECTION 2: ABOUT THE BAND ─── -->
+          <fieldset class="form-group">
+            <legend class="group-legend">
+              <span class="legend-num">2</span> About Your Band
+            </legend>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="genre">Genre / Music Style <span class="req">*</span></label>
+                <select id="genre" name="genre" required>
+                  <option value="">Select a genre…</option>
+                  <option>Rock</option>
+                  <option>Country</option>
+                  <option>Folk / Acoustic</option>
+                  <option>Bluegrass</option>
+                  <option>Pop</option>
+                  <option>R&amp;B / Soul</option>
+                  <option>Jazz</option>
+                  <option>Blues</option>
+                  <option>Latin</option>
+                  <option>World / Fusion</option>
+                  <option>Hip-Hop</option>
+                  <option>Electronic</option>
+                  <option>Classical / Chamber</option>
+                  <option>Children's / Family</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="member_count">Number of Members <span class="req">*</span></label>
+                <select id="member_count" name="member_count" required>
+                  <option value="">Select…</option>
+                  <option>Solo (1)</option>
+                  <option>Duo (2)</option>
+                  <option>Trio (3)</option>
+                  <option>4 members</option>
+                  <option>5 members</option>
+                  <option>6+ members</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="bio">
+                Short Bio <span class="req">*</span>
+                <span class="label-hint">(300 characters max — used in event promotions)</span>
+              </label>
+              <textarea
+                id="bio"
+                name="bio"
+                rows="4"
+                maxlength="300"
+                placeholder="Tell us who you are and what makes your sound unique. Keep it punchy — this goes straight into event listings."
+                required
+              ></textarea>
+              <div class="char-count"><span id="bio-count">0</span> / 300</div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="website">Website or Social Media Link</label>
+                <input type="text" id="website" name="website" placeholder="https://yourband.com" />
+              </div>
+              <div class="field">
+                <label for="music_link">Music Sample Link</label>
+                <input type="text" id="music_link" name="music_link" placeholder="Spotify, YouTube, SoundCloud…" />
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- ─── SECTION 3: PERFORMANCE DETAILS ─── -->
+          <fieldset class="form-group">
+            <legend class="group-legend">
+              <span class="legend-num">3</span> Performance Details
+            </legend>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="set_length">Preferred Set Length</label>
+                <select id="set_length" name="set_length">
+                  <option value="">Select…</option>
+                  <option>30 minutes</option>
+                  <option>45 minutes</option>
+                  <option>60 minutes</option>
+                  <option>Flexible</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="performed_before">Performed with us before?</label>
+                <select id="performed_before" name="performed_before">
+                  <option value="">Select…</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No — first time applying</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>
+                Available Dates <span class="req">*</span>
+                <span class="label-hint">(select all that work — minimum 1 required)</span>
+              </label>
+              <div class="date-checkboxes" id="date-checkboxes">
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-06-12" /> Fri, June 12, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-06-19" /> Fri, June 19, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-06-26" /> Fri, June 26, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-07-10" /> Fri, July 10, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-07-17" /> Fri, July 17, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-07-31" /> Fri, July 31, 2026</label>
+                <label class="date-check"><input type="checkbox" name="available_dates" value="2026-08-07" /> Fri, August 7, 2026</label>
+                <label class="date-check date-check--festival"><input type="checkbox" name="available_dates" value="2026-08-15" /> Sat, August 15, 2026 — Arts Festival</label>
+              </div>
+              <div id="date-error" class="field-error" hidden>Please select at least 1 available date.</div>
+            </div>
+
+            <div class="field">
+              <label for="additional_notes">Anything Else We Should Know?</label>
+              <textarea
+                id="additional_notes"
+                name="additional_notes"
+                rows="3"
+                placeholder="Special requirements, co-billing preferences, family-friendly content, etc."
+              ></textarea>
+            </div>
+          </fieldset>
+
+          <!-- ─── SECTION 4: FILE UPLOADS ─── -->
+          <fieldset class="form-group">
+            <legend class="group-legend">
+              <span class="legend-num">4</span> Files
+            </legend>
+
+            <!-- Promo Photo -->
+            <div class="field">
+              <label>
+                Promotional Photo <span class="req">*</span>
+                <span class="label-hint">(JPG or PNG, max 10 MB — used in event listings · please crop to 4:3 ratio)</span>
+              </label>
+              <div class="upload-zone" id="photo-zone">
+                <input
+                  type="file"
+                  id="promo_photo"
+                  name="promo_photo"
+                  accept="image/jpeg,image/png,image/webp"
+                  class="upload-input"
+                />
+                <label for="promo_photo" class="upload-label">
+                  <span class="upload-icon">🖼️</span>
+                  <span class="upload-text">
+                    <strong>Choose a photo</strong> or drag and drop
+                  </span>
+                  <span class="upload-hint">JPG, PNG or WebP · max 10 MB</span>
+                </label>
+                <div class="upload-preview" id="photo-preview" hidden></div>
+              </div>
+            </div>
+
+            <!-- Tech Rider -->
+            <div class="field">
+              <label>
+                Tech Rider
+                <span class="label-hint">(PDF, max 5 MB — your stage and sound requirements)</span>
+              </label>
+              <div class="upload-zone" id="rider-zone">
+                <input
+                  type="file"
+                  id="tech_rider"
+                  name="tech_rider"
+                  accept="application/pdf"
+                  class="upload-input"
+                />
+                <label for="tech_rider" class="upload-label">
+                  <span class="upload-icon">📄</span>
+                  <span class="upload-text">
+                    <strong>Choose a PDF</strong> or drag and drop
+                  </span>
+                  <span class="upload-hint">PDF only · max 5 MB</span>
+                </label>
+                <div class="upload-preview" id="rider-preview" hidden></div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- ── honeypot (bots fill this, humans never see it) ── -->
+          <div class="hp-field" aria-hidden="true">
+            <label for="website_url">Leave this blank</label>
+            <input type="text" id="website_url" name="website_url" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <!-- ─── SUBMIT ─── -->
+          <div class="form-footer">
+            <p class="form-disclaimer">
+              By submitting you agree that the Magna Arts Council may use your
+              promotional photo and bio for event marketing purposes.
+            </p>
+            <button type="submit" id="submit-btn" class="btn btn-gold submit-btn">
+              Submit Application →
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <Footer />
+
+  <!-- Inject Firebase config from server-side env vars -->
+  <script define:vars={{ firebaseConfig }}>
+    window.__FIREBASE_CONFIG__ = firebaseConfig;
+  </script>
+
+  <!-- ══ CLIENT-SIDE SCRIPT — inside BaseLayout so it's part of the document ══ -->
+  <script type="module">
+    // ── Firebase setup ─────────────────────────────────────────────────────
+    import { initializeApp }        from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+    import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js';
+
+    const app     = initializeApp(window.__FIREBASE_CONFIG__);
+    const db      = getFirestore(app);
+    const storage = getStorage(app);
+
+    // ── helpers ────────────────────────────────────────────────────────────
+
+    function slugify(name) {
+      return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+
+    function uniquePrefix() {
+      return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    async function firebaseUpload(path, file) {
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      return getDownloadURL(storageRef);
+    }
+
+    // ── bio character counter ──────────────────────────────────────────────
+
+    const bioEl    = document.getElementById('bio');
+    const bioCount = document.getElementById('bio-count');
+    bioEl.addEventListener('input', () => {
+      const n = bioEl.value.length;
+      bioCount.textContent = String(n);
+      bioCount.style.color = n >= 280 ? 'var(--red)' : n >= 240 ? 'var(--amber)' : '';
+    });
+
+    // ── drag-and-drop styling ──────────────────────────────────────────────
+
+    document.querySelectorAll('.upload-zone').forEach(zone => {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const input = zone.querySelector('.upload-input');
+        if (input && e.dataTransfer && e.dataTransfer.files.length) {
+          const dt = new DataTransfer();
+          dt.items.add(e.dataTransfer.files[0]);
+          input.files = dt.files;
+          input.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
+    // ── upload previews ────────────────────────────────────────────────────
+
+    function wirePreview(inputId, previewId, isImage) {
+      const input   = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (!file) { preview.hidden = true; return; }
+        preview.hidden = false;
+        if (isImage) {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            preview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+          };
+          reader.readAsDataURL(file);
+        } else {
+          preview.innerHTML = `<span class="file-icon">📄</span><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+        }
+      });
+    }
+
+    wirePreview('promo_photo', 'photo-preview', true);
+    wirePreview('tech_rider',  'rider-preview',  false);
+
+    // ── form submit ────────────────────────────────────────────────────────
+
+    const form        = document.getElementById('band-form');
+    const submitBtn   = document.getElementById('submit-btn');
+    const successEl   = document.getElementById('form-success');
+    const errorEl     = document.getElementById('form-error');
+    const errorDetail = document.getElementById('error-detail');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      // Honeypot check — bots fill this field, humans don't
+      if ((form.querySelector('#website_url') as HTMLInputElement)?.value) return;
+
+      // Require at least 2 date selections
+      const checkedDates = form.querySelectorAll('input[name="available_dates"]:checked');
+      const dateError = document.getElementById('date-error');
+      if (checkedDates.length < 1) {
+        dateError.hidden = false;
+        document.getElementById('date-checkboxes').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      dateError.hidden = true;
+
+      submitBtn.disabled    = true;
+      submitBtn.textContent = 'Uploading…';
+      successEl.style.display = 'none';
+      errorEl.style.display   = 'none';
+
+      try {
+        const fd       = new FormData(form);
+        const bandName = fd.get('band_name');
+        const prefix   = `${slugify(bandName)}-${uniquePrefix()}`;
+
+        // upload promo photo
+        let promo_photo_url = null;
+        const photoInput = document.getElementById('promo_photo');
+        const photoFile  = photoInput.files && photoInput.files[0];
+        if (photoFile) {
+          submitBtn.textContent = 'Uploading photo…';
+          const ext = photoFile.name.split('.').pop();
+          promo_photo_url = await firebaseUpload(`band-promos/${prefix}/promo.${ext}`, photoFile);
+        }
+
+        // upload tech rider — store path only (no public read needed)
+        let tech_rider_url = null;
+        const riderInput = document.getElementById('tech_rider');
+        const riderFile  = riderInput.files && riderInput.files[0];
+        if (riderFile) {
+          submitBtn.textContent = 'Uploading tech rider…';
+          const riderPath = `band-tech-riders/${prefix}/rider.pdf`;
+          const riderRef  = ref(storage, riderPath);
+          await uploadBytes(riderRef, riderFile);
+          tech_rider_url = riderPath; // store path, not download URL
+        }
+
+        // save to Firestore
+        submitBtn.textContent = 'Saving application…';
+        await addDoc(collection(db, 'band_applications'), {
+          band_name:        fd.get('band_name'),
+          contact_name:     fd.get('contact_name'),
+          contact_email:    fd.get('contact_email'),
+          contact_phone:    fd.get('contact_phone') || null,
+          genre:            fd.get('genre'),
+          member_count:     fd.get('member_count'),
+          bio:              fd.get('bio'),
+          website:          fd.get('website') || null,
+          music_link:       fd.get('music_link') || null,
+          set_length:       fd.get('set_length') || null,
+          performed_before: fd.get('performed_before') || null,
+          available_dates:  Array.from(form.querySelectorAll('input[name="available_dates"]:checked')).map(cb => cb.value),
+          additional_notes: fd.get('additional_notes') || null,
+          promo_photo_url,
+          tech_rider_url,
+          status:           'pending',
+          submitted_at:     new Date().toISOString(),
+        });
+
+        // success
+        form.reset();
+        bioCount.textContent = '0';
+        document.getElementById('photo-preview').hidden = true;
+        document.getElementById('rider-preview').hidden = true;
+        successEl.style.display = 'flex';
+        successEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        errorDetail.innerHTML = `${msg} — or email us at <a href="mailto:wfurgason@gmail.com">wfurgason@gmail.com</a>.`;
+        errorEl.style.display = 'flex';
+        errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      } finally {
+        submitBtn.disabled    = false;
+        submitBtn.textContent = 'Submit Application →';
+      }
+    }); // end submit listener
+  </script>
+
+</BaseLayout>
+
+<style>
+  /* ── GLOBAL HIDDEN FIX ── */
+  /* Prevents display:flex/.status-banner from overriding the HTML hidden attribute */
+  [hidden] { display: none !important; }
+
+  /* ── HONEYPOT ── */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* ── PAGE HERO ── */
+  .page-hero {
+    background: var(--navy);
+    color: var(--white);
+    padding: 72px 0 64px;
+    text-align: center;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: rgba(232, 160, 32, 0.18);
+    border: 1px solid rgba(232, 160, 32, 0.45);
+    color: var(--gold-lt);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  .hero-sub {
+    font-size: 18px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.75);
+    max-width: 580px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* ── SERIES STRIP ── */
+  .series-strip {
+    background: var(--blue);
+    color: var(--white);
+    padding: 24px 0;
+  }
+
+  .series-strip-inner {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+
+  .strip-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .strip-icon { font-size: 22px; }
+
+  .strip-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.65);
+    margin-bottom: 2px;
+  }
+
+  .strip-val {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  /* ── FORM SECTION ── */
+  .form-section { background: var(--cream); }
+
+  .form-outer {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .form-intro {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .form-intro h2 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+
+  .form-intro p {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  /* ── STATUS BANNERS ── */
+  .status-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 24px;
+    border-radius: var(--radius);
+    margin-bottom: 32px;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .status-banner > span { font-size: 24px; flex-shrink: 0; }
+  .status-banner strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  .status-banner p { margin: 0; }
+  .status-banner a { color: inherit; font-weight: 600; }
+
+  .status-success {
+    background: #d1fae5;
+    border: 1.5px solid #6ee7b7;
+    color: #065f46;
+  }
+
+  .status-error {
+    background: #fee2e2;
+    border: 1.5px solid #fca5a5;
+    color: #991b1b;
+  }
+
+  /* ── FORM ── */
+  .band-form {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  /* ── FIELDSET GROUPS ── */
+  .form-group {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    margin: 0;
+  }
+
+  .group-legend {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 24px;
+    padding: 0;
+    float: none;
+  }
+
+  .legend-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: var(--blue);
+    color: var(--white);
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font-body);
+    flex-shrink: 0;
+  }
+
+  /* ── FIELDS ── */
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .field-row:last-child { margin-bottom: 0; }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .field:last-child { margin-bottom: 0; }
+
+  .field label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .req { color: var(--red); }
+
+  .label-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: 6px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--text);
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(37,99,176,0.12);
+  }
+
+  .field textarea { resize: vertical; min-height: 90px; }
+
+  .char-count {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    position: relative;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    background: var(--cream);
+    transition: border-color 0.2s, background 0.2s;
+    overflow: hidden;
+  }
+
+  .upload-zone.drag-over {
+    border-color: var(--blue);
+    background: #eff6ff;
+  }
+
+  .upload-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100% !important;
+    height: 100%;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  .upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 32px 24px;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .upload-icon { font-size: 32px; }
+
+  .upload-text {
+    font-size: 15px;
+    color: var(--navy);
+  }
+
+  .upload-text strong { color: var(--blue); }
+
+  .upload-hint {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .upload-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--white);
+    border-top: 1.5px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .upload-preview img {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  .file-icon { font-size: 24px; }
+
+  /* ── FORM FOOTER ── */
+  .form-footer {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding-top: 8px;
+  }
+
+  .form-disclaimer {
+    flex: 1;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin: 0;
+    min-width: 200px;
+  }
+
+  .submit-btn {
+    font-size: 16px;
+    padding: 15px 36px;
+    white-space: nowrap;
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* ── DATE CHECKBOXES ── */
+  .date-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    padding: 4px 0;
+  }
+
+  .date-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--navy);
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .date-check:has(input:checked) {
+    border-color: var(--blue);
+    background: #eff6ff;
+    color: var(--blue);
+  }
+
+  .date-check--festival {
+    border-color: var(--amber);
+    background: #fffbeb;
+    color: #92400e;
+    font-weight: 600;
+  }
+
+  .date-check--festival:has(input:checked) {
+    border-color: var(--amber);
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .date-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--blue);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .field-error {
+    font-size: 12px;
+    color: var(--red);
+    font-weight: 600;
+    margin-top: 6px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 680px) {
+    .field-row { grid-template-columns: 1fr; }
+    .form-group { padding: 20px 16px; }
+    .series-strip-inner { gap: 20px; }
+    .form-footer { flex-direction: column; align-items: flex-start; }
+    .submit-btn { width: 100%; text-align: center; }
+  }
+</style>

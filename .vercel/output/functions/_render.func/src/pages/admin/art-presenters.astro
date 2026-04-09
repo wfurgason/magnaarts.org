@@ -1,0 +1,533 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+const filterParam = Astro.url.searchParams.get('filter') || 'all';
+
+const firebaseConfig = {
+  apiKey:        import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:    import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:     import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+};
+
+const snap = await adminDb.collection('art_class_submissions')
+  .orderBy('submittedAt', 'desc')
+  .get();
+
+type Presenter = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  artsArea: string;
+  projectDescription?: string;
+  links?: string;
+  materials?: string;
+  projectImageUrl?: string;
+  status: string;
+  submittedAt?: any;
+};
+
+let presenters = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Presenter[];
+
+const filters = ['all', 'pending', 'approved', 'rejected', 'contacted', 'scheduled'];
+
+if (filterParam !== 'all') {
+  presenters = presenters.filter(p => (p.status || 'pending') === filterParam);
+}
+---
+
+<AdminLayout title="Art Presenters" user={user}>
+  <Fragment slot="head">
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet" />
+  </Fragment>
+  <div class="page-header">
+    <h1>Art Presenters</h1>
+    <div class="filter-tabs">
+      {filters.map(f => (
+        <a
+          href={`/admin/art-presenters${f === 'all' ? '' : `?filter=${f}`}`}
+          class:list={['filter-tab', { active: filterParam === f }]}
+        >
+          {f.charAt(0).toUpperCase() + f.slice(1)}
+        </a>
+      ))}
+    </div>
+  </div>
+
+  {presenters.length === 0 ? (
+    <div class="empty-state">
+      <p>No submissions matching this filter.</p>
+    </div>
+  ) : (
+    <div class="submission-list">
+      {presenters.map(p => (
+        <div
+          class="submission-card"
+          id={p.id}
+          data-phone={p.phone ?? ''}
+          data-arts-area={p.artsArea ?? ''}
+          data-project-description={p.projectDescription ?? ''}
+          data-materials={p.materials ?? ''}
+          data-image-url={p.projectImageUrl ?? ''}
+        >
+          <div class="submission-header">
+            <div class="submission-title-group">
+              <div>
+                <h2 class="submission-name">{p.fullName}</h2>
+                <span class="submission-meta">
+                  <a href={`mailto:${p.email}`}>{p.email}</a>
+                  {p.phone && <> · {p.phone}</>}
+                </span>
+              </div>
+            </div>
+            <span class={`badge badge-${p.status || 'pending'}`}>{p.status || 'pending'}</span>
+          </div>
+
+          <div class="submission-body">
+            <div class="detail-grid">
+              <div>
+                <div class="detail-label">Arts Area &amp; Experience</div>
+                <p class="detail-text" set:html={p.artsArea}></p>
+              </div>
+              {p.projectDescription && (
+                <div>
+                  <div class="detail-label">Project Description</div>
+                  <p class="detail-text" set:html={p.projectDescription}></p>
+                </div>
+              )}
+              {p.projectImageUrl && (
+                <div>
+                  <div class="detail-label">Project Image</div>
+                  <img
+                    src={p.projectImageUrl}
+                    alt="Project image"
+                    class="presenter-thumb"
+                  />
+                </div>
+              )}
+              {p.materials && (
+                <div>
+                  <div class="detail-label">Materials &amp; Resources</div>
+                  <p class="detail-text" set:html={p.materials}></p>
+                </div>
+              )}
+              {p.links && (
+                <div>
+                  <div class="detail-label">Links</div>
+                  <div class="link-list">
+                    {p.links.split('\n').filter(Boolean).map(link => (
+                      <div><a href={link.trim()} target="_blank" rel="noopener">{link.trim()} ↗</a></div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div class="submission-actions">
+            <button class="btn btn-edit" data-edit={p.id}>Edit</button>
+            <button class="btn btn-delete" data-delete={p.id} data-name={p.fullName}>Delete</button>
+            {(p.status === 'pending') && (
+              <>
+                <button class="btn btn-success" data-action="approved" data-id={p.id}>Approve</button>
+                <button class="btn btn-primary" data-action="contacted" data-id={p.id}>Mark Contacted</button>
+                <button class="btn btn-danger" data-action="rejected" data-id={p.id}>Reject</button>
+              </>
+            )}
+            {(p.status === 'approved') && (
+              <>
+                <button class="btn btn-primary" data-action="contacted" data-id={p.id}>Mark Contacted</button>
+                <button class="btn btn-success" data-action="scheduled" data-id={p.id}>Mark Scheduled</button>
+                <button class="btn btn-danger" data-action="rejected" data-id={p.id}>Reject</button>
+              </>
+            )}
+            {(p.status === 'contacted') && (
+              <>
+                <button class="btn btn-success" data-action="scheduled" data-id={p.id}>Mark Scheduled</button>
+                <button class="btn btn-danger" data-action="rejected" data-id={p.id}>Reject</button>
+              </>
+            )}
+            {(p.status === 'scheduled') && (
+              <span class="muted" style="font-size:13px">Scheduled ✓</span>
+            )}
+            {(p.status === 'rejected') && (
+              <button class="btn btn-success" data-action="pending" data-id={p.id}>Restore to Pending</button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <!-- ── EDIT MODAL ──────────────────────────────────────────────────── -->
+  <div id="edit-modal" class="modal-backdrop" hidden>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Edit Presenter</h2>
+        <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+      </div>
+
+      <form id="edit-form" class="edit-form" novalidate>
+        <input type="hidden" id="edit-id" name="id" />
+        <input type="hidden" id="edit-image-url" name="projectImageUrl" />
+
+        <div class="edit-row two-col">
+          <div class="edit-field">
+            <label for="edit-fullName">Full Name</label>
+            <input type="text" id="edit-fullName" name="fullName" required />
+          </div>
+          <div class="edit-field">
+            <label for="edit-phone">Phone</label>
+            <input type="tel" id="edit-phone" name="phone" />
+          </div>
+        </div>
+
+        <div class="edit-field">
+          <label for="edit-email">Email</label>
+          <input type="email" id="edit-email" name="email" required />
+        </div>
+
+        <div class="edit-field">
+          <label>Arts Area &amp; Experience</label>
+          <div id="quill-artsArea" class="quill-wrap"></div>
+        </div>
+
+        <div class="edit-field">
+          <label>Project Description</label>
+          <div id="quill-projectDescription" class="quill-wrap"></div>
+        </div>
+
+        <div class="edit-field">
+          <label>Materials &amp; Resources</label>
+          <div id="quill-materials" class="quill-wrap"></div>
+        </div>
+
+        <!-- Image section -->
+        <div class="edit-field">
+          <label>Project Image</label>
+          <div id="current-image-wrap" class="current-image-wrap" hidden>
+            <img id="current-image-el" src="" alt="Current project image" class="current-img-thumb" />
+            <span class="current-image-label">Current image</span>
+          </div>
+          <div class="upload-zone" id="edit-upload-zone">
+            <input type="file" id="edit-image-file" accept="image/jpeg,image/png,image/webp" class="upload-input" />
+            <label for="edit-image-file" class="upload-label">
+              <span class="upload-icon">🖼️</span>
+              <span class="upload-text" id="upload-zone-text"><strong>Choose a photo</strong> or drag and drop</span>
+              <span class="upload-hint">JPG, PNG or WebP · max 10 MB</span>
+            </label>
+            <div class="upload-preview" id="edit-image-preview" hidden></div>
+          </div>
+        </div>
+
+        <div class="edit-form-actions">
+          <button type="button" class="btn btn-outline" id="edit-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn-gold" id="edit-save-btn">
+            <span id="edit-btn-text">Save Changes</span>
+            <span id="edit-btn-loading" hidden>Saving…</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <style>
+    /* ── QUILL ── */
+    .ql-toolbar  { border-radius: 7px 7px 0 0 !important; border-color: var(--border,#e5e5e5) !important; background: var(--cream,#f7f5f0); }
+    .ql-container{ border-radius: 0 0 7px 7px !important; border-color: var(--border,#e5e5e5) !important; font-family: inherit; font-size: 14px; }
+    .ql-editor    { min-height: 72px; }
+    .quill-focused .ql-toolbar,
+    .quill-focused .ql-container { border-color: var(--navy,#1a2456) !important; box-shadow: 0 0 0 3px rgba(26,36,86,.1); }
+
+    .detail-text { font-size: 14px; color: var(--text, #1a1a1a); line-height: 1.65; margin: 4px 0 0; }
+    .link-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; font-size: 14px; }
+    .muted { color: var(--muted, #5a5a7a); }
+    .badge-contacted { background: #e0f2fe; color: #075985; }
+    .badge-scheduled { background: #f0fdf4; color: #166534; }
+
+    .presenter-thumb { width: 120px; height: 90px; object-fit: cover; border-radius: 6px; margin-top: 4px; border: 1.5px solid var(--border, #e5e5e5); display: block; }
+
+    /* Delete button */
+    .btn-delete { background: transparent; border: 1.5px solid var(--red, #b52626); color: var(--red, #b52626); font-size: 13px; padding: 6px 14px; border-radius: 6px; cursor: pointer; margin-right: auto; }
+    .btn-delete:hover { background: var(--red, #b52626); color: #fff; }
+
+    /* Edit button */
+    .btn-edit { background: transparent; border: 1.5px solid var(--navy, #1a2456); color: var(--navy, #1a2456); font-size: 13px; padding: 6px 14px; border-radius: 6px; cursor: pointer; margin-right: auto; }
+    .btn-edit:hover { background: var(--navy, #1a2456); color: #fff; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border, #e5e5e5); color: var(--muted, #5a5a7a); border-radius: 6px; padding: 8px 16px; cursor: pointer; }
+
+    /* Modal */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.48); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal-backdrop[hidden] { display: none; }
+    .modal-box { background: #fff; border-radius: 12px; width: 100%; max-width: 600px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.28); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 16px; border-bottom: 1.5px solid var(--border, #e5e5e5); position: sticky; top: 0; background: #fff; z-index: 1; border-radius: 12px 12px 0 0; }
+    .modal-title { font-family: var(--font-display, serif); font-size: 20px; font-weight: 700; color: var(--navy, #1a2456); margin: 0; }
+    .modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--muted, #5a5a7a); padding: 4px 8px; border-radius: 4px; line-height: 1; }
+    .modal-close:hover { background: var(--cream, #f7f5f0); color: var(--navy, #1a2456); }
+
+    /* Edit form */
+    .edit-form { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
+    .edit-row.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .edit-field { display: flex; flex-direction: column; gap: 6px; }
+    .edit-field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--navy, #1a2456); }
+    .edit-field input,
+    .edit-field textarea { font-family: inherit; font-size: 14px; color: var(--text, #1a1a1a); border: 1.5px solid var(--border, #e5e5e5); border-radius: 7px; padding: 9px 12px; outline: none; transition: border-color 0.18s; width: 100%; box-sizing: border-box; }
+    .edit-field input:focus,
+    .edit-field textarea:focus { border-color: var(--green, #2d7a3a); box-shadow: 0 0 0 3px rgba(45,122,58,0.1); }
+    .edit-field textarea { resize: vertical; min-height: 72px; }
+
+    /* Current image */
+    .current-image-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .current-img-thumb { width: 72px; height: 54px; object-fit: cover; border-radius: 6px; border: 1.5px solid var(--border, #e5e5e5); flex-shrink: 0; }
+    .current-image-label { font-size: 12px; color: var(--muted, #5a5a7a); }
+
+    /* Upload zone */
+    .upload-zone { position: relative; border: 2px dashed var(--border, #e5e5e5); border-radius: 8px; background: var(--cream, #f7f5f0); transition: border-color 0.2s, background 0.2s; overflow: hidden; }
+    .upload-zone.drag-over { border-color: var(--green, #2d7a3a); background: #f0fdf4; }
+    .upload-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100% !important; height: 100%; padding: 0 !important; border: none !important; }
+    .upload-label { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 20px 16px; cursor: pointer; text-align: center; }
+    .upload-icon { font-size: 22px; }
+    .upload-text { font-size: 14px; color: var(--navy, #1a2456); }
+    .upload-text strong { color: var(--green, #2d7a3a); }
+    .upload-hint { font-size: 11px; color: var(--muted, #5a5a7a); }
+    .upload-preview { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #fff; border-top: 1.5px solid var(--border, #e5e5e5); font-size: 12px; color: var(--muted, #5a5a7a); pointer-events: none; }
+    .upload-preview[hidden] { display: none; }
+    .upload-preview img { width: 44px; height: 44px; object-fit: cover; border-radius: 5px; flex-shrink: 0; }
+
+    .edit-form-actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 4px; }
+
+    @media (max-width: 500px) {
+      .edit-row.two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <script type="module" define:vars={{ firebaseConfig }}>
+    // Load Quill before anything else
+    await new Promise((resolve, reject) => {
+      if (window.Quill) return resolve();
+      const s = document.createElement('script');
+      s.src = 'https://cdn.quilljs.com/1.3.7/quill.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    import { initializeApp, getApps, getApp }
+      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getStorage, ref, uploadBytes, getDownloadURL }
+      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js';
+
+    const app     = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const storage = getStorage(app);
+
+    // ── Status action buttons ────────────────────────────────────────
+    document.querySelectorAll('[data-action]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var action = btn.dataset.action;
+        var id = btn.dataset.id;
+        btn.disabled = true;
+        var res = await fetch('/api/admin/update-submission', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id, collection: 'art_class_submissions', status: action }),
+        });
+        if (res.ok) window.location.reload();
+        else { alert('Action failed.'); btn.disabled = false; }
+      });
+    });
+
+    // ── Delete buttons ───────────────────────────────────────────────
+    document.querySelectorAll('[data-delete]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        const id   = btn.dataset.delete;
+        const name = btn.dataset.name || 'this presenter';
+        if (!confirm(`Permanently delete ${name}? This cannot be undone.`)) return;
+        btn.disabled = true;
+        btn.textContent = 'Deleting…';
+        const res = await fetch('/api/admin/delete-presenter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        if (res.ok) {
+          document.getElementById(id)?.remove();
+        } else {
+          alert('Delete failed.');
+          btn.disabled = false;
+          btn.textContent = 'Delete';
+        }
+      });
+    });
+
+    // ── Build presenter data map from DOM data-* attrs ───────────────
+    const PRESENTERS = {};
+    document.querySelectorAll('.submission-card').forEach(card => {
+      PRESENTERS[card.id] = {
+        fullName:           card.querySelector('.submission-name')?.textContent?.trim() ?? '',
+        email:              card.querySelector('a[href^="mailto"]')?.textContent?.trim() ?? '',
+        phone:              card.dataset.phone ?? '',
+        artsArea:           card.dataset.artsArea ?? '',
+        projectDescription: card.dataset.projectDescription ?? '',
+        materials:          card.dataset.materials ?? '',
+        projectImageUrl:    card.dataset.imageUrl ?? '',
+      };
+    });
+
+    // ── Modal elements ───────────────────────────────────────────────
+    const modal         = document.getElementById('edit-modal');
+    const editForm      = document.getElementById('edit-form');
+    const closeBtn      = document.getElementById('modal-close-btn');
+    const cancelBtn     = document.getElementById('edit-cancel-btn');
+    const saveBtn       = document.getElementById('edit-save-btn');
+    const btnText       = document.getElementById('edit-btn-text');
+    const btnLoading    = document.getElementById('edit-btn-loading');
+    const curImgWrap    = document.getElementById('current-image-wrap');
+    const curImgEl      = document.getElementById('current-image-el');
+    const uploadZone    = document.getElementById('edit-upload-zone');
+    const uploadPreview = document.getElementById('edit-image-preview');
+    const fileInput     = document.getElementById('edit-image-file');
+    const hiddenImgUrl  = document.getElementById('edit-image-url');
+    const zoneText      = document.getElementById('upload-zone-text');
+
+    // ── Quill editors (init once; populated on open) ─────────────────
+    const BASIC_TOOLBAR = [['bold','italic','underline'],['link'],['clean']];
+    const LIST_TOOLBAR  = [['bold','italic','underline'],[{ list: 'bullet' },{ list: 'ordered' }],['link'],['clean']];
+
+    const qArtsArea    = new Quill('#quill-artsArea',           { theme: 'snow', modules: { toolbar: BASIC_TOOLBAR } });
+    const qProjectDesc = new Quill('#quill-projectDescription', { theme: 'snow', modules: { toolbar: BASIC_TOOLBAR } });
+    const qMaterials   = new Quill('#quill-materials',          { theme: 'snow', modules: { toolbar: LIST_TOOLBAR  } });
+
+    [
+      [qArtsArea,    'quill-artsArea'],
+      [qProjectDesc, 'quill-projectDescription'],
+      [qMaterials,   'quill-materials'],
+    ].forEach(([q, wrId]) => {
+      const wrap = document.getElementById(wrId);
+      q.on('selection-change', range => wrap.classList.toggle('quill-focused', !!range));
+    });
+
+    // ── Open modal ───────────────────────────────────────────────────
+    function openModal(id) {
+      const p = PRESENTERS[id];
+      if (!p) return;
+
+      editForm.querySelector('#edit-id').value       = id;
+      editForm.querySelector('#edit-fullName').value   = p.fullName;
+      editForm.querySelector('#edit-email').value      = p.email;
+      editForm.querySelector('#edit-phone').value      = p.phone;
+      hiddenImgUrl.value = p.projectImageUrl;
+
+      // Populate Quill editors
+      qArtsArea.root.innerHTML    = p.artsArea           || '';
+      qProjectDesc.root.innerHTML = p.projectDescription || '';
+      qMaterials.root.innerHTML   = p.materials          || '';
+
+      // Reset upload zone
+      fileInput.value = '';
+      uploadPreview.hidden = true;
+      uploadPreview.innerHTML = '';
+
+      if (p.projectImageUrl) {
+        curImgEl.src = p.projectImageUrl;
+        curImgWrap.hidden = false;
+        zoneText.innerHTML = '<strong>Replace image</strong> or drag and drop';
+      } else {
+        curImgWrap.hidden = true;
+        zoneText.innerHTML = '<strong>Choose a photo</strong> or drag and drop';
+      }
+
+      modal.hidden = false;
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      modal.hidden = true;
+      document.body.style.overflow = '';
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
+
+    document.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', () => openModal(btn.dataset.edit));
+    });
+
+    // ── Drag-and-drop + preview ──────────────────────────────────────
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      if (e.dataTransfer?.files.length) {
+        const dt = new DataTransfer();
+        dt.items.add(e.dataTransfer.files[0]);
+        fileInput.files = dt.files;
+        fileInput.dispatchEvent(new Event('change'));
+      }
+    });
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files?.[0];
+      if (!file) { uploadPreview.hidden = true; return; }
+      uploadPreview.hidden = false;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        uploadPreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)</span>`;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // ── Form submit ──────────────────────────────────────────────────
+    editForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      saveBtn.disabled  = true;
+      btnText.hidden    = true;
+      btnLoading.hidden = false;
+
+      try {
+        // Upload new image if one was chosen
+        const imgFile = fileInput.files?.[0];
+        if (imgFile) {
+          btnLoading.textContent = 'Uploading image…';
+          const ext = imgFile.name.split('.').pop();
+          const id  = editForm.querySelector('#edit-id').value;
+          const storageRef = ref(storage, `art-class-images/${id}/project.${ext}`);
+          await uploadBytes(storageRef, imgFile);
+          hiddenImgUrl.value = await getDownloadURL(storageRef);
+        }
+
+        btnLoading.textContent = 'Saving…';
+
+        const payload = {
+          id:                 editForm.querySelector('#edit-id').value,
+          fullName:           editForm.querySelector('#edit-fullName').value.trim(),
+          email:              editForm.querySelector('#edit-email').value.trim(),
+          phone:              editForm.querySelector('#edit-phone').value.trim(),
+          artsArea:           qArtsArea.getText().trim()    ? qArtsArea.root.innerHTML    : '',
+          projectDescription: qProjectDesc.getText().trim() ? qProjectDesc.root.innerHTML : '',
+          materials:          qMaterials.getText().trim()   ? qMaterials.root.innerHTML   : '',
+          projectImageUrl:    hiddenImgUrl.value,
+        };
+
+        const res = await fetch('/api/admin/update-presenter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error((await res.json()).error || 'Save failed');
+
+        window.location.reload();
+      } catch (err) {
+        alert('Save failed: ' + (err.message || 'Please try again.'));
+        saveBtn.disabled  = false;
+        btnText.hidden    = false;
+        btnLoading.hidden = true;
+        btnLoading.textContent = 'Saving…';
+      }
+    });
+  </script>
+</AdminLayout>

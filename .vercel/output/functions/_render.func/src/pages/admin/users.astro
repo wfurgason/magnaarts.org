@@ -1,0 +1,136 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+
+const snap = await adminDb.collection('admin_users').orderBy('createdAt', 'desc').get();
+type AdminUser = { id: string; email: string; displayName: string; role: string; createdBy: string; createdAt: any };
+const adminUsers = snap.docs.map(d => ({ id: d.id, ...d.data() })) as AdminUser[];
+---
+
+<AdminLayout title="Board Members" user={user}>
+  <div class="page-header">
+    <h1>Board Members</h1>
+    <button id="add-user-btn" class="btn btn-primary">+ Add Member</button>
+  </div>
+
+  <div class="user-list">
+    {adminUsers.map(u => (
+      <div class="user-row" data-uid={u.id}>
+        <div class="user-info">
+          <div class="user-name">{u.displayName || '(no name)'}</div>
+          <div class="user-email">{u.email}</div>
+        </div>
+        <div class="user-role">
+          <span class:list={['badge', u.role === 'super_admin' ? 'badge-primary' : 'badge-info']}>
+            {u.role === 'super_admin' ? 'Super Admin' : 'Board Member'}
+          </span>
+        </div>
+        <div class="user-actions">
+          {u.role !== 'super_admin' && (
+            <button class="btn btn-danger btn-sm" data-action="delete" data-uid={u.id} data-name={u.displayName || u.email}>
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+    ))}
+    {adminUsers.length === 0 && (
+      <p class="empty-msg">No board members yet.</p>
+    )}
+  </div>
+
+  <!-- Add User Modal -->
+  <div id="user-modal" class="modal-backdrop" hidden>
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2>Add Board Member</h2>
+        <button id="user-modal-close" class="modal-close">✕</button>
+      </div>
+      <form id="user-form" novalidate>
+        <div class="field-group">
+          <label for="u-name">Full Name</label>
+          <input type="text" id="u-name" required />
+        </div>
+        <div class="field-group">
+          <label for="u-email">Email *</label>
+          <input type="email" id="u-email" required autocomplete="off" />
+        </div>
+        <div class="field-group">
+          <label for="u-password">Temporary Password *</label>
+          <input type="password" id="u-password" required minlength="8" />
+          <span class="field-hint">They can change this after first login.</span>
+        </div>
+        <div class="field-group">
+          <label for="u-role">Role</label>
+          <select id="u-role">
+            <option value="board_member">Board Member</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+        </div>
+        <div id="user-error" class="error-msg" hidden></div>
+        <div class="modal-actions">
+          <button type="button" id="user-modal-cancel" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="user-submit">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const modal = document.getElementById('user-modal')!;
+    const form = document.getElementById('user-form') as HTMLFormElement;
+
+    document.getElementById('add-user-btn')?.addEventListener('click', () => { modal.hidden = false; });
+    const closeModal = () => { modal.hidden = true; form.reset(); };
+    document.getElementById('user-modal-close')?.addEventListener('click', closeModal);
+    document.getElementById('user-modal-cancel')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('user-submit') as HTMLButtonElement;
+      const errEl = document.getElementById('user-error')!;
+      errEl.hidden = true;
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
+
+      const res = await fetch('/api/admin/manage-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          displayName: (document.getElementById('u-name') as HTMLInputElement).value,
+          email: (document.getElementById('u-email') as HTMLInputElement).value,
+          password: (document.getElementById('u-password') as HTMLInputElement).value,
+          role: (document.getElementById('u-role') as HTMLSelectElement).value,
+        }),
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const { error } = await res.json();
+        errEl.textContent = error || 'Failed to create account.';
+        errEl.hidden = false;
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+
+    document.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const el = btn as HTMLButtonElement;
+        if (!confirm(`Remove ${el.dataset.name}? They will lose access immediately.`)) return;
+        el.disabled = true;
+        const res = await fetch('/api/admin/manage-user', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: el.dataset.uid }),
+        });
+        if (res.ok) window.location.reload();
+        else { alert('Failed to remove user.'); el.disabled = false; }
+      });
+    });
+  </script>
+</AdminLayout>

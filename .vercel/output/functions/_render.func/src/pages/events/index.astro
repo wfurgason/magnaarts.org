@@ -1,0 +1,927 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import '../../styles/global.css';
+
+// Published events are loaded client-side from Firestore (see <script> below).
+// The events collection has public read access so no Admin SDK needed.
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+};
+
+// ── FEATURED / PINNED EVENT CARDS ───────────────────────────────────────────
+// Add static event cards here. They display above the Firestore events section
+// and disappear automatically once their expiresDate passes.
+// Remove or comment out an entry to hide it early.
+// ────────────────────────────────────────────────────────────────────────────
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const featuredEvents = [
+  {
+    id:          'lens-of-magna-2026',
+    expiresDate: new Date('2026-04-17T00:00:00'), // day after the April 16 exhibit
+    href:        '/lens-of-magna',
+    badge:       '3rd Annual · Photography Contest',
+    accentColor: 'featured-gold',
+    icon:        '📷',
+    logoSrc:     '/images/lens-of-magna/lmm-logo.png',
+    title:       'Lens of Magna 2026: Main Street in Motion',
+    description: 'A free community photography contest celebrating Magna Main Street. Submit your best shots for a chance to win a share of $2,875 in cash prizes — open to Youth, Amateur, and Professional photographers.',
+    details: [
+      { icon: '📅', label: 'Entry Deadline', value: 'Saturday, April 11, 2026' },
+      { icon: '🖼️', label: 'Exhibit & Reception', value: 'Thursday, April 16, 2026 · 6:00–8:00 PM' },
+      { icon: '📍', label: 'Exhibit Location', value: 'Magna Branch — Salt Lake County Library' },
+      { icon: '🆓', label: 'Entry Fee', value: 'Free' },
+    ],
+    ctaText:     'Learn More & Enter Free →',
+    ctaExternal: false,
+  },
+  // Add more featured events here following the same shape ↑
+].filter(e => {
+  const exp = new Date(e.expiresDate);
+  exp.setHours(0, 0, 0, 0);
+  return today < exp;
+});
+
+const hasFeatured = featuredEvents.length > 0;
+---
+
+<BaseLayout
+  title="Events — Magna Arts Council"
+  description="Upcoming events from the Magna Arts Council — free concerts, movies in the park, open mic nights, and the annual Arts Festival."
+>
+  <Header />
+
+  <main>
+
+    <!-- ── PAGE HERO ── -->
+    <section class="page-hero">
+      <div class="container">
+        <h1>Free Events for Everyone</h1>
+        <p class="hero-sub">
+          Every event is free and open to all. Bring a blanket, bring the family,
+          and enjoy the best of Magna's arts community.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── FEATURED / PINNED EVENTS (static, date-gated) ── -->
+    {hasFeatured && (
+      <section class="section featured-section">
+        <div class="container">
+          <div class="featured-section-header">
+            <span class="featured-section-label">📌 Featured</span>
+          </div>
+          <div class="featured-grid">
+            {featuredEvents.map(e => (
+              <article class={`featured-card ${e.accentColor}`}>
+                <div class="featured-card-aside">
+                  {e.logoSrc && <img src={e.logoSrc} alt="" class="featured-card-logo" aria-hidden="true" />}
+                  <div class="featured-card-icon" aria-hidden="true">{e.icon}</div>
+                </div>
+                <div class="featured-card-body">
+                  <span class="featured-badge">{e.badge}</span>
+                  <h2 class="featured-title">{e.title}</h2>
+                  <p class="featured-desc">{e.description}</p>
+                  <ul class="featured-details">
+                    {e.details.map(d => (
+                      <li class="featured-detail-row">
+                        <span class="featured-detail-icon" aria-hidden="true">{d.icon}</span>
+                        <span class="featured-detail-label">{d.label}</span>
+                        <span class="featured-detail-value">{d.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <a
+                    href={e.href}
+                    class="btn btn-gold featured-cta"
+                    {...(e.ctaExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  >
+                    {e.ctaText}
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- ── FIRESTORE PUBLISHED EVENTS — loaded client-side ── -->
+    <section class="section published-events-section" id="live-events-section" style="display:none">
+      <div class="container">
+        <h2 class="section-title">Upcoming Events</h2>
+        <div class="published-grid" id="live-events-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── SUMMER SERIES CALLOUT ── -->
+    <section class="series-callout reveal">
+      <div class="container series-inner">
+        <div class="series-text">
+          <h2>Music &amp; Movies in the Park</h2>
+          <p>Most Friday nights June through August. Live music starts at 8 PM, movie follows at dusk on our 35-ft inflatable screen.</p>
+          <div class="series-details">
+            <span class="detail-pill">📍 Pleasant Green Park — 3250 S 8400 W, Magna</span>
+            <span class="detail-pill">🗓 Most Fridays · June – August</span>
+            <span class="detail-pill">🎟 Free Admission</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── EMPTY STATE (shown if no Firestore events) ── -->
+    <section class="section empty-state-section" id="no-events-section" style="display:none">
+      <div class="container" style="text-align:center; padding: 56px 0;">
+        <p style="font-size:17px; color:var(--muted);">No upcoming events scheduled yet — check back soon!</p>
+        <a href="/propose" class="btn btn-gold" style="margin-top:20px;">Propose an Event →</a>
+      </div>
+    </section>
+
+    <!-- ── OTHER PROGRAMS ── -->
+    <section class="section other-section">
+      <div class="container">
+        <h2 class="section-title reveal">Year-Round Programs</h2>
+        <div class="other-grid">
+          <div class="other-card reveal">
+            <span class="other-icon">🎤</span>
+            <h3>Open Mic Night</h3>
+            <p>8–10 events per year at the Magna Library. Music, comedy, and poetry — open to all performers.</p>
+            <a href="/programs#open-mic" class="other-link">Learn more →</a>
+          </div>
+          <div class="other-card reveal">
+            <span class="other-icon">✦</span>
+            <h3>Group Art Night</h3>
+            <p>Artist-guided sessions at the Magna Library. Come create with your community.</p>
+            <a href="/programs#art-night" class="other-link">Learn more →</a>
+          </div>
+          <div class="other-card reveal">
+            <span class="other-icon">📚</span>
+            <h3>Arts Seminar</h3>
+            <p>Annual deep-dive into a different art discipline — panels, education, and Q&amp;A.</p>
+            <a href="/programs#seminar" class="other-link">Learn more →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA ── -->
+    <section class="cta-banner">
+      <div class="container cta-inner reveal">
+        <div>
+          <h2>Want to Perform or Present?</h2>
+          <p>Have a band, a film, an idea for a class? Submit a program proposal and we'll review it at our next board meeting.</p>
+        </div>
+        <a href="/propose" class="btn btn-gold">Submit a Proposal →</a>
+      </div>
+    </section>
+
+  </main>
+
+  <Footer />
+
+  <script type="module" define:vars={{ firebaseConfig }}>
+    import { initializeApp }                                          from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collection, getDocs, orderBy, query }      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+    function extractEmbedSrc(val) {
+      if (!val) return null;
+      if (val.trim().startsWith('http')) return val.trim();
+      const m = val.match(/src=["']([^"']+)["']/);
+      return m ? m[1] : null;
+    }
+
+    function truncate(text, max) {
+      if (!text || text.length <= max) return { short: text || '', truncated: false };
+      return { short: text.slice(0, max).trimEnd(), truncated: true };
+    }
+
+    function stripHtml(html) {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      return div.textContent || div.innerText || '';
+    }
+
+    function mapsLink(address) {
+      return 'https://maps.google.com/?q=' + encodeURIComponent(address);
+    }
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
+
+      const q    = query(collection(db, 'events'), orderBy('eventDate', 'asc'));
+      const snap = await getDocs(q);
+
+      const now      = new Date();
+      const upcoming = [];
+
+      snap.forEach(doc => {
+        const d       = doc.data();
+        const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
+        if (dateObj < now) return;
+
+        if (d.eventType === 'arts_festival') {
+          const festDate    = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const festVenue   = d.venueName || d.venue || '';
+          const festAddress = d.venueAddress || d.address || '';
+          (d.bands || []).forEach(b => {
+            if (!b.bandId) return;
+            upcoming.push({
+              id:           doc.id + '-slot' + b.slot,
+              title:        'Magna Main Street Arts Festival',
+              date:         festDate,
+              time:         b.time || d.eventTime || '',
+              venueName:    festVenue,
+              venueAddress: festAddress,
+              description:  b.bio || '',
+              posterUrl:    b.photoUrl || null,
+              bandName:     b.bandName || null,
+              genre:        b.genre || null,
+              musicLink:    b.musicLink || null,
+              ticketUrl:    null,
+              rsvpUrl:      null,
+            });
+          });
+          return;
+        }
+
+        upcoming.push({
+          id:           doc.id,
+          title:        d.title,
+          date:         dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          time:         d.eventTime || d.startTime || '',
+          venueName:    d.venueName || d.venue || '',
+          venueAddress: d.venueAddress || d.address || '',
+          description:  d.description || d.bandBio || '',
+          posterUrl:    d.posterUrl || d.photoUrl || null,
+          bandName:     d.bandName || null,
+          genre:        d.genre || d.bandGenre || null,
+          musicLink:                   d.musicLink || d.bandMusicLink || null,
+          ticketUrl:                   d.ticketUrl || null,
+          rsvpUrl:                     d.rsvpUrl || null,
+          movieTitle:                  d.movieTitle || null,
+          moviePreviewEmbed:           d.moviePreviewEmbed || null,
+          eventType:                   d.eventType || null,
+          presenterArtsArea:           d.presenterArtsArea || null,
+          presenterProjectDescription: d.presenterProjectDescription || null,
+        });
+      });
+
+      const noEventsSection = document.getElementById('no-events-section');
+      if (upcoming.length === 0) {
+        noEventsSection.style.display = 'block';
+      }
+
+      if (upcoming.length > 0) {
+        const section = document.getElementById('live-events-section');
+        const grid    = document.getElementById('live-events-grid');
+
+        grid.innerHTML = upcoming.map(e => {
+          const bio      = truncate(e.description, 150);
+          const fullAddr = [e.venueName, e.venueAddress].filter(Boolean).join(', ');
+          const isArtNight         = e.eventType === 'group_art_night';
+          const artNightBioHtml    = isArtNight ? (e.presenterArtsArea || e.presenterProjectDescription || '') : '';
+          const artNightNeedsTrunc = isArtNight && artNightBioHtml && stripHtml(artNightBioHtml).length > 300;
+
+          return `
+          <article class="published-card">
+            <div class="published-card-header">
+              <div class="published-header-text">
+                ${e.bandName ? `<div class="published-band-name">${e.bandName}</div>` : ''}
+                ${e.genre    ? `<div class="published-genre">${e.genre}</div>` : ''}
+              </div>
+              ${e.musicLink ? `<a href="${e.musicLink}" target="_blank" rel="noopener" class="listen-btn">🎵 Listen</a>` : ''}
+            </div>
+            <div class="published-poster">
+              ${e.posterUrl
+                ? `<img src="${e.posterUrl}" alt="${e.bandName || e.title}" />`
+                : `<div class="published-poster-placeholder">🎵</div>`
+              }
+            </div>
+            <div class="published-body">
+              <div class="published-date">${e.date}${e.time ? ' · ' + e.time : ''}</div>
+              <h3 class="published-title">${e.title}</h3>
+              ${fullAddr ? `<div class="published-venue">📍 <a href="${mapsLink(fullAddr)}" target="_blank" rel="noopener">${fullAddr}</a></div>` : ''}
+              ${isArtNight && artNightBioHtml ? `
+                <div class="published-bio">
+                  <div class="published-bio-label">About the Presenter</div>
+                  <div class="presenter-html-bio${artNightNeedsTrunc ? ' is-clamped' : ''}">
+                    ${artNightBioHtml}
+                  </div>
+                  ${artNightNeedsTrunc ? `<button class="bio-more-btn">more</button>` : ''}
+                </div>` : (!isArtNight && e.description) ? `
+                <div class="published-bio">
+                  <div class="published-bio-label">${e.eventType === 'open_mic' ? 'Take The Stage' : 'About the Band'}</div>
+                  <p class="published-desc">${bio.short}${bio.truncated ? `<span class="bio-ellipsis">… <a href="#" class="bio-more-link" data-full="${e.description.replace(/"/g,'&quot;')}">more</a></span>` : ''}</p>
+                </div>` : ''}
+              ${e.movieTitle ? `
+                <div class="published-movie">
+                  <div class="published-movie-label">🎬 Tonight's Movie</div>
+                  <div class="published-movie-title">${e.movieTitle}</div>
+                  ${e.moviePreviewEmbed ? `
+                  <div class="published-movie-embed">
+                    <iframe
+                      src="${extractEmbedSrc(e.moviePreviewEmbed)}"
+                      title="${e.movieTitle} trailer"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowfullscreen
+                      loading="lazy"
+                    ></iframe>
+                  </div>` : ''}
+                </div>` : ''}
+              ${(e.ticketUrl || e.rsvpUrl) ? `
+              <div class="published-links">
+                ${e.ticketUrl ? `<a href="${e.ticketUrl}" target="_blank" rel="noopener" class="btn btn-gold">Get Tickets</a>` : ''}
+                ${e.rsvpUrl   ? `<a href="${e.rsvpUrl}"   target="_blank" rel="noopener" class="btn btn-outline-navy">RSVP</a>` : ''}
+              </div>` : ''}
+            </div>
+          </article>`;
+        }).join('');
+
+        grid.querySelectorAll('.bio-more-link').forEach(link => {
+          link.addEventListener('click', ev => {
+            ev.preventDefault();
+            const p = link.closest('p');
+            p.innerHTML = link.dataset.full;
+          });
+        });
+
+        grid.querySelectorAll('.bio-more-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            btn.previousElementSibling.classList.remove('is-clamped');
+            btn.remove();
+          });
+        });
+
+        section.style.display = 'block';
+        if (window.observer) {
+          const newCards = grid.querySelectorAll('.reveal');
+          newCards.forEach(card => window.observer.observe(card));
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load live events:', err);
+    }
+  </script>
+
+</BaseLayout>
+
+<style is:global>
+
+  /* ── FEATURED / PINNED EVENTS ── */
+  .featured-section {
+    background: var(--cream);
+    padding-bottom: 0;
+  }
+
+  .featured-section-header {
+    margin-bottom: 20px;
+  }
+
+  .featured-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .featured-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .featured-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    gap: 0;
+    overflow: hidden;
+    transition: box-shadow 0.22s, transform 0.22s;
+  }
+
+  .featured-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  /* Colored left aside */
+  .featured-card-aside {
+    width: 96px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  .featured-card-icon {
+    font-size: 44px;
+    line-height: 1;
+  }
+
+  .featured-card-logo {
+    width: 72px;
+    height: auto;
+    max-height: 100px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .featured-card-logo {
+    width: 64px;
+    height: auto;
+    max-height: 90px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  /* Gold accent */
+  .featured-gold .featured-card-aside {
+    background: linear-gradient(160deg, #0b1535 0%, #162060 100%);
+    border-right: 3px solid var(--gold);
+  }
+
+  .featured-card-body {
+    flex: 1;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .featured-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 100px;
+    width: fit-content;
+  }
+
+  .featured-gold .featured-badge {
+    background: #fef3c7;
+    color: #92600a;
+  }
+
+  .featured-title {
+    font-family: var(--font-display);
+    font-size: clamp(20px, 2.5vw, 26px);
+    font-weight: 900;
+    color: var(--navy);
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  .featured-desc {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 680px;
+    margin: 0;
+  }
+
+  .featured-details {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+
+  .featured-detail-row {
+    display: grid;
+    grid-template-columns: 22px 130px 1fr;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  .featured-detail-icon { font-size: 14px; }
+
+  .featured-detail-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .featured-detail-value {
+    color: var(--navy);
+    font-weight: 500;
+  }
+
+  .featured-cta {
+    align-self: flex-start;
+    margin-top: 6px;
+    font-size: 14px;
+  }
+
+  /* ── Published Events from Admin ── */
+  .published-events-section { background: var(--cream); }
+
+  .published-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  /* Card shell */
+  .published-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.22s, transform 0.22s;
+  }
+  .published-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-4px);
+  }
+
+  .published-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--navy);
+    flex-shrink: 0;
+  }
+  .published-header-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+  .published-band-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .published-genre {
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .listen-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--gold-lt);
+    border: 1.5px solid var(--gold);
+    border-radius: 100px;
+    padding: 5px 12px;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .listen-btn:hover {
+    background: var(--gold);
+    color: var(--white);
+  }
+
+  .published-poster {
+    width: 100%;
+    height: 260px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--cream);
+    display: block;
+  }
+  .published-poster img {
+    display: block;
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+    object-position: center top;
+  }
+  .published-poster-placeholder {
+    width: 100%;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    color: var(--border);
+  }
+
+  .published-body {
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  .published-date {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--blue);
+  }
+
+  .published-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  .published-venue {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .published-venue a { color: var(--blue); text-decoration: underline; }
+  .published-venue a:hover { color: var(--navy); }
+
+  .published-bio { margin-top: 8px; }
+  .published-bio-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .published-desc {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin: 0;
+  }
+  .bio-ellipsis { color: var(--muted); }
+  .bio-more-link { color: var(--blue); font-weight: 600; text-decoration: none; }
+  .bio-more-link:hover { text-decoration: underline; }
+
+  .presenter-html-bio {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .presenter-html-bio.is-clamped {
+    max-height: 7.5em;
+    overflow: hidden;
+    position: relative;
+  }
+  .presenter-html-bio.is-clamped::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2.5em;
+    background: linear-gradient(transparent, var(--white));
+    pointer-events: none;
+  }
+  .presenter-html-bio p { margin: 0 0 6px; }
+  .presenter-html-bio p:last-child { margin-bottom: 0; }
+  .bio-more-btn {
+    background: none; border: none; padding: 4px 0;
+    color: var(--blue); font-weight: 600; font-size: 13px;
+    cursor: pointer; font-family: inherit;
+  }
+  .bio-more-btn:hover { text-decoration: underline; }
+
+  .published-movie {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .published-movie-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+  .published-movie-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .published-movie-embed {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #000;
+  }
+  .published-movie-embed iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .published-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .btn-outline-navy {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--navy);
+    color: var(--navy);
+    background: transparent;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .btn-outline-navy:hover { background: var(--navy); color: var(--white); }
+
+  /* ── PAGE HERO ── */
+  .page-hero {
+    background: var(--navy);
+    color: var(--white);
+    padding: 72px 0 64px;
+    text-align: center;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: rgba(232, 160, 32, 0.18);
+    border: 1px solid rgba(232, 160, 32, 0.45);
+    color: var(--gold-lt);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  .hero-sub {
+    font-size: 18px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.75);
+    max-width: 560px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* ── SERIES CALLOUT ── */
+  .series-callout { background: var(--blue); color: var(--white); padding: 48px 0; }
+  .series-inner { max-width: 760px; }
+
+  .series-text h2 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .series-text p {
+    font-size: 16px;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.65;
+    margin-bottom: 20px;
+  }
+
+  .series-details { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  .detail-pill {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 100px;
+  }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 28px;
+  }
+
+  /* ── OTHER ── */
+  .other-section { background: var(--white); }
+
+  .other-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+
+  .other-card {
+    background: var(--cream);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: box-shadow 0.22s, transform 0.22s;
+  }
+
+  .other-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-4px); }
+  .other-icon { font-size: 28px; }
+
+  .other-card h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .other-card p { font-size: 14px; color: var(--muted); line-height: 1.65; flex: 1; }
+
+  .other-link {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--blue);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: gap 0.2s;
+  }
+  .other-link:hover { gap: 8px; }
+
+  /* ── CTA ── */
+  .cta-banner { background: var(--navy-dk); color: var(--white); padding: 56px 0; }
+
+  .cta-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+  }
+
+  .cta-inner h2 {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .cta-inner p { font-size: 15px; color: rgba(255,255,255,0.72); max-width: 520px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 760px) {
+    .featured-card { flex-direction: column; }
+    .featured-card-aside { width: 100%; height: 80px; flex-direction: row; gap: 16px; justify-content: flex-start; padding: 16px 24px; }
+    .featured-detail-row { grid-template-columns: 22px 1fr; }
+    .featured-detail-label { display: none; }
+    .other-grid { grid-template-columns: 1fr; }
+    .cta-inner { flex-direction: column; align-items: flex-start; }
+    .series-details { flex-direction: column; }
+    .published-grid { grid-template-columns: 1fr; }
+    .published-poster { height: 220px; }
+  }
+
+  @media (max-width: 560px) {
+    .featured-card-body { padding: 20px 20px; }
+  }
+</style>

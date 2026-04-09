@@ -1,0 +1,216 @@
+{
+	"version": 3,
+	"routes": [
+		{
+			"handle": "filesystem"
+		},
+		{
+			"src": "^/_astro/(.*)$",
+			"headers": {
+				"cache-control": "public, max-age=31536000, immutable"
+			},
+			"continue": true
+		},
+		{
+			"src": "^/_server-islands/([^/]+?)/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/_image/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/about/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/art-presenters/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/bands/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/dashboard/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/events/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/pinned-content/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/planning/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/programs/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/seasons/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/users/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/vendors/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/volunteers/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/admin/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/assign-band/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/delete-event/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/delete-pinned-item/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/delete-presenter/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/delete-proposal/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/manage-user/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/publish-art-night/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/publish-event/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/publish-festival/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/publish-open-mic/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/save-pinned-item/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/unpublish-event/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/update-presenter/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/update-proposal/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/update-submission/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/admin/vendor-action/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/auth/logout/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/auth/session/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/contact/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/call-for-bands/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/contact/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/events/([^/]+?)/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/events/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/get-involved/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/lens-of-magna/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/present/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/programs/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/propose/confirmation/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/propose/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/teach-an-art-class/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/vendor-application/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/volunteer/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/404/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/.*$",
+			"dest": "_render",
+			"status": 404
+		}
+	]
+}

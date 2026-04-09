@@ -1,0 +1,944 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+
+// ── Fetch all pinned content items, newest first ──────────────────
+const snap = await adminDb
+  .collection('pinned_content')
+  .orderBy('createdAt', 'desc')
+  .get();
+
+type PinnedItem = {
+  id: string;
+  title: string;
+  sublabel?: string;
+  meta?: string;
+  href: string;
+  badge?: string;
+  icon?: string;
+  colorClass?: string;
+  ctaText?: string;
+  ctaExternal?: boolean;
+  expiresDate?: any;
+  active?: boolean;
+  showOn?: string;
+  createdAt?: any;
+};
+
+const items: PinnedItem[] = snap.docs.map(d => ({ id: d.id, ...d.data() } as PinnedItem));
+
+const now = new Date();
+
+function formatDate(ts: any): string {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function getStatus(item: PinnedItem): 'active' | 'inactive' | 'expired' {
+  if (!item.active) return 'inactive';
+  if (item.expiresDate) {
+    const exp = item.expiresDate.toDate ? item.expiresDate.toDate() : new Date(item.expiresDate);
+    if (exp <= now) return 'expired';
+  }
+  return 'active';
+}
+
+// Serialize for client JS (dates → ISO strings)
+const itemsJson = JSON.stringify(items.map(item => ({
+  ...item,
+  expiresDate: item.expiresDate
+    ? (item.expiresDate.toDate ? item.expiresDate.toDate() : new Date(item.expiresDate)).toISOString().slice(0, 10)
+    : '',
+})));
+---
+
+<AdminLayout title="Pinned Content" user={user}>
+  <div class="page-header">
+    <div>
+      <h1>Pinned Content</h1>
+      <p class="page-subtitle">
+        Pinned items appear on the home page hero and/or the events page.
+        They disappear automatically once their expiry date passes.
+      </p>
+    </div>
+    <button class="btn btn-gold" id="new-item-btn">+ Pin New Item</button>
+  </div>
+
+  <!-- ── ITEM LIST ── -->
+  {items.length === 0 ? (
+    <div class="empty-state">
+      <div class="empty-icon">📌</div>
+      <p>No pinned content yet.</p>
+      <p class="empty-sub">Click <strong>Pin New Item</strong> to feature something on the site.</p>
+    </div>
+  ) : (
+    <div class="pinned-list" id="pinned-list">
+      {items.map(item => {
+        const status = getStatus(item);
+        const expDisplay = item.expiresDate ? formatDate(item.expiresDate) : null;
+        const showOnLabel = item.showOn === 'home' ? 'Home hero only'
+                          : item.showOn === 'events' ? 'Events page only'
+                          : 'Home hero + Events page';
+        return (
+          <div class={`pinned-card status-${status}`} id={`card-${item.id}`}>
+            <div class="pinned-card-left">
+              <span class="pinned-icon-display">{item.icon || '📌'}</span>
+            </div>
+            <div class="pinned-card-body">
+              <div class="pinned-card-top">
+                <div>
+                  <span class={`status-badge status-${status}`}>
+                    {status === 'active' ? '● Active' : status === 'expired' ? '✕ Expired' : '○ Inactive'}
+                  </span>
+                  <h2 class="pinned-card-title">{item.title}</h2>
+                  {item.sublabel && <div class="pinned-card-sub">{item.sublabel}</div>}
+                </div>
+                <div class="pinned-card-actions">
+                  <button class="btn btn-sm btn-outline-navy" data-edit={item.id}>Edit</button>
+                  <button class="btn btn-sm btn-danger-outline" data-delete={item.id} data-title={item.title}>Delete</button>
+                </div>
+              </div>
+              <div class="pinned-card-meta-row">
+                {expDisplay && (
+                  <span class="meta-pill">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Expires {expDisplay}
+                  </span>
+                )}
+                <span class="meta-pill">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {showOnLabel}
+                </span>
+                {item.href && (
+                  <span class="meta-pill">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    {item.href}
+                  </span>
+                )}
+              </div>
+              {item.meta && <div class="pinned-card-detail-text">{item.meta}</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+
+  <!-- ── SLIDE-IN DRAWER ── -->
+  <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
+  <aside id="pinned-drawer" class="pinned-drawer" hidden aria-label="Pin Content Form">
+    <div class="drawer-header">
+      <h2 id="drawer-title">Pin New Item</h2>
+      <button class="drawer-close" id="drawer-close-btn" aria-label="Close">✕</button>
+    </div>
+
+    <div class="drawer-body">
+      <form id="pinned-form" novalidate>
+        <input type="hidden" id="field-id" name="id" />
+
+        <!-- ── Visibility ── -->
+        <fieldset class="form-section">
+          <legend class="form-section-label">Visibility</legend>
+          <div class="field-row two-col">
+            <div class="field">
+              <label for="field-showOn">Show On</label>
+              <select id="field-showOn" name="showOn">
+                <option value="both">Home hero + Events page</option>
+                <option value="home">Home hero only</option>
+                <option value="events">Events page only</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="field-expiresDate">Auto-hide After</label>
+              <input type="date" id="field-expiresDate" name="expiresDate" />
+              <span class="field-hint">The item disappears at the start of this day</span>
+            </div>
+          </div>
+          <div class="field toggle-field">
+            <label class="toggle-label">
+              <input type="checkbox" id="field-active" name="active" checked />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">Active (visible on site)</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- ── Content ── -->
+        <fieldset class="form-section">
+          <legend class="form-section-label">Content</legend>
+
+          <div class="field-row two-col">
+            <div class="field">
+              <label for="field-icon">Icon <span class="label-hint">(emoji)</span></label>
+              <input type="text" id="field-icon" name="icon" maxlength="4" placeholder="📷" />
+              <div class="emoji-suggestions">
+                {['📷','🎵','🎨','🎭','🎬','🖼️','🌟','📅','🎤','🏆','🎉','📌'].map(e => (
+                  <button type="button" class="emoji-btn" data-emoji={e}>{e}</button>
+                ))}
+              </div>
+            </div>
+            <div class="field">
+              <label for="field-badge">Badge Text <span class="label-hint">(pill label)</span></label>
+              <input type="text" id="field-badge" name="badge" placeholder="3rd Annual · Photography Contest" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="field-title">Title <span class="required">*</span></label>
+            <input type="text" id="field-title" name="title" required placeholder="Lens of Magna 2026" />
+          </div>
+
+          <div class="field">
+            <label for="field-sublabel">Subtitle <span class="label-hint">(italic gold line)</span></label>
+            <input type="text" id="field-sublabel" name="sublabel" placeholder="Main Street in Motion" />
+          </div>
+
+          <div class="field">
+            <label for="field-meta">Detail Line <span class="label-hint">(dates, times, etc.)</span></label>
+            <input type="text" id="field-meta" name="meta" placeholder="Entry Deadline: April 11  ·  Exhibit: April 16" />
+          </div>
+        </fieldset>
+
+        <!-- ── Link ── -->
+        <fieldset class="form-section">
+          <legend class="form-section-label">Link</legend>
+          <div class="field">
+            <label for="field-href">URL <span class="required">*</span></label>
+            <input type="text" id="field-href" name="href" required placeholder="/lens-of-magna" />
+            <span class="field-hint">Use a relative path (e.g. <code>/events</code>) or a full URL for external sites</span>
+          </div>
+          <div class="field">
+            <label for="field-ctaText">CTA Button Text</label>
+            <input type="text" id="field-ctaText" name="ctaText" placeholder="Enter Free at lensofmagna.com →" />
+          </div>
+          <div class="field toggle-field">
+            <label class="toggle-label">
+              <input type="checkbox" id="field-ctaExternal" name="ctaExternal" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">Opens in a new tab (external link)</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- ── Preview ── -->
+        <fieldset class="form-section">
+          <legend class="form-section-label">Home Hero Preview</legend>
+          <div class="tile-preview" id="tile-preview">
+            <span class="preview-badge" id="prev-badge">Badge</span>
+            <span class="preview-icon" id="prev-icon">📷</span>
+            <span class="preview-label" id="prev-label">Title</span>
+            <span class="preview-sublabel" id="prev-sublabel">Subtitle</span>
+            <span class="preview-meta" id="prev-meta">Detail line</span>
+            <span class="preview-cta" id="prev-cta">CTA Text →</span>
+          </div>
+        </fieldset>
+
+        <!-- ── Form actions ── -->
+        <div class="form-actions">
+          <div id="form-error" class="form-error" hidden></div>
+          <div class="form-action-btns">
+          <button type="button" class="btn btn-outline" id="form-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn-gold" id="form-save-btn">
+            <span id="save-btn-text">Save &amp; Pin</span>
+            <span id="save-btn-loading" hidden>Saving…</span>
+          </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </aside>
+
+  <script define:vars={{ itemsJson }}>
+    const ALL_ITEMS = JSON.parse(itemsJson);
+
+    // ── Drawer open/close ─────────────────────────────────────────
+    const drawer   = document.getElementById('pinned-drawer');
+    const backdrop = document.getElementById('drawer-backdrop');
+    const drawerTitle = document.getElementById('drawer-title');
+
+    function openDrawer() {
+      drawer.hidden   = false;
+      backdrop.hidden = false;
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => {
+        drawer.classList.add('drawer-open');
+        backdrop.classList.add('backdrop-visible');
+      }, 10);
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove('drawer-open');
+      backdrop.classList.remove('backdrop-visible');
+      setTimeout(() => {
+        drawer.hidden   = true;
+        backdrop.hidden = true;
+        document.body.style.overflow = '';
+        resetForm();
+      }, 280);
+    }
+
+    document.getElementById('drawer-close-btn').addEventListener('click', closeDrawer);
+    document.getElementById('form-cancel-btn').addEventListener('click', closeDrawer);
+    backdrop.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hidden) closeDrawer(); });
+
+    // ── New item button ───────────────────────────────────────────
+    document.getElementById('new-item-btn').addEventListener('click', () => {
+      resetForm();
+      drawerTitle.textContent = 'Pin New Item';
+      openDrawer();
+    });
+
+    // ── Reset form ────────────────────────────────────────────────
+    function resetForm() {
+      const form = document.getElementById('pinned-form');
+      form.reset();
+      document.getElementById('field-id').value = '';
+      document.getElementById('field-active').checked = true;
+      document.getElementById('field-ctaExternal').checked = false;
+      document.getElementById('form-error').hidden = true;
+      updatePreview();
+    }
+
+    // ── Emoji picker ─────────────────────────────────────────────
+    document.querySelectorAll('.emoji-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('field-icon').value = btn.dataset.emoji;
+        updatePreview();
+      });
+    });
+
+    // ── Live preview ──────────────────────────────────────────────
+    function updatePreview() {
+      const get = id => document.getElementById(id)?.value?.trim() || '';
+      document.getElementById('prev-badge').textContent   = get('field-badge')   || 'Badge';
+      document.getElementById('prev-icon').textContent    = get('field-icon')    || '📌';
+      document.getElementById('prev-label').textContent   = get('field-title')   || 'Title';
+      document.getElementById('prev-sublabel').textContent = get('field-sublabel') || 'Subtitle';
+      document.getElementById('prev-meta').textContent    = get('field-meta')    || 'Detail line';
+      document.getElementById('prev-cta').textContent     = (get('field-ctaText') || 'CTA Text') + ' →';
+    }
+
+    ['field-badge','field-icon','field-title','field-sublabel','field-meta','field-ctaText'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', updatePreview);
+    });
+
+    // ── Edit buttons ──────────────────────────────────────────────
+    document.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id   = btn.dataset.edit;
+        const item = ALL_ITEMS.find(i => i.id === id);
+        if (!item) return;
+
+        drawerTitle.textContent = 'Edit Pinned Item';
+        document.getElementById('field-id').value          = item.id;
+        document.getElementById('field-title').value       = item.title || '';
+        document.getElementById('field-sublabel').value    = item.sublabel || '';
+        document.getElementById('field-meta').value        = item.meta || '';
+        document.getElementById('field-href').value        = item.href || '';
+        document.getElementById('field-badge').value       = item.badge || '';
+        document.getElementById('field-icon').value        = item.icon || '';
+        document.getElementById('field-ctaText').value     = item.ctaText || '';
+        document.getElementById('field-expiresDate').value = item.expiresDate || '';
+        document.getElementById('field-showOn').value      = item.showOn || 'both';
+        document.getElementById('field-active').checked    = item.active !== false;
+        document.getElementById('field-ctaExternal').checked = !!item.ctaExternal;
+
+        updatePreview();
+        openDrawer();
+      });
+    });
+
+    // ── Delete buttons ────────────────────────────────────────────
+    document.querySelectorAll('[data-delete]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id    = btn.dataset.delete;
+        const title = btn.dataset.title || 'this item';
+        if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
+        btn.disabled    = true;
+        btn.textContent = 'Deleting…';
+
+        const res = await fetch('/api/admin/delete-pinned-item', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ id }),
+        });
+
+        if (res.ok) {
+          document.getElementById(`card-${id}`)?.remove();
+          // Show empty state if no cards left
+          const remaining = document.querySelectorAll('.pinned-card');
+          if (remaining.length === 0) window.location.reload();
+        } else {
+          alert('Delete failed. Please try again.');
+          btn.disabled    = false;
+          btn.textContent = 'Delete';
+        }
+      });
+    });
+
+    // ── Form submit ───────────────────────────────────────────────
+    document.getElementById('pinned-form').addEventListener('submit', async e => {
+      e.preventDefault();
+
+      const errEl   = document.getElementById('form-error');
+      const saveBtn = document.getElementById('form-save-btn');
+      const btnText = document.getElementById('save-btn-text');
+      const loading = document.getElementById('save-btn-loading');
+
+      const title = document.getElementById('field-title').value.trim();
+      const href  = document.getElementById('field-href').value.trim();
+
+      if (!title || !href) {
+        errEl.textContent = 'Title and URL are required.';
+        errEl.hidden = false;
+        return;
+      }
+
+      errEl.hidden      = true;
+      saveBtn.disabled  = true;
+      btnText.hidden    = true;
+      loading.hidden    = false;
+
+      const payload = {
+        id:          document.getElementById('field-id').value.trim() || null,
+        title,
+        sublabel:    document.getElementById('field-sublabel').value.trim(),
+        meta:        document.getElementById('field-meta').value.trim(),
+        href,
+        badge:       document.getElementById('field-badge').value.trim(),
+        icon:        document.getElementById('field-icon').value.trim(),
+        colorClass:  'tile-pin-gold',  // currently one style; extend later if needed
+        ctaText:     document.getElementById('field-ctaText').value.trim(),
+        ctaExternal: document.getElementById('field-ctaExternal').checked,
+        expiresDate: document.getElementById('field-expiresDate').value || null,
+        active:      document.getElementById('field-active').checked,
+        showOn:      document.getElementById('field-showOn').value,
+      };
+
+      try {
+        const res = await fetch('/api/admin/save-pinned-item', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Save failed');
+        }
+
+        window.location.reload();
+      } catch (err) {
+        errEl.textContent = 'Error: ' + (err.message || 'Please try again.');
+        errEl.hidden      = false;
+        saveBtn.disabled  = false;
+        btnText.hidden    = false;
+        loading.hidden    = true;
+      }
+    });
+
+    // ── Initial preview render ────────────────────────────────────
+    updatePreview();
+  </script>
+</AdminLayout>
+
+<style>
+  /* ── Site variable aliases (admin pages only load admin.css) ── */
+  :root {
+    --white:        #ffffff;
+    --navy:         #1a2456;
+    --muted:        #5a5a7a;
+    --border:       #e2e0d8;
+    --cream:        #f7f5f0;
+    --red:          #b52626;
+    --gold:         #e8a020;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --radius:       8px;
+    --radius-sm:    6px;
+    --shadow-card:  0 2px 12px rgba(26, 36, 86, 0.08);
+    --shadow-hover: 0 4px 20px rgba(26, 36, 86, 0.14);
+  }
+
+  /* ── Page header ── */
+  .page-subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 4px;
+    max-width: 560px;
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 64px 0;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 16px; color: var(--muted); margin: 0 0 6px; }
+  .empty-sub { font-size: 14px !important; }
+
+  /* ── Card list ── */
+  .pinned-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .pinned-card {
+    display: flex;
+    gap: 0;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .pinned-card:hover { box-shadow: var(--shadow-hover); }
+
+  /* Left accent with icon */
+  .pinned-card-left {
+    width: 72px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: linear-gradient(160deg, #0b1535 0%, #162060 100%);
+    border-right: 3px solid var(--gold);
+  }
+  .status-inactive .pinned-card-left,
+  .status-expired .pinned-card-left {
+    background: var(--cream);
+    border-right-color: var(--border);
+    filter: grayscale(0.6);
+    opacity: 0.7;
+  }
+
+  .pinned-icon-display { font-size: 28px; line-height: 1; }
+
+  /* Card body */
+  .pinned-card-body {
+    flex: 1;
+    padding: 18px 22px;
+    min-width: 0;
+  }
+
+  .pinned-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 100px;
+    margin-bottom: 6px;
+  }
+  .status-badge.status-active   { background: #dcfce7; color: #166534; }
+  .status-badge.status-expired  { background: #fee2e2; color: #b91c1c; }
+  .status-badge.status-inactive { background: #f1f5f9; color: var(--muted); }
+
+  .pinned-card-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 3px;
+    line-height: 1.2;
+  }
+  .pinned-card-sub {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* Card actions */
+  .pinned-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .btn-sm {
+    font-size: 12px !important;
+    padding: 5px 12px !important;
+  }
+
+  .btn-outline-navy {
+    background: transparent;
+    border: 1.5px solid var(--navy);
+    color: var(--navy);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-outline-navy:hover { background: var(--navy); color: var(--white); }
+
+  .btn-danger-outline {
+    background: transparent;
+    border: 1.5px solid var(--red, #b52626);
+    color: var(--red, #b52626);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-danger-outline:hover { background: var(--red, #b52626); color: var(--white); }
+
+  /* Meta row */
+  .pinned-card-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--cream);
+    border: 1px solid var(--border);
+    padding: 3px 9px;
+    border-radius: 100px;
+  }
+
+  .pinned-card-detail-text {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* ── DRAWER ── */
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.42);
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.28s;
+  }
+  .drawer-backdrop[hidden] { display: none; }
+  .drawer-backdrop.backdrop-visible { opacity: 1; }
+
+  .pinned-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 520px;
+    max-width: 100vw;
+    background: var(--white);
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -8px 0 40px rgba(0,0,0,0.18);
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .pinned-drawer[hidden] { display: none; }
+  .pinned-drawer.drawer-open { transform: translateX(0); }
+
+  .drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1.5px solid var(--border);
+    flex-shrink: 0;
+    background: var(--white);
+  }
+
+  .drawer-header h2 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0;
+  }
+
+  .drawer-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 4px 8px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+  }
+  .drawer-close:hover { background: var(--cream); color: var(--navy); }
+
+  .drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+
+  /* ── FORM ── */
+  #pinned-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-section {
+    border: none;
+    padding: 0;
+    margin: 0 0 24px;
+  }
+
+  .form-section-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: block;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .field-row { display: flex; flex-direction: column; gap: 14px; }
+  .field-row.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 14px;
+  }
+
+  .field label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--navy);
+  }
+
+  .label-hint {
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--muted);
+  }
+
+  .required { color: var(--red); }
+
+  .field input,
+  .field select {
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--navy);
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.18s, box-shadow 0.18s;
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--white);
+  }
+
+  .field input:focus,
+  .field select:focus {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(26, 36, 86, 0.1);
+  }
+
+  .field-hint {
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .field-hint code {
+    background: var(--cream);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: monospace;
+    color: var(--navy);
+  }
+
+  /* Emoji suggestions */
+  .emoji-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+  }
+
+  .emoji-btn {
+    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--cream);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, background 0.15s;
+    padding: 0;
+    line-height: 1;
+  }
+  .emoji-btn:hover { border-color: var(--navy); background: var(--white); }
+
+  /* Toggle */
+  .toggle-field { margin-bottom: 14px; }
+  .toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: var(--navy) !important;
+  }
+  .toggle-label input[type="checkbox"] { display: none; }
+  .toggle-switch {
+    width: 40px;
+    height: 22px;
+    background: #d1cfc8;
+    border-radius: 100px;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    background: var(--white);
+    border-radius: 100px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  .toggle-label input:checked + .toggle-switch { background: #2d7a3a; }
+  .toggle-label input:checked + .toggle-switch::after { transform: translateX(18px); }
+
+  /* ── LIVE PREVIEW TILE ── */
+  .tile-preview {
+    border-radius: 10px;
+    background: linear-gradient(145deg, #0b1535 0%, #162060 55%, #1d2d7a 100%);
+    border: 1.5px solid rgba(232, 160, 32, 0.5);
+    padding: 20px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    position: relative;
+    overflow: hidden;
+    min-height: 160px;
+  }
+  .tile-preview::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #e8a020 0%, #f5c84a 100%);
+  }
+
+  .preview-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: rgba(232, 160, 32, 0.2);
+    border: 1px solid rgba(232, 160, 32, 0.5);
+    color: #f5c84a;
+    padding: 3px 8px;
+    border-radius: 100px;
+    width: fit-content;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .preview-icon   { font-size: 24px; line-height: 1; }
+  .preview-label  { font-size: 16px; font-weight: 900; color: #fff; line-height: 1.1; }
+  .preview-sublabel { font-size: 12px; font-style: italic; color: #f5c84a; }
+  .preview-meta   { font-size: 10px; color: rgba(255,255,255,0.55); }
+  .preview-cta    { font-size: 11px; font-weight: 700; color: #e8a020; margin-top: 4px; }
+
+  /* ── Form actions ── */
+  .form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  .form-actions .btn { justify-content: center; }
+
+  .form-actions > .form-action-btns {
+    display: flex;
+    gap: 10px;
+  }
+
+  .form-error {
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 7px;
+    border: 1px solid #fca5a5;
+  }
+  .form-error[hidden] { display: none; }
+
+  .btn-outline {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--muted);
+    border-radius: var(--radius-sm);
+    padding: 10px 20px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-outline:hover { border-color: var(--navy); color: var(--navy); }
+
+  .btn-gold {
+    flex: 2;
+  }
+
+  @media (max-width: 560px) {
+    .pinned-drawer { width: 100vw; }
+    .field-row.two-col { grid-template-columns: 1fr; }
+    .pinned-card-actions { flex-direction: column; }
+  }
+</style>

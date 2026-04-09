@@ -328,9 +328,9 @@ function getTitle(p: Program): string {
           </div>
           <div id="edit-image-preview" class="upload-preview" hidden></div>
         </div>
-
-        <div id="edit-error" class="edit-error" hidden></div>
       </div>
+
+      <div id="edit-error" class="edit-error" hidden></div>
 
       <div class="modal-actions">
         <button id="edit-modal-cancel" class="btn btn-muted">Cancel</button>
@@ -548,7 +548,7 @@ function getTitle(p: Program): string {
     // Image preview in edit modal
     const editImageInput   = document.getElementById('edit-image-file');
     const editImagePreview = document.getElementById('edit-image-preview');
-    editImageInput?.addEventListener('change', () => {
+   editImageInput?.addEventListener('change', () => {
       const file = editImageInput.files && editImageInput.files[0];
       if (!file) { editImagePreview.hidden = true; return; }
       // Hide the current image wrap — the new upload will replace it

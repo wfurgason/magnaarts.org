@@ -149,6 +149,7 @@ function getTitle(p: Program): string {
                   description: prog.description || '',
                   proposed_date: prog.proposed_date || '',
                   proposed_venue: prog.proposed_venue || '',
+                  event_type: prog.event_type || '',
                 })}
               >
                 Publish as Event
@@ -348,6 +349,7 @@ function getTitle(p: Program): string {
       </div>
       <form id="publish-form" novalidate>
         <input type="hidden" id="pub-submission-id" />
+        <input type="hidden" id="pub-event-type" />
         <div class="form-row">
           <div class="field-group">
             <label for="pub-title">Event Title *</label>
@@ -476,6 +478,7 @@ function getTitle(p: Program): string {
         document.getElementById('pub-desc').value    = prog.description || '';
         if (prog.proposed_date)  document.getElementById('pub-date').value  = prog.proposed_date;
         if (prog.proposed_venue) document.getElementById('pub-venue').value = prog.proposed_venue;
+        document.getElementById('pub-event-type').value = prog.event_type || '';
         publishModal.style.display = 'flex';
       });
     });
@@ -497,6 +500,7 @@ function getTitle(p: Program): string {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          eventType:     document.getElementById('pub-event-type').value || null,
           submissionId:  document.getElementById('pub-submission-id').value,
           submissionType: 'program',
           title:         document.getElementById('pub-title').value,

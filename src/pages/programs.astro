@@ -236,6 +236,17 @@ const programs = [
                 </div>
               </div>
             )}
+
+            {p.id === 'writing-group' && (
+              <div class="events-glance">
+                <h3 class="glance-heading">Upcoming Sessions</h3>
+                <div id="wg-glance-loading" class="glance-loading">Loading schedule…</div>
+                <ul id="wg-glance-list" class="glance-list" style="display:none"></ul>
+                <div id="wg-glance-empty" class="glance-empty" style="display:none">
+                  Schedule coming soon — <a href="/events">check the events page</a> for updates.
+                </div>
+              </div>
+            )}
           </div>
 
           <div class="program-sidebar reveal">
@@ -350,6 +361,7 @@ const programs = [
       const concertEvents  = [];
       const openMicEvents  = [];
       const artNightEvents = [];
+      const writingGroupEvents = [];
       const festivalItems  = [];
 
       snap.forEach(doc => {
@@ -369,6 +381,8 @@ const programs = [
           openMicEvents.push(item);
         } else if (d.eventType === 'group_art_night') {
           artNightEvents.push(item);
+        } else if (d.eventType === 'writing_group') {
+          writingGroupEvents.push(item);
         } else if (d.eventType === 'arts_festival') {
           // Expand each assigned band slot into its own ticket
           const festDate = dateObj;
@@ -396,16 +410,19 @@ const programs = [
       // Group Art Night glance
       renderGlance('an-glance-loading', 'an-glance-list', 'an-glance-empty', artNightEvents);
 
+      // Writing Group glance
+      renderGlance('wg-glance-loading', 'wg-glance-list', 'wg-glance-empty', writingGroupEvents);
+
       // Arts Festival lineup
       renderGlance('fest-glance-loading', 'fest-glance-list', 'fest-glance-empty', festivalItems);
 
     } catch (err) {
       // Fail silently — show empty state for both
-      ['glance-loading', 'om-glance-loading', 'an-glance-loading', 'fest-glance-loading'].forEach(id => {
+      ['glance-loading', 'om-glance-loading', 'an-glance-loading', 'wg-glance-loading', 'fest-glance-loading'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
-      ['glance-empty', 'om-glance-empty', 'an-glance-empty', 'fest-glance-empty'].forEach(id => {
+      ['glance-empty', 'om-glance-empty', 'an-glance-empty', 'wg-glance-empty', 'fest-glance-empty'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'block';
       });

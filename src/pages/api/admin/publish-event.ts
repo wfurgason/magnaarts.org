@@ -17,6 +17,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const {
       submissionId,
       submissionType, // 'band' | 'program'
+      eventType,     // e.g. 'writing_group', 'open_mic', etc. (optional)
       // Event display fields (filled by admin in publish modal)
       title,
       eventDate,     // ISO string e.g. "2025-08-15"
@@ -51,6 +52,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       musicLink: musicLink || null,
       submissionId,
       submissionType,
+      eventType: eventType || null,
       status: 'published',
       publishedBy: publisher.email,
       publishedAt: FieldValue.serverTimestamp(),

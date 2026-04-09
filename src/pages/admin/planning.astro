@@ -84,7 +84,7 @@ if (Astro.request.method === 'POST') {
       flashType = 'success';
 
     } else if (seriesType === 'writing_group') {
-      const wgTitle    = form.get('wgTitle')?.toString() || 'Do You Write?';
+      const wgTitle    = form.get('wgTitle')?.toString() || 'The Writing Group';
       const wgImageUrl = form.get('wgImageUrl')?.toString() || '';
       const wgDesc     = form.get('wgDescription')?.toString() || '';
 

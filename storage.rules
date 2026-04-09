@@ -61,6 +61,12 @@ service firebase.storage {
       allow write: if true;
     }
 
+    // ── Writing Group event images — admin upload (planning page) ──
+    match /writing-group-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // ── All other paths — deny by default ──
     match /{allPaths=**} {
       allow read, write: if false;

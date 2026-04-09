@@ -289,7 +289,7 @@ const hasFeatured = featuredEvents.length > 0;
           const artNightNeedsTrunc = isArtNight && artNightBioHtml && stripHtml(artNightBioHtml).length > 300;
 
           return `
-          <article class="published-card${e.eventType === 'writing_group' ? ' writing-group-card' : ''}">
+          <article class="published-card">
             <div class="published-card-header">
               <div class="published-header-text">
                 ${e.bandName ? `<div class="published-band-name">${e.bandName}</div>` : ''}
@@ -767,10 +767,6 @@ const hasFeatured = featuredEvents.length > 0;
     transition: all 0.2s ease;
   }
   .btn-outline-navy:hover { background: var(--navy); color: var(--white); }
-
-  .writing-group-card .published-card-header { background: var(--green); }
-  .writing-group-card .published-bio-label { color: var(--green); }
-  .writing-group-card .published-date { color: var(--green); }
 
   /* ── PAGE HERO ── */
   .page-hero {

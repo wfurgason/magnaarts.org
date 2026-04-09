@@ -15,7 +15,7 @@ const firebaseConfig = {
 };
 
 // ── Load existing shells ──────────────────────────────────────────────────
-const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, vendorSnap, artClassSnap] = await Promise.all([
+const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, vendorSnap, artClassSnap, writingGroupSnap] = await Promise.all([
   adminDb.collection('park_seasons').orderBy('year', 'desc').get(),
   adminDb.collection('park_events').orderBy('date', 'asc').get(),
   adminDb.collection('open_mic_events').orderBy('date', 'asc').get(),
@@ -24,12 +24,14 @@ const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap, festivalSnap, approve
   adminDb.collection('band_applications').where('status', 'in', ['approved', 'waitlisted']).orderBy('band_name', 'asc').get(),
   adminDb.collection('vendor_applications').where('status', 'in', ['approved', 'paid']).get(),
   adminDb.collection('art_class_submissions').where('status', 'in', ['pending', 'approved', 'contacted']).orderBy('submittedAt', 'desc').get(),
+  adminDb.collection('writing_group_events').orderBy('date', 'asc').get(),
 ]);
 
 const allShells         = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const allOpenMicShells  = openMicSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const allArtNightShells = artNightSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-const allFestivalShells = festivalSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const allFestivalShells      = festivalSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const allWritingGroupShells  = writingGroupSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const approvedBands     = approvedBandsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const approvedVendorCount  = vendorSnap.size;
 const artClassSubmissions  = artClassSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
@@ -79,6 +81,31 @@ if (Astro.request.method === 'POST') {
       }
       await batch.commit();
       flashMsg  = `Open Mic Night: ${created} new shell(s) created (${dates.length} dates total).`;
+      flashType = 'success';
+
+    } else if (seriesType === 'writing_group') {
+      const wgTitle    = form.get('wgTitle')?.toString() || 'Do You Write?';
+      const wgImageUrl = form.get('wgImageUrl')?.toString() || '';
+      const wgDesc     = form.get('wgDescription')?.toString() || '';
+
+      const existing      = await adminDb.collection('writing_group_events').where('season', '==', year).get();
+      const existingDates = new Set(existing.docs.map(d => d.data().date));
+      const batch = adminDb.batch();
+      let created = 0;
+      for (const date of dates) {
+        if (existingDates.has(date)) continue;
+        const ref     = adminDb.collection('writing_group_events').doc();
+        const d       = new Date(date + 'T12:00:00');
+        const display = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        batch.set(ref, {
+          season: year, date, displayDate: display, startTime: start, venue, address,
+          title: wgTitle, imageUrl: wgImageUrl, description: wgDesc,
+          eventType: 'writing_group', status: 'shell', createdAt: FieldValue.serverTimestamp(),
+        });
+        created++;
+      }
+      await batch.commit();
+      flashMsg  = `Monthly Writing Group: ${created} new shell(s) created (${dates.length} dates total).`;
       flashType = 'success';
 
     } else if (seriesType === 'group_art_night') {
@@ -363,11 +390,18 @@ for (const s of allFestivalShells) {
   festivalBySeason[s.season].push(s);
 }
 
+const writingGroupBySeason: Record<number, any[]> = {};
+for (const s of allWritingGroupShells) {
+  if (!writingGroupBySeason[s.season]) writingGroupBySeason[s.season] = [];
+  writingGroupBySeason[s.season].push(s);
+}
+
 const totalShells =
   Object.keys(shellsBySeason).length +
   Object.keys(openMicBySeason).length +
   Object.keys(artNightBySeason).length +
-  Object.keys(festivalBySeason).length;
+  Object.keys(festivalBySeason).length +
+  Object.keys(writingGroupBySeason).length;
 ---
 
 <AdminLayout title="Plan Events" user={user}>
@@ -399,6 +433,7 @@ const totalShells =
           <option value="group_art_night">Group Art Night</option>
           <option value="annual_seminar">Annual Arts Seminar</option>
           <option value="arts_festival">Magna Main Street Arts Festival</option>
+          <option value="writing_group">Monthly Writing Group</option>
           <option value="custom">— or something else —</option>
         </select>
       </div>
@@ -464,6 +499,44 @@ const totalShells =
             <label for="omDescription">Description</label>
             <textarea id="omDescription" name="omDescription" rows="3"
               placeholder="Join us for an evening of music, poetry, and performance. All are welcome to perform or just enjoy the show."></textarea>
+          </div>
+        </div>
+
+        <!-- Monthly Writing Group–specific fields -->
+        <div id="writing-group-fields" class="event-extra-fields" style="display:none;">
+          <div class="form-field">
+            <label for="wgTitle">Event Title</label>
+            <input type="text" id="wgTitle" name="wgTitle" value="Do You Write?" placeholder="Do You Write?" />
+          </div>
+
+          <!-- Image upload -->
+          <div class="form-field">
+            <label>
+              Event Image
+              <span class="field-hint">One image used for all dates in this series</span>
+            </label>
+            <input type="hidden" id="wgImageUrl" name="wgImageUrl" />
+            <div class="upload-zone" id="wg-image-zone">
+              <input
+                type="file"
+                id="wg-image-input"
+                accept="image/jpeg,image/png,image/webp"
+                class="upload-input"
+              />
+              <label for="wg-image-input" class="upload-label">
+                <span class="upload-icon">🖼️</span>
+                <span class="upload-text"><strong>Choose an image</strong> or drag and drop</span>
+                <span class="upload-hint">JPG, PNG or WebP · max 10 MB</span>
+              </label>
+              <div class="upload-preview" id="wg-image-preview" hidden></div>
+            </div>
+            <div id="wg-upload-status" class="upload-status" hidden></div>
+          </div>
+
+          <div class="form-field">
+            <label for="wgDescription">Description</label>
+            <textarea id="wgDescription" name="wgDescription" rows="4"
+              >Come and join your people. Bring your laptop or your notebook if you write long hand. It doesn't matter what you're working on: Short Stories, Non-Fiction, Fiction, Screenplays, or whatever, YOU ARE WELCOME!</textarea>
           </div>
         </div>
 
@@ -905,6 +978,61 @@ const totalShells =
     </section>
   ))}
 
+  <!-- ── MONTHLY WRITING GROUP ──────────────────────────────────────────── -->
+  {Object.entries(writingGroupBySeason).sort(([a],[b]) => Number(b)-Number(a)).map(([yr, shells]) => (
+    <section class="card">
+      <div class="season-header">
+        <h2 class="card-title">✍️ Monthly Writing Group — {yr} <span class="count-badge">{shells.length} events</span></h2>
+      </div>
+      <table class="shells-table">
+        <thead>
+          <tr>
+            <th>Date</th><th>Start</th><th>Venue</th><th>Status</th><th>Image</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shells.map(shell => (
+            <tr>
+              <td class="date-cell">{shell.displayDate}</td>
+              <td>{shell.startTime}</td>
+              <td class="venue-cell">{shell.venue}</td>
+              <td><span class={`badge badge-${shell.status}`}>{shell.status}</span></td>
+              <td>{shell.imageUrl ? <span class="check-yes">✓ Set</span> : <span class="dim">—</span>}</td>
+              <td class="actions-cell">
+                <button class="btn-sm btn-outline"
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}',' ${(shell.address||'').replace(/'/g,"\\'")}',' ${shell.startTime}','writing_group_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}')`}>
+                  Edit
+                </button>
+                {shell.status !== 'published' && (
+                  <button class="btn-sm btn-publish wg-publish-btn" data-shell-id={shell.id}>
+                    Publish ↗
+                  </button>
+                )}
+                {shell.status === 'published' && (
+                  <>
+                    <span class="badge badge-published">Published</span>
+                    <button class="btn-sm btn-publish wg-publish-btn"
+                      data-shell-id={shell.id} data-republish="true">
+                      Republish ↗
+                    </button>
+                  </>
+                )}
+                {shell.status === 'shell' && (
+                  <form method="POST" style="display:inline" onsubmit="return confirm('Delete this event shell?')">
+                    <input type="hidden" name="action" value="delete_shell" />
+                    <input type="hidden" name="shellId" value={shell.id} />
+                    <input type="hidden" name="collection" value="writing_group_events" />
+                    <button type="submit" class="btn-sm btn-danger">Delete</button>
+                  </form>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  ))}
+
   {totalShells === 0 && (
     <div class="empty-state">
       <p>No event shells yet. Select an event type above to get started.</p>
@@ -1051,12 +1179,13 @@ const totalShells =
 
   // ── Event type dropdown ─────────────────────────────────────────────────
   const EVENT_PRESETS = {
-    music_in_park:   { venue: 'Pleasant Green Park',        address: '3250 S 8400 W, Magna, UT 84044' },
-    open_mic:        { venue: 'Magna Library',               address: '2675 S 8950 W, Magna, UT 84044' },
-    group_art_night: { venue: 'Magna Library',               address: '2675 S 8950 W, Magna, UT 84044' },
-    annual_seminar:  { venue: 'Magna Library',               address: '2675 S 8950 W, Magna, UT 84044' },
-    arts_festival:   { venue: 'Historic Magna Main Street',  address: '8900 W to 9180 W Magna Main St, Magna, UT 84044' },
-    custom:          { venue: '',                            address: '' },
+    music_in_park:   { venue: 'Pleasant Green Park',        address: '3250 S 8400 W, Magna, UT 84044',                                 startTime: '' },
+    open_mic:        { venue: 'Magna Library',               address: '2675 S 8950 W, Magna, UT 84044',                                 startTime: '' },
+    group_art_night: { venue: 'Magna Library',               address: '2675 S 8950 W, Magna, UT 84044',                                 startTime: '' },
+    annual_seminar:  { venue: 'Magna Library',               address: '2675 S 8950 W, Magna, UT 84044',                                 startTime: '' },
+    arts_festival:   { venue: 'Historic Magna Main Street',  address: '8900 W to 9180 W Magna Main St, Magna, UT 84044',                startTime: '' },
+    writing_group:   { venue: 'Magna Library',               address: '2675 S 8950 W, Magna, UT 84044',                                 startTime: '7:00 PM' },
+    custom:          { venue: '',                            address: '',                                                               startTime: '' },
   };
   const PLACEHOLDER_TYPES = new Set(['annual_seminar', 'custom']);
 
@@ -1066,8 +1195,10 @@ const totalShells =
   const omFields      = document.getElementById('open-mic-fields');
   const anFields      = document.getElementById('art-night-fields');
   const afFields      = document.getElementById('arts-festival-fields');
+  const wgFields      = document.getElementById('writing-group-fields');
   const venueInput    = document.getElementById('venue');
   const addrInput     = document.getElementById('address');
+  const timeInput     = document.getElementById('startTime');
 
   typeSelect.addEventListener('change', () => {
     const val = typeSelect.value;
@@ -1090,11 +1221,13 @@ const totalShells =
     if (preset) {
       venueInput.value = preset.venue;
       addrInput.value  = preset.address;
+      if (preset.startTime) timeInput.value = preset.startTime;
     }
 
     omFields.style.display = val === 'open_mic'        ? 'flex' : 'none';
     anFields.style.display = val === 'group_art_night' ? 'flex' : 'none';
     afFields.style.display = val === 'arts_festival'   ? 'flex' : 'none';
+    wgFields.style.display = val === 'writing_group'   ? 'flex' : 'none';
   });
 
   // ── Calendar ────────────────────────────────────────────────────────────
@@ -1285,6 +1418,37 @@ const totalShells =
     omImageUrlEl.value = ''; // clear previously uploaded URL when new file chosen
   });
 
+  // Writing Group image upload
+  const wgImageZone    = document.getElementById('wg-image-zone');
+  const wgImageInput   = document.getElementById('wg-image-input');
+  const wgImagePreview = document.getElementById('wg-image-preview');
+  const wgImageUrlEl   = document.getElementById('wgImageUrl');
+
+  wgImageZone.addEventListener('dragover', e => { e.preventDefault(); wgImageZone.classList.add('drag-over'); });
+  wgImageZone.addEventListener('dragleave', () => wgImageZone.classList.remove('drag-over'));
+  wgImageZone.addEventListener('drop', e => {
+    e.preventDefault();
+    wgImageZone.classList.remove('drag-over');
+    if (e.dataTransfer?.files?.length) {
+      const dt = new DataTransfer();
+      dt.items.add(e.dataTransfer.files[0]);
+      wgImageInput.files = dt.files;
+      wgImageInput.dispatchEvent(new Event('change'));
+    }
+  });
+
+  wgImageInput.addEventListener('change', () => {
+    const file = wgImageInput.files?.[0];
+    if (!file) { wgImagePreview.hidden = true; return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      wgImagePreview.hidden = false;
+      wgImagePreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+    };
+    reader.readAsDataURL(file);
+    wgImageUrlEl.value = '';
+  });
+
   // ── Form submit — upload image first if needed, then POST ───────────────
   const seasonForm   = document.getElementById('season-form');
   const submitBtn    = document.getElementById('submit-btn');
@@ -1372,6 +1536,31 @@ const totalShells =
         const url = await getDownloadURL(storageRef);
         omImageUrlEl.value = url;
 
+        submitStatus.textContent = 'Saving…';
+        seasonForm.submit();
+      } catch (err) {
+        submitStatus.hidden = true;
+        submitBtn.disabled  = false;
+        alert('Image upload failed: ' + (err.message || 'Unknown error'));
+      }
+    }
+
+    // If Writing Group with a new file not yet uploaded, intercept and upload first
+    const isWritingGroup = typeSelect.value === 'writing_group';
+    const wgFile         = wgImageInput.files?.[0];
+    if (isWritingGroup && wgFile && !wgImageUrlEl.value) {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitStatus.hidden = false;
+      submitStatus.textContent = 'Uploading image…';
+      try {
+        const year = yearInput.value || '2026';
+        const ext  = wgFile.name.split('.').pop();
+        const path = `writing-group-images/${year}/event-image.${ext}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, wgFile);
+        const url = await getDownloadURL(storageRef);
+        wgImageUrlEl.value = url;
         submitStatus.textContent = 'Saving…';
         seasonForm.submit();
       } catch (err) {
@@ -1516,6 +1705,36 @@ const totalShells =
   });
 
   // ── Presenter assign modal ───────────────────────────────────────────────
+  // Writing Group publish buttons
+  document.querySelectorAll('.wg-publish-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const shellId     = btn.dataset.shellId;
+      const isRepublish = btn.dataset.republish === 'true';
+      if (!confirm('Publish this Monthly Writing Group event to the public site?')) return;
+      btn.disabled    = true;
+      btn.textContent = 'Publishing…';
+      try {
+        const res = await fetch('/api/admin/publish-writing-group', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ shellId }),
+        });
+        if (res.ok) {
+          isRepublish ? window.location.reload() : (window.location.href = '/admin/events');
+        } else {
+          const { error } = await res.json().catch(() => ({ error: 'Unknown error' }));
+          alert(error || 'Publish failed.');
+          btn.disabled    = false;
+          btn.textContent = 'Publish ↗';
+        }
+      } catch (err) {
+        alert('Publish failed: ' + (err.message || 'Unknown error'));
+        btn.disabled    = false;
+        btn.textContent = 'Publish ↗';
+      }
+    });
+  });
+
   const presenterModal      = document.getElementById('presenter-modal');
   const presenterShellIdEl  = document.getElementById('presenter-modal-shell-id');
   const presenterIdEl       = document.getElementById('presenter-modal-presenter-id');
@@ -1614,7 +1833,7 @@ const totalShells =
   // ── Edit modal ──────────────────────────────────────────────────────────
   const editModal = document.getElementById('edit-modal');
 
-  const IMAGE_COLLECTIONS = new Set(['open_mic_events', 'art_night_events', 'park_events']);
+  const IMAGE_COLLECTIONS = new Set(['open_mic_events', 'art_night_events', 'park_events', 'writing_group_events']);
 
   window.openEditModal = function(id, venue, address, startTime, collection, currentImageUrl, displayType, movieTitle, moviePreviewEmbed) {
     document.getElementById('edit-shell-id').value   = id;
@@ -1721,8 +1940,9 @@ const totalShells =
 
     try {
       const collection = document.getElementById('edit-collection').value;
-      const folder     = collection === 'open_mic_events' ? 'open-mic-images'
-                       : collection === 'park_events'      ? 'mmpark-images'
+      const folder     = collection === 'open_mic_events'     ? 'open-mic-images'
+                       : collection === 'park_events'          ? 'mmpark-images'
+                       : collection === 'writing_group_events' ? 'writing-group-images'
                        : 'art-night-images';
       const year       = new Date().getFullYear();
       const ext        = file.name.split('.').pop();

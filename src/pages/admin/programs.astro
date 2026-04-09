@@ -328,9 +328,9 @@ function getTitle(p: Program): string {
           </div>
           <div id="edit-image-preview" class="upload-preview" hidden></div>
         </div>
-      </div>
 
-      <div id="edit-error" class="edit-error" hidden></div>
+        <div id="edit-error" class="edit-error" hidden></div>
+      </div>
 
       <div class="modal-actions">
         <button id="edit-modal-cancel" class="btn btn-muted">Cancel</button>
@@ -477,19 +477,13 @@ function getTitle(p: Program): string {
         if (prog.proposed_date)  document.getElementById('pub-date').value  = prog.proposed_date;
         if (prog.proposed_venue) document.getElementById('pub-venue').value = prog.proposed_venue;
         publishModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
       });
     });
 
-    const closePublish = () => { 
-      document.body.style.overflow = '';
-      publishModal.style.display = 'none'; 
-      publishForm.reset(); 
-    };
+    const closePublish = () => { publishModal.style.display = 'none'; publishForm.reset(); };
     document.getElementById('modal-close')?.addEventListener('click', closePublish);
     document.getElementById('modal-cancel')?.addEventListener('click', closePublish);
     publishModal?.addEventListener('click', e => { if (e.target === publishModal) closePublish(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && publishModal.style.display !== 'none') closePublish(); });
 
     publishForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -554,7 +548,7 @@ function getTitle(p: Program): string {
     // Image preview in edit modal
     const editImageInput   = document.getElementById('edit-image-file');
     const editImagePreview = document.getElementById('edit-image-preview');
-   editImageInput?.addEventListener('change', () => {
+    editImageInput?.addEventListener('change', () => {
       const file = editImageInput.files && editImageInput.files[0];
       if (!file) { editImagePreview.hidden = true; return; }
       // Hide the current image wrap — the new upload will replace it
@@ -613,13 +607,11 @@ function getTitle(p: Program): string {
 
         document.getElementById('edit-error').hidden = true;
         editModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
       });
     });
 
     // Close edit modal
     const closeEdit = () => {
-      document.body.style.overflow = '';
       editModal.style.display = 'none';
       editImageInput.value = '';
       editImagePreview.hidden = true;
@@ -627,7 +619,6 @@ function getTitle(p: Program): string {
     document.getElementById('edit-modal-close')?.addEventListener('click', closeEdit);
     document.getElementById('edit-modal-cancel')?.addEventListener('click', closeEdit);
     editModal?.addEventListener('click', e => { if (e.target === editModal) closeEdit(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && editModal.style.display !== 'none') closeEdit(); });
 
     // Save edit
     document.getElementById('edit-modal-save')?.addEventListener('click', async () => {
@@ -860,10 +851,11 @@ function getTitle(p: Program): string {
       justify-content: space-between;
       padding: 20px 24px 16px;
       border-bottom: 1.5px solid var(--border);
+      position: sticky;
+      top: 0;
       background: #fff;
       z-index: 1;
       border-radius: 12px 12px 0 0;
-      flex-shrink: 0;
     }
 
     .modal-header h2 { font-size: 20px; font-weight: 700; color: var(--navy); margin: 0; }
@@ -880,7 +872,7 @@ function getTitle(p: Program): string {
 
     .modal-close:hover { background: #f7f5f0; }
 
-    .modal-body { display: flex; flex-direction: column; gap: 0; padding: 20px 24px; overflow-y: auto; flex: 1; min-height: 0; }
+    .modal-body { display: flex; flex-direction: column; gap: 0; padding: 20px 24px; overflow-y: auto; flex: 1; }
 
     .modal-section-label {
       font-size: 11px;

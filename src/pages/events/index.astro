@@ -40,6 +40,25 @@ const featuredEvents = [
     ctaText:     'Learn More & Enter Free →',
     ctaExternal: false,
   },
+  {
+    id:          'magna-writing-conference-2026',
+    expiresDate: new Date('2026-04-26T00:00:00'), // day after the April 25 conference
+    href:        '/writing-conference',
+    badge:       'Free Event · April 25, 2026',
+    accentColor: 'featured-teal',
+    icon:        '✍️',
+    logoSrc:     null,
+    title:       'Magna Writing Conference 2026',
+    description: 'A free community mini writing conference at the Magna Library. Keynote by award-winning author Jodi L. Milner, plus workshops on story structure, character development, world-building, and more — open to writers of all levels.',
+    details: [
+      { icon: '📅', label: 'Date',     value: 'Saturday, April 25, 2026' },
+      { icon: '🕐', label: 'Time',     value: '7:00 – 9:00 PM' },
+      { icon: '📍', label: 'Location', value: 'Magna Library Meeting Room · 2675 S 8950 W' },
+      { icon: '🆓', label: 'Cost',     value: 'Free — All levels welcome' },
+    ],
+    ctaText:     'Learn More & Register Free →',
+    ctaExternal: false,
+  },
   // Add more featured events here following the same shape ↑
 ].filter(e => {
   const exp = new Date(e.expiresDate);
@@ -475,6 +494,17 @@ const hasFeatured = featuredEvents.length > 0;
   .featured-gold .featured-badge {
     background: #fef3c7;
     color: #92600a;
+  }
+
+  /* Teal accent */
+  .featured-teal .featured-card-aside {
+    background: linear-gradient(160deg, #062a2a 0%, #0c4a4a 100%);
+    border-right: 3px solid var(--teal);
+  }
+
+  .featured-teal .featured-badge {
+    background: #ccfbf1;
+    color: #0f5f4a;
   }
 
   .featured-title {

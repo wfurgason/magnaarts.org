@@ -111,6 +111,14 @@ import '../styles/global.css';
           <h2>Jodi L. Milner</h2>
         </div>
         <div class="keynote-inner">
+          <div class="keynote-layout">
+          <div class="keynote-headshot reveal">
+            <img
+              src="https://firebasestorage.googleapis.com/v0/b/magnaarts.firebasestorage.app/o/proposal-images%2F1775762107493-tayh71%2Fimage.jpg?alt=media&token=05af238e-6062-4524-a311-982a29231648"
+              alt="Jodi L. Milner"
+              class="keynote-headshot-img"
+            />
+          </div>
           <div class="keynote-bio reveal">
             <div class="keynote-title-block">
               <span class="keynote-badge">Keynote</span>
@@ -140,6 +148,7 @@ import '../styles/global.css';
                 JodiLMilner.com →
               </a>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -458,6 +467,29 @@ import '../styles/global.css';
   .map-link:hover { color: var(--teal); }
 
   /* ── KEYNOTE ── */
+  .keynote-layout {
+    display: flex;
+    gap: 48px;
+    align-items: flex-start;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  .keynote-headshot {
+    flex-shrink: 0;
+    width: 200px;
+  }
+
+  .keynote-headshot-img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    object-position: top;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    border: 3px solid var(--white);
+  }
+
   .section-header {
     text-align: center;
     margin-bottom: 48px;
@@ -471,10 +503,6 @@ import '../styles/global.css';
     line-height: 1.15;
   }
 
-  .keynote-inner {
-    max-width: 780px;
-    margin: 0 auto;
-  }
 
   .keynote-title-block {
     display: flex;
@@ -667,6 +695,9 @@ import '../styles/global.css';
     .wc-details-card { max-width: 480px; }
     .presenters-grid { grid-template-columns: repeat(2, 1fr); }
     .wc-cta-inner { flex-direction: column; align-items: flex-start; }
+    .keynote-layout { flex-direction: column; align-items: center; text-align: center; }
+    .keynote-headshot { width: 160px; }
+    .keynote-headshot-img { width: 160px; height: 160px; }
   }
 
   @media (max-width: 600px) {

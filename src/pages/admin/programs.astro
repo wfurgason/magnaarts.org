@@ -165,6 +165,14 @@ function getTitle(p: Program): string {
               Delete
             </button>
             <button
+              class="btn btn-move"
+              data-action="move"
+              data-id={prog.id}
+              data-name={getTitle(prog)}
+            >
+              → Move to Art Presenters
+            </button>
+            <button
               class="btn btn-edit"
               data-action="edit"
               data-id={prog.id}
@@ -427,6 +435,28 @@ function getTitle(p: Program): string {
       await uploadBytes(storageRef, file);
       return getDownloadURL(storageRef);
     }
+
+    // ── Move to Art Presenters ──────────────────────────────────────────────
+    document.querySelectorAll('[data-action="move"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name || 'this submission';
+        if (!confirm(`Move "${name}" to Art Presenters? It will be removed from Program Proposals.`)) return;
+        btn.disabled = true;
+        btn.textContent = 'Moving…';
+        const res = await fetch('/api/admin/move-to-art-presenter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: btn.dataset.id }),
+        });
+        if (res.ok) {
+          document.getElementById(`card-${btn.dataset.id}`)?.remove();
+        } else {
+          alert('Move failed.');
+          btn.disabled = false;
+          btn.textContent = '→ Move to Art Presenters';
+        }
+      });
+    });
 
     // ── Delete actions ──────────────────────────────────────────────────────
     document.querySelectorAll('[data-action="delete"]').forEach(btn => {
@@ -820,6 +850,8 @@ function getTitle(p: Program): string {
     .btn-edit:hover:not(:disabled)    { background: #e0e7ff; }
     .btn-ghost   { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
     .btn-delete  { background: transparent; border: 1.5px solid #fca5a5; color: #dc2626; }
+    .btn-move    { background: transparent; border: 1.5px solid var(--teal, #0e8a8a); color: var(--teal, #0e8a8a); }
+    .btn-move:hover:not(:disabled) { background: var(--teal, #0e8a8a); color: var(--white, #fff); }
     .btn-delete:hover:not(:disabled) { background: #fee2e2; border-color: #dc2626; }
 
     /* ── Modals ── */

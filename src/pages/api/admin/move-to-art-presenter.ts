@@ -1,8 +1,15 @@
 import type { APIRoute } from 'astro';
-import { adminDb } from '../../../lib/firebase-admin';
+import { adminAuth, adminDb } from '../../../lib/firebase-admin';
 
-export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.user) {
+export const POST: APIRoute = async ({ request, cookies }) => {
+  const sessionCookie = cookies.get('session')?.value;
+  if (!sessionCookie) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  }
+
+  try {
+    await adminAuth.verifySessionCookie(sessionCookie, true);
+  } catch {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 

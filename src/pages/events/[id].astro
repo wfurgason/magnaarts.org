@@ -276,6 +276,48 @@ const venueAddress= event.venueAddress|| event.address   || '';
             <a href="/vendor-application" class="vendor-apply-link">Apply to be a vendor →</a>
           </div>
 
+          <!-- Arts Contest -->
+          <div class="festival-section reveal">
+            <h2 class="festival-section-heading">🎨 Arts Contest</h2>
+            <p class="contest-intro">
+              The Magna Arts Festival hosts a juried art contest open to artists of all ages and skill levels.
+              Whether you're a seasoned professional or picking up a brush for the first time, we invite you
+              to share your work with the community. Entries are judged within age groups across five
+              fine arts categories, with winning pieces displayed prominently at the festival.
+            </p>
+
+            <div class="contest-grid">
+
+              <div class="contest-card">
+                <h3 class="contest-card-heading">Age Groups</h3>
+                <ul class="contest-list">
+                  <li>8 – 12</li>
+                  <li>13 – 17</li>
+                  <li>18+</li>
+                  <li>Professional</li>
+                </ul>
+              </div>
+
+              <div class="contest-card">
+                <h3 class="contest-card-heading">Categories</h3>
+                <ul class="contest-list">
+                  <li>Watercolor</li>
+                  <li>Oil / Acrylic</li>
+                  <li>Photography <span class="cat-note">(Non-Digital)</span></li>
+                  <li>Drawing</li>
+                  <li>3D / Sculpture / Fiber / Misc. <span class="cat-note">(Non-Digital)</span></li>
+                </ul>
+              </div>
+
+              <div class="contest-card contest-card-rules">
+                <h3 class="contest-card-heading">Entry Rules</h3>
+                <p>Artists may enter <strong>more than one piece</strong>, but each entry must be in a <strong>different category</strong>.</p>
+                <p>Multiple entries submitted under the same category will be <strong>displayed but not judged</strong>.</p>
+              </div>
+
+            </div>
+          </div>
+
         </div>
       </section>
     )}
@@ -484,6 +526,64 @@ const venueAddress= event.venueAddress|| event.address   || '';
     margin-top: 8px;
   }
   .vendor-apply-link:hover { gap: 8px; }
+
+  /* ── ARTS CONTEST ── */
+  .contest-intro {
+    font-size: 16px; color: var(--muted); line-height: 1.75;
+    max-width: 720px; margin-bottom: 28px;
+  }
+
+  .contest-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .contest-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-top: 3px solid var(--amber, #c87e0a);
+    border-radius: 10px;
+    padding: 20px 24px;
+  }
+
+  .contest-card-heading {
+    font-family: var(--font-display);
+    font-size: 14px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--navy); margin: 0 0 14px;
+  }
+
+  .contest-list {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .contest-list li {
+    font-size: 15px; color: var(--navy);
+    padding-left: 16px; position: relative; line-height: 1.4;
+  }
+
+  .contest-list li::before {
+    content: '–';
+    position: absolute; left: 0;
+    color: var(--amber, #c87e0a); font-weight: 700;
+  }
+
+  .cat-note {
+    font-size: 12px; color: var(--muted); font-weight: 400;
+  }
+
+  .contest-card-rules p {
+    font-size: 14px; color: var(--muted);
+    line-height: 1.65; margin: 0 0 10px;
+  }
+
+  .contest-card-rules p:last-child { margin-bottom: 0; }
+
+  @media (max-width: 860px) {
+    .contest-grid { grid-template-columns: 1fr; }
+  }
 
   /* ── PARK TIPS ── */
   .park-info { background: #ecfdf5; border-top: 1px solid #a7f3d0; border-bottom: 1px solid #a7f3d0; padding: 20px 0; }

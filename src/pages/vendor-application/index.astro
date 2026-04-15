@@ -380,7 +380,7 @@ const firebaseConfig = {
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
       // Honeypot check — bots fill this, humans don't
-      if ((form.querySelector('#company_website') as HTMLInputElement)?.value) return;
+      if (form.querySelector('#company_website')?.value) return;
 
       const waiverCheck = document.getElementById('waiver_agreed');
       const waiverError = document.getElementById('waiver-error');

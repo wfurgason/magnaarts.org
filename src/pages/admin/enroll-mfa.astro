@@ -1,0 +1,258 @@
+---
+import '../../styles/admin.css';
+
+const firebaseConfig = {
+  apiKey:     import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:  import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+};
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Set Up Two-Factor Authentication — Magna Arts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-login-body">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="/images/ArtsCouncil_logo.png" alt="Magna Arts Council" />
+      <span class="login-logo-text">Magna Arts Council</span>
+      <span class="login-logo-sub">Board Portal</span>
+    </div>
+
+    <!-- Step 1: Enter phone number -->
+    <div id="phone-step">
+      <h2 style="font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;color:var(--admin-navy);margin:0 0 0.5rem;">
+        Set Up Two-Factor Authentication
+      </h2>
+      <p class="mfa-hint">
+        To keep the board portal secure, you need to verify your phone number.
+        A one-time code will be sent via SMS each time you sign in.
+      </p>
+      <div class="field-group">
+        <label for="phone">Phone Number</label>
+        <input
+          type="tel"
+          id="phone"
+          name="phone"
+          placeholder="+1 801 555 0100"
+          autocomplete="tel"
+        />
+        <span class="field-hint">Include country code, e.g. +1 for US numbers.</span>
+      </div>
+      <div id="phone-error" class="error-msg" hidden></div>
+      <button type="button" class="btn btn-primary btn-full" id="send-btn">
+        Send Verification Code
+      </button>
+    </div>
+
+    <!-- Step 2: Enter SMS code -->
+    <div id="code-step" hidden>
+      <h2 style="font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;color:var(--admin-navy);margin:0 0 0.5rem;">
+        Enter Verification Code
+      </h2>
+      <p class="mfa-hint" id="code-hint">
+        Enter the code sent to your phone.
+      </p>
+      <div class="field-group">
+        <label for="sms-code">6-Digit Code</label>
+        <input
+          type="text"
+          id="sms-code"
+          name="sms-code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+        />
+      </div>
+      <div id="code-error" class="error-msg" hidden></div>
+      <button type="button" class="btn btn-primary btn-full" id="verify-btn">
+        Verify &amp; Activate
+      </button>
+      <button type="button" class="btn btn-ghost btn-full" id="back-btn" style="margin-top:0.5rem;">
+        Use a Different Number
+      </button>
+    </div>
+  </div>
+
+  <!-- Invisible reCAPTCHA anchor -->
+  <div id="recaptcha-container"></div>
+
+  <script type="module" define:vars={{ firebaseConfig }}>
+    import { initializeApp }          from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import {
+      getAuth,
+      PhoneAuthProvider,
+      PhoneMultiFactorGenerator,
+      RecaptchaVerifier,
+      multiFactor,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // ── Guard: redirect if not authenticated ──────────────────────────────────
+    // Firebase restores auth state from IndexedDB after page navigation.
+    // We wait briefly for it; if no user appears, bounce back to login.
+    await new Promise((resolve) => {
+      const unsub = auth.onAuthStateChanged((user) => {
+        unsub();
+        resolve(user);
+      });
+    }).then((user) => {
+      if (!user) window.location.replace('/admin');
+    });
+
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const phoneStep  = document.getElementById('phone-step');
+    const codeStep   = document.getElementById('code-step');
+    const phoneInput = document.getElementById('phone');
+    const smsInput   = document.getElementById('sms-code');
+    const sendBtn    = document.getElementById('send-btn');
+    const verifyBtn  = document.getElementById('verify-btn');
+    const backBtn    = document.getElementById('back-btn');
+    const phoneError = document.getElementById('phone-error');
+    const codeError  = document.getElementById('code-error');
+    const codeHint   = document.getElementById('code-hint');
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let verificationId   = null;
+    let recaptchaVerifier = null;
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function showError(el, msg) {
+      el.textContent = msg;
+      el.hidden = false;
+    }
+
+    function setLoading(btn, loading, defaultLabel) {
+      btn.disabled = loading;
+      btn.textContent = loading ? 'Please wait…' : defaultLabel;
+    }
+
+    function initRecaptcha() {
+      if (recaptchaVerifier) return;
+      recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+      });
+    }
+
+    // ── Send SMS ──────────────────────────────────────────────────────────────
+    sendBtn.addEventListener('click', async () => {
+      phoneError.hidden = true;
+      const phone = phoneInput.value.trim();
+
+      if (!phone.startsWith('+')) {
+        showError(phoneError, 'Please include the country code, e.g. +1 801 555 0100.');
+        return;
+      }
+
+      setLoading(sendBtn, true, 'Send Verification Code');
+
+      try {
+        const user = auth.currentUser;
+        if (!user) { window.location.replace('/admin'); return; }
+
+        initRecaptcha();
+
+        const session = await multiFactor(user).getSession();
+        const phoneAuthProvider = new PhoneAuthProvider(auth);
+        verificationId = await phoneAuthProvider.verifyPhoneNumber(
+          { phoneNumber: phone, session },
+          recaptchaVerifier,
+        );
+
+        // Update hint to show masked number
+        codeHint.textContent = `Enter the 6-digit code sent to ${phone}.`;
+        phoneStep.hidden = true;
+        codeStep.hidden  = false;
+        smsInput.focus();
+
+      } catch (err) {
+        console.error('SMS send error:', err);
+
+        // Reset reCAPTCHA so the user can retry
+        if (recaptchaVerifier) {
+          recaptchaVerifier.clear();
+          recaptchaVerifier = null;
+        }
+
+        const msg =
+          err.code === 'auth/invalid-phone-number'    ? 'That phone number is not valid. Check the format and try again.' :
+          err.code === 'auth/too-many-requests'       ? 'Too many attempts. Please wait a few minutes and try again.' :
+          err.code === 'auth/requires-recent-login'   ? 'Your session has expired. Please sign in again.' :
+                                                        'Could not send the code. Please try again.';
+
+        if (err.code === 'auth/requires-recent-login') {
+          window.location.replace('/admin');
+          return;
+        }
+
+        showError(phoneError, msg);
+        setLoading(sendBtn, false, 'Send Verification Code');
+      }
+    });
+
+    // ── Verify code & enroll ──────────────────────────────────────────────────
+    verifyBtn.addEventListener('click', async () => {
+      codeError.hidden = true;
+      const code = smsInput.value.trim();
+
+      if (!code || code.length < 6) {
+        showError(codeError, 'Please enter the 6-digit code.');
+        return;
+      }
+
+      setLoading(verifyBtn, true, 'Verify & Activate');
+
+      try {
+        const user = auth.currentUser;
+        if (!user) { window.location.replace('/admin'); return; }
+
+        const phoneCred = PhoneAuthProvider.credential(verificationId, code);
+        const assertion = PhoneMultiFactorGenerator.assertion(phoneCred);
+        await multiFactor(user).enroll(assertion, 'Phone');
+
+        // Enrollment complete — now create the server session
+        const idToken = await user.getIdToken(/* forceRefresh */ true);
+        const res = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+
+        if (!res.ok) throw new Error('Session creation failed');
+        window.location.href = '/admin/dashboard';
+
+      } catch (err) {
+        console.error('Enrollment error:', err);
+        const msg =
+          err.code === 'auth/invalid-verification-code' ? 'Incorrect code. Please try again.' :
+          err.code === 'auth/code-expired'              ? 'Code expired. Go back and request a new one.' :
+                                                          'Enrollment failed. Please try again.';
+        showError(codeError, msg);
+        setLoading(verifyBtn, false, 'Verify & Activate');
+      }
+    });
+
+    // ── Back button ───────────────────────────────────────────────────────────
+    backBtn.addEventListener('click', () => {
+      codeError.hidden   = true;
+      smsInput.value     = '';
+      verificationId     = null;
+      if (recaptchaVerifier) {
+        recaptchaVerifier.clear();
+        recaptchaVerifier = null;
+      }
+      codeStep.hidden  = true;
+      phoneStep.hidden = false;
+      phoneInput.focus();
+    });
+  </script>
+</body>
+</html>

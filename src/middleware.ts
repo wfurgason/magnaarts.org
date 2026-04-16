@@ -5,7 +5,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Login page is public; all other /admin/* routes are protected
   const isAdminRoute = pathname.startsWith('/admin');
-  const isLoginPage = pathname === '/admin' || pathname === '/admin/';
+  const isLoginPage =
+    pathname === '/admin' ||
+    pathname === '/admin/' ||
+    pathname === '/admin/enroll-mfa';
 
   if (isAdminRoute && !isLoginPage) {
     const sessionCookie = context.cookies.get('session')?.value;

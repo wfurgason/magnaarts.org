@@ -36,6 +36,7 @@ const firebaseConfig = {
       <span class="login-logo-sub">Board Portal</span>
     </div>
 
+    <!-- Step 1: Email / password -->
     <form id="login-form" novalidate>
       <div class="field-group">
         <label for="email">Email</label>
@@ -50,53 +51,197 @@ const firebaseConfig = {
         Sign In
       </button>
     </form>
+
+    <!-- Step 2: SMS verification (shown after password succeeds for MFA-enrolled accounts) -->
+    <div id="mfa-form" hidden>
+      <p class="mfa-hint">A verification code was sent to your phone. Enter it below.</p>
+      <div class="field-group">
+        <label for="sms-code">Verification Code</label>
+        <input type="text" id="sms-code" name="sms-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" />
+      </div>
+      <div id="mfa-error" class="error-msg" hidden></div>
+      <button type="button" class="btn btn-primary btn-full" id="mfa-btn">
+        Verify
+      </button>
+      <button type="button" class="btn btn-ghost btn-full" id="resend-btn" style="margin-top:0.5rem;">
+        Resend Code
+      </button>
+    </div>
   </div>
 
-  <script type="module" define:vars={{ firebaseConfig }}>
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-    import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  <!-- Invisible reCAPTCHA anchor (required by Firebase for SMS) -->
+  <div id="recaptcha-container"></div>
 
-    const app = initializeApp(firebaseConfig);
+  <script type="module" define:vars={{ firebaseConfig }}>
+    import { initializeApp }             from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      getMultiFactorResolver,
+      PhoneAuthProvider,
+      PhoneMultiFactorGenerator,
+      RecaptchaVerifier,
+      multiFactor,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+
+    const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    const form = document.getElementById('login-form');
-    const errorEl = document.getElementById('login-error');
-    const btn = document.getElementById('login-btn');
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const loginForm  = document.getElementById('login-form');
+    const loginError = document.getElementById('login-error');
+    const loginBtn   = document.getElementById('login-btn');
 
-    form.addEventListener('submit', async (e) => {
+    const mfaForm    = document.getElementById('mfa-form');
+    const mfaError   = document.getElementById('mfa-error');
+    const mfaBtn     = document.getElementById('mfa-btn');
+    const resendBtn  = document.getElementById('resend-btn');
+    const smsInput   = document.getElementById('sms-code');
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let mfaResolver      = null;   // MultiFactorResolver from the auth error
+    let verificationId   = null;   // Returned by verifyPhoneNumber
+    let recaptchaVerifier = null;
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function showError(el, msg) {
+      el.textContent = msg;
+      el.hidden = false;
+    }
+
+    function setLoading(btn, loading, defaultLabel) {
+      btn.disabled = loading;
+      btn.textContent = loading ? 'Please wait…' : defaultLabel;
+    }
+
+    async function createSessionAndRedirect(user) {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+      if (!res.ok) throw new Error('Session creation failed');
+      window.location.href = '/admin/dashboard';
+    }
+
+    function initRecaptcha() {
+      if (recaptchaVerifier) return;
+      recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+      });
+    }
+
+    async function sendSmsCode() {
+      initRecaptcha();
+      const phoneAuthProvider = new PhoneAuthProvider(auth);
+      verificationId = await phoneAuthProvider.verifyPhoneNumber(
+        { multiFactorHint: mfaResolver.hints[0], session: mfaResolver.session },
+        recaptchaVerifier,
+      );
+    }
+
+    // ── Step 1: password sign-in ──────────────────────────────────────────────
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      errorEl.hidden = true;
-      btn.disabled = true;
-      btn.textContent = 'Signing in…';
+      loginError.hidden = true;
+      setLoading(loginBtn, true, 'Sign In');
 
-      const email = document.getElementById('email').value.trim();
+      const email    = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
 
       try {
         const cred = await signInWithEmailAndPassword(auth, email, password);
-        const idToken = await cred.user.getIdToken();
 
-        const res = await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken }),
-        });
-
-        if (res.ok) {
-          window.location.href = '/admin/dashboard';
-        } else {
-          throw new Error('Session creation failed');
+        // Check MFA enrollment status
+        const factors = multiFactor(cred.user).enrolledFactors;
+        if (factors.length === 0) {
+          // Not enrolled — go enroll first; session will be created after
+          window.location.href = '/admin/enroll-mfa';
+          return;
         }
+
+        // Enrolled but MFA was not required (edge case: should not normally occur
+        // once phone factor is enrolled, but handle gracefully)
+        await createSessionAndRedirect(cred.user);
+
       } catch (err) {
-        const msg = err.code === 'auth/invalid-credential'
-          ? 'Invalid email or password.'
-          : err.code === 'auth/too-many-requests'
-          ? 'Too many attempts. Try again later.'
-          : 'Sign-in failed. Please try again.';
-        errorEl.textContent = msg;
-        errorEl.hidden = false;
-        btn.disabled = false;
-        btn.textContent = 'Sign In';
+        if (err.code === 'auth/multi-factor-auth-required') {
+          // Expected path for enrolled users — show SMS panel
+          mfaResolver = getMultiFactorResolver(auth, err);
+          try {
+            await sendSmsCode();
+            loginForm.hidden = true;
+            mfaForm.hidden   = false;
+            smsInput.focus();
+          } catch (smsErr) {
+            console.error('SMS send failed:', smsErr);
+            showError(loginError, 'Failed to send verification code. Please try again.');
+            setLoading(loginBtn, false, 'Sign In');
+          }
+          return;
+        }
+
+        const msg =
+          err.code === 'auth/invalid-credential'   ? 'Invalid email or password.' :
+          err.code === 'auth/too-many-requests'    ? 'Too many attempts. Try again later.' :
+          err.code === 'auth/user-disabled'        ? 'This account has been disabled.' :
+                                                     'Sign-in failed. Please try again.';
+        showError(loginError, msg);
+        setLoading(loginBtn, false, 'Sign In');
+      }
+    });
+
+    // ── Step 2: SMS code verification ─────────────────────────────────────────
+    mfaBtn.addEventListener('click', async () => {
+      mfaError.hidden = true;
+      setLoading(mfaBtn, true, 'Verify');
+
+      const code = smsInput.value.trim();
+      if (!code || code.length < 6) {
+        showError(mfaError, 'Please enter the 6-digit code.');
+        setLoading(mfaBtn, false, 'Verify');
+        return;
+      }
+
+      try {
+        const phoneCred = PhoneAuthProvider.credential(verificationId, code);
+        const assertion = PhoneMultiFactorGenerator.assertion(phoneCred);
+        const mfaCred   = await mfaResolver.resolveSignIn(assertion);
+        await createSessionAndRedirect(mfaCred.user);
+      } catch (err) {
+        const msg =
+          err.code === 'auth/invalid-verification-code' ? 'Incorrect code. Please try again.' :
+          err.code === 'auth/code-expired'              ? 'Code expired. Use "Resend Code" to get a new one.' :
+                                                          'Verification failed. Please try again.';
+        showError(mfaError, msg);
+        setLoading(mfaBtn, false, 'Verify');
+      }
+    });
+
+    // ── Resend SMS ─────────────────────────────────────────────────────────────
+    resendBtn.addEventListener('click', async () => {
+      mfaError.hidden = true;
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Sending…';
+      smsInput.value = '';
+
+      try {
+        // Reset reCAPTCHA so it can fire again
+        if (recaptchaVerifier) {
+          recaptchaVerifier.clear();
+          recaptchaVerifier = null;
+        }
+        await sendSmsCode();
+        resendBtn.textContent = 'Code sent!';
+      } catch (err) {
+        showError(mfaError, 'Failed to resend code. Please refresh and try again.');
+        resendBtn.textContent = 'Resend Code';
+      } finally {
+        setTimeout(() => {
+          resendBtn.disabled = false;
+          resendBtn.textContent = 'Resend Code';
+        }, 5000);
       }
     });
   </script>

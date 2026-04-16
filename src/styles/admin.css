@@ -304,6 +304,10 @@ body {
   padding: 0.625rem 0.875rem; font-size: 0.85rem; margin-bottom: 1rem;
   border: 1px solid #fecaca;
 }
+.mfa-hint {
+  font-size: 0.875rem; color: var(--admin-text-muted); margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
 
 /* ── Submission Cards ──────────────────────── */
 .submission-list { display: flex; flex-direction: column; gap: 1rem; }

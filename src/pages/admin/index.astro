@@ -176,7 +176,12 @@ const firebaseConfig = {
             smsInput.focus();
           } catch (smsErr) {
             console.error('SMS send failed:', smsErr);
-            showError(loginError, 'Failed to send verification code. Please try again.');
+            const smsMsg =
+              smsErr.code === 'auth/unverified-email'      ? 'Your email address must be verified before MFA can work. Contact your administrator.' :
+              smsErr.code === 'auth/invalid-phone-number'  ? 'The phone number on your account is invalid. Contact your administrator.' :
+              smsErr.code === 'auth/too-many-requests'     ? 'Too many attempts. Please wait a few minutes.' :
+                                                             `Failed to send code (${smsErr.code || smsErr.message}). Please try again.`;
+            showError(loginError, smsMsg);
             setLoading(loginBtn, false, 'Sign In');
           }
           return;

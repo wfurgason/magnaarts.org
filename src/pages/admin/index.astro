@@ -232,15 +232,22 @@ const firebaseConfig = {
       smsInput.value = '';
 
       try {
-        // Reset reCAPTCHA so it can fire again
+        // Fully tear down and rebuild the reCAPTCHA widget before retrying
         if (recaptchaVerifier) {
           recaptchaVerifier.clear();
           recaptchaVerifier = null;
         }
+        // Remove and recreate the anchor element so reCAPTCHA starts clean
+        const oldAnchor = document.getElementById('recaptcha-container');
+        const newAnchor = document.createElement('div');
+        newAnchor.id = 'recaptcha-container';
+        oldAnchor.replaceWith(newAnchor);
+
         await sendSmsCode();
         resendBtn.textContent = 'Code sent!';
       } catch (err) {
-        showError(mfaError, 'Failed to resend code. Please refresh and try again.');
+        console.error('Resend error:', err);
+        showError(mfaError, `Resend failed (${err.code || err.message}). Please refresh and try again.`);
         resendBtn.textContent = 'Resend Code';
       } finally {
         setTimeout(() => {

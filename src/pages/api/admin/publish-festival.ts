@@ -50,7 +50,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     );
 
-    await adminDb.collection('events').doc(shellId).set({
+    const batch = adminDb.batch();
+
+    batch.set(adminDb.collection('events').doc(shellId), {
       title:          shell.title,
       eventDate:      Timestamp.fromDate(new Date(shell.date + 'T' + timeToISO(shell.startTime))),
       eventTime:      shell.startTime,
@@ -68,11 +70,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       publishedAt:    FieldValue.serverTimestamp(),
     }, { merge: false });
 
-    await shellRef.update({
+    batch.update(shellRef, {
       status:      'published',
       publishedBy: publisher.email,
       publishedAt: FieldValue.serverTimestamp(),
     });
+
+    // Mark each assigned band application as published
+    for (const b of rawBands) {
+      if (b.bandId) {
+        batch.update(adminDb.collection('band_applications').doc(b.bandId), {
+          status: 'published',
+        });
+      }
+    }
+
+    await batch.commit();
 
     return new Response(JSON.stringify({ success: true, eventId: shellId }), { status: 200 });
   } catch (error) {

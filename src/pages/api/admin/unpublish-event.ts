@@ -49,6 +49,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         publishedAt: null,
         publishedBy: null,
       });
+      // Reset each assigned band application from 'published' back to 'assigned'
+      const festBands: any[] = shellData.bands || [];
+      for (const b of festBands) {
+        if (b.bandId) {
+          batch.update(adminDb.collection('band_applications').doc(b.bandId), {
+            status: 'assigned',
+          });
+        }
+      }
     } else if (collection === 'art_night_events') {
       // Reset to 'confirmed' — presenter assignment and confirmation are preserved
       batch.update(adminDb.collection('art_night_events').doc(shellId), {

@@ -10,29 +10,41 @@ const firebaseConfig = {
   projectId:  import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
 };
 
-// Fetch counts in parallel
-const [bandsSnap, programsSnap, eventsSnap] = await Promise.all([
+// Fetch all collections in parallel
+const [bandsSnap, programsSnap, eventsSnap, vendorsSnap, volunteersSnap, presentersSnap] = await Promise.all([
   adminDb.collection('band_applications').get(),
   adminDb.collection('program_submissions').get(),
   adminDb.collection('events').get(),
+  adminDb.collection('vendor_applications').get(),
+  adminDb.collection('volunteer_signups').get(),
+  adminDb.collection('art_class_submissions').get(),
 ]);
 
-const bands = bandsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-const programs = programsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const bands      = bandsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const programs   = programsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const vendors    = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const volunteers = volunteersSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const presenters = presentersSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
 const counts = {
-  bandsPending: bands.filter(b => !b.status || b.status === 'pending').length,
-  bandsApproved: bands.filter(b => b.status === 'approved').length,
-  bandsPublished: bands.filter(b => b.status === 'published').length,
-  programsPending: programs.filter(p => !p.status || p.status === 'pending').length,
-  eventsTotal: eventsSnap.size,
+  bandsPending:      bands.filter(b => !b.status || b.status === 'pending').length,
+  bandsApproved:     bands.filter(b => b.status === 'approved').length,
+  programsPending:   programs.filter(p => !p.status || p.status === 'pending').length,
+  eventsTotal:       eventsSnap.size,
+  vendorsPending:    vendors.filter(v => !v.status || v.status === 'pending').length,
+  vendorsApproved:   vendors.filter(v => v.status === 'approved').length,
+  volunteersNew:     volunteers.filter(v => !v.status || v.status === 'new').length,
+  presentersPending: presenters.filter(p => !p.status || p.status === 'pending').length,
 };
 
-// 5 most recent of each
+// 5 most recent of each for activity panels
 const recentBands = [...bands]
   .sort((a, b) => (b.submittedAt?.seconds ?? 0) - (a.submittedAt?.seconds ?? 0))
   .slice(0, 5);
-const recentPrograms = [...programs]
+const recentVendors = [...vendors]
+  .sort((a, b) => new Date(b.submitted_at ?? 0).getTime() - new Date(a.submitted_at ?? 0).getTime())
+  .slice(0, 5);
+const recentVolunteers = [...volunteers]
   .sort((a, b) => (b.submittedAt?.seconds ?? 0) - (a.submittedAt?.seconds ?? 0))
   .slice(0, 5);
 ---
@@ -42,21 +54,44 @@ const recentPrograms = [...programs]
     <h1>Dashboard</h1>
   </div>
 
+  <!-- ── Stat Cards ── -->
   <div class="stat-grid">
+    <!-- Applications needing a decision -->
     <div class="stat-card stat-warning">
       <div class="stat-number">{counts.bandsPending}</div>
       <div class="stat-label">Band Applications Pending</div>
       <a href="/admin/bands?filter=pending" class="stat-link">Review →</a>
     </div>
-    <div class="stat-card stat-success">
-      <div class="stat-number">{counts.bandsApproved}</div>
-      <div class="stat-label">Approved (ready to publish)</div>
-      <a href="/admin/bands?filter=approved" class="stat-link">Publish →</a>
+    <div class="stat-card stat-warning">
+      <div class="stat-number">{counts.vendorsPending}</div>
+      <div class="stat-label">Vendor Applications Pending</div>
+      <a href="/admin/vendors?filter=pending" class="stat-link">Review →</a>
     </div>
-    <div class="stat-card stat-info">
+    <div class="stat-card stat-warning">
+      <div class="stat-number">{counts.presentersPending}</div>
+      <div class="stat-label">Art Presenters Pending</div>
+      <a href="/admin/art-presenters?filter=pending" class="stat-link">Review →</a>
+    </div>
+    <div class="stat-card stat-warning">
       <div class="stat-number">{counts.programsPending}</div>
       <div class="stat-label">Program Proposals Pending</div>
       <a href="/admin/programs?filter=pending" class="stat-link">Review →</a>
+    </div>
+    <!-- Things approved that need a next step -->
+    <div class="stat-card stat-success">
+      <div class="stat-number">{counts.bandsApproved}</div>
+      <div class="stat-label">Bands Approved — Ready to Publish</div>
+      <a href="/admin/bands?filter=approved" class="stat-link">Publish →</a>
+    </div>
+    <div class="stat-card stat-success">
+      <div class="stat-number">{counts.vendorsApproved}</div>
+      <div class="stat-label">Vendors Approved — Awaiting Payment</div>
+      <a href="/admin/vendors?filter=approved" class="stat-link">Collect Payment →</a>
+    </div>
+    <div class="stat-card stat-info">
+      <div class="stat-number">{counts.volunteersNew}</div>
+      <div class="stat-label">New Volunteer Sign-Ups</div>
+      <a href="/admin/volunteers?filter=new" class="stat-link">Contact →</a>
     </div>
     <div class="stat-card stat-primary">
       <div class="stat-number">{counts.eventsTotal}</div>
@@ -65,6 +100,7 @@ const recentPrograms = [...programs]
     </div>
   </div>
 
+  <!-- ── Recent Activity ── -->
   <div class="recent-grid">
     <section class="recent-section">
       <div class="section-header">
@@ -76,11 +112,7 @@ const recentPrograms = [...programs]
       ) : (
         <table class="data-table">
           <thead>
-            <tr>
-              <th>Band</th>
-              <th>Genre</th>
-              <th>Status</th>
-            </tr>
+            <tr><th>Band</th><th>Genre</th><th>Status</th></tr>
           </thead>
           <tbody>
             {recentBands.map(b => (
@@ -97,26 +129,49 @@ const recentPrograms = [...programs]
 
     <section class="recent-section">
       <div class="section-header">
-        <h2>Recent Program Proposals</h2>
-        <a href="/admin/programs" class="link-sm">View all</a>
+        <h2>Recent Vendor Applications</h2>
+        <a href="/admin/vendors" class="link-sm">View all</a>
       </div>
-      {recentPrograms.length === 0 ? (
-        <p class="empty-msg">No proposals yet.</p>
+      {recentVendors.length === 0 ? (
+        <p class="empty-msg">No applications yet.</p>
       ) : (
         <table class="data-table">
           <thead>
-            <tr>
-              <th>Title</th>
-              <th>Contact</th>
-              <th>Status</th>
-            </tr>
+            <tr><th>Company</th><th>Type</th><th>Status</th></tr>
           </thead>
           <tbody>
-            {recentPrograms.map(p => (
+            {recentVendors.map(v => (
               <tr>
-                <td><a href={`/admin/programs#${p.id}`}>{p.program_title || p.title || '(untitled)'}</a></td>
-                <td>{p.contact_name}</td>
-                <td><span class={`badge badge-${p.status || 'pending'}`}>{p.status || 'pending'}</span></td>
+                <td><a href={`/admin/vendors#card-${v.id}`}>{v.company_name}</a></td>
+                <td style="font-size:12px;color:var(--muted)">{v.vendor_type}</td>
+                <td><span class={`badge badge-${v.status || 'pending'}`}>{v.status || 'pending'}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+
+    <section class="recent-section">
+      <div class="section-header">
+        <h2>Recent Volunteer Sign-Ups</h2>
+        <a href="/admin/volunteers" class="link-sm">View all</a>
+      </div>
+      {recentVolunteers.length === 0 ? (
+        <p class="empty-msg">No sign-ups yet.</p>
+      ) : (
+        <table class="data-table">
+          <thead>
+            <tr><th>Name</th><th>Interests</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {recentVolunteers.map(v => (
+              <tr>
+                <td><a href={`/admin/volunteers#${v.id}`}>{v.fullName}</a></td>
+                <td style="font-size:12px;color:var(--muted)">
+                  {Array.isArray(v.interests) ? v.interests.slice(0,2).join(', ') + (v.interests.length > 2 ? '…' : '') : '—'}
+                </td>
+                <td><span class={`badge badge-${v.status || 'new'}`}>{v.status || 'new'}</span></td>
               </tr>
             ))}
           </tbody>

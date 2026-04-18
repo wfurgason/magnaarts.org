@@ -227,8 +227,9 @@ body {
 .stat-link:hover { text-decoration: underline; }
 
 /* ── Recent Grid ───────────────────────────── */
-.recent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-@media (max-width: 900px) { .recent-grid { grid-template-columns: 1fr; } }
+.recent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+@media (max-width: 1100px) { .recent-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px) { .recent-grid { grid-template-columns: 1fr; } }
 
 .recent-section {
   background: var(--admin-surface); border-radius: var(--admin-radius);

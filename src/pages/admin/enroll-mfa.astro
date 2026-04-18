@@ -17,7 +17,7 @@ const firebaseConfig = {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
   <!-- QR code generation (client-side, no secrets leave the browser) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <style>
     .enroll-steps {
       margin: 1.25rem 0 0;
@@ -183,14 +183,18 @@ const firebaseConfig = {
 
         const { otpauthUri } = await enrollRes.json();
 
-        // Generate QR code into #qr-container using qrcodejs (loaded from CDN)
-        new window.QRCode(document.getElementById('qr-container'), {
-          text:       otpauthUri,
-          width:      240,
-          height:     240,
-          colorDark:  '#000000',
-          colorLight: '#ffffff',
+        // Generate QR code using the qrcode browser build (loaded from CDN)
+        const qrDataUrl = await window.QRCode.toDataURL(otpauthUri, {
+          errorCorrectionLevel: 'M',
+          width:  240,
+          margin: 2,
         });
+        const qrImg = document.createElement('img');
+        qrImg.src = qrDataUrl;
+        qrImg.alt = 'TOTP QR Code';
+        qrImg.width  = 240;
+        qrImg.height = 240;
+        document.getElementById('qr-container').appendChild(qrImg);
 
         manualKey.textContent = extractSecret(otpauthUri);
 

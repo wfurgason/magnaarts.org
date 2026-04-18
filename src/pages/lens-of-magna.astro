@@ -23,6 +23,16 @@ import '../styles/global.css';
         />
     </section>
 
+    <!-- ── PAST WINNERS NAV ── -->
+    <nav class="lmm-past-nav" aria-label="Past winners">
+      <div class="lmm-past-nav-inner">
+        <span class="lmm-past-label">Past Winners</span>
+        <a href="https://www.lensofmagna.com/2023-winners" target="_blank" rel="noopener noreferrer" class="lmm-past-link">2023</a>
+        <a href="https://www.lensofmagna.com/2024-winners" target="_blank" rel="noopener noreferrer" class="lmm-past-link">2024</a>
+        <a href="https://www.lensofmagna.com/2025-winners" target="_blank" rel="noopener noreferrer" class="lmm-past-link">2025</a>
+      </div>
+    </nav>
+
     <!-- ── WINNERS ── -->
     <section class="section lmm-winners">
       <div class="container">
@@ -379,6 +389,49 @@ import '../styles/global.css';
 </BaseLayout>
 
 <style>
+  /* ── PAST WINNERS NAV ── */
+  .lmm-past-nav {
+    background: var(--navy-dk);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .lmm-past-nav-inner {
+    max-width: var(--container-width, 1140px);
+    margin: 0 auto;
+    padding: 0 var(--container-pad, 24px);
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  .lmm-past-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    padding: 14px 20px 14px 0;
+    border-right: 1px solid rgba(255,255,255,0.12);
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+
+  .lmm-past-link {
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.65);
+    padding: 14px 20px;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .lmm-past-link:hover {
+    color: var(--gold-lt);
+    border-bottom-color: var(--gold);
+  }
+
   /* ── HERO ── */
   .lmm-hero {
     position: relative;

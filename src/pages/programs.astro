@@ -145,6 +145,29 @@ const programs = [
     link: '/events',
     linkLabel: 'See Upcoming Events →',
   },
+  {
+    id: 'lens-of-magna',
+    icon: '📸',
+    color: 'gold',
+    navLabel: 'Photo Contest',
+    title: 'Lens of Magna',
+    tagline: 'Annual · Spring · Free to Enter · $2,875 in Prizes',
+    image: '/images/lens-of-magna/lmm-postcard-flyer.jpg',
+    body: [
+      'The Lens of Magna Main Street Photography Contest invites youth, hobbyists, and professionals to turn their cameras on one of our community\'s most iconic corridors.',
+      'Each spring photographers compete across three categories — Youth, Amateur, and Professional — with cash prizes awarded by a panel of judges plus a community-voted People\'s Choice award in each category.',
+      'With 104 entries in 2026, the contest has quickly become one of Magna\'s most celebrated community arts events. Presented in partnership with Magna City, the Salt Lake County Library, and Zoo Arts & Parks.',
+    ],
+    details: [
+      { label: 'Exhibition', value: 'Magna Library, 2675 S 8950 W', mapAddress: 'Magna Library, 2675 S 8950 W, Magna, UT 84044' },
+      { label: 'When', value: 'Annual — Spring' },
+      { label: 'Entry Fee', value: 'Free' },
+      { label: 'Prize Pool', value: '$2,875 in cash prizes' },
+      { label: 'Categories', value: 'Youth · Amateur · Professional' },
+    ],
+    link: '/lens-of-magna',
+    linkLabel: '2026 Winners & People\'s Choice Voting →',
+  },
 ];
 ---
 
@@ -516,6 +539,7 @@ const programs = [
   .pnav-red:hover    { color: var(--red);    border-color: var(--red); }
   .pnav-teal:hover   { color: var(--teal);   border-color: var(--teal); }
   .pnav-purple:hover { color: var(--purple); border-color: var(--purple); }
+  .pnav-gold:hover   { color: var(--amber);  border-color: var(--amber); }
 
   /* ── PROGRAM SECTIONS ── */
   .section-cream { background: var(--cream); }
@@ -547,6 +571,7 @@ const programs = [
   .label-red    { color: var(--red); }
   .label-teal  { color: var(--teal); }
   .label-purple { color: var(--purple); }
+  .label-gold   { color: var(--amber); }
 
   .program-tagline {
     font-size: 13px;
@@ -580,6 +605,7 @@ const programs = [
   .link-red    { color: var(--red); }
   .link-teal   { color: var(--teal); }
   .link-purple { color: var(--purple); }
+  .link-gold   { color: var(--amber); }
   .program-link:hover { gap: 10px; }
 
   /* Sidebar */
@@ -616,6 +642,7 @@ const programs = [
   .card-red    { border-top: 3px solid var(--red); }
   .card-teal   { border-top: 3px solid var(--teal); }
   .card-purple { border-top: 3px solid var(--purple); }
+  .card-gold   { border-top: 3px solid var(--gold); }
 
   .details-card h3 {
     font-family: var(--font-display);

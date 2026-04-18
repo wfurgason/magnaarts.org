@@ -53,11 +53,18 @@ const firebaseConfig = {
     </form>
 
     <!-- Step 2: TOTP verification (shown after password succeeds for enrolled accounts) -->
-    <div id="totp-form" hidden>
+    <div id="totp-panel" hidden>
       <p class="mfa-hint">Enter the 6-digit code from your authenticator app.</p>
       <div class="field-group">
         <label for="totp-code">Authenticator Code</label>
-        <input type="text" id="totp-code" name="totp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" />
+        <input
+          type="text"
+          id="totp-code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          placeholder="000000"
+        />
       </div>
       <div id="totp-error" class="error-msg" hidden></div>
       <button type="button" class="btn btn-primary btn-full" id="totp-btn">
@@ -67,7 +74,7 @@ const firebaseConfig = {
   </div>
 
   <script type="module" define:vars={{ firebaseConfig }}>
-    import { initializeApp }           from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { initializeApp }                   from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
 
     const app  = initializeApp(firebaseConfig);
@@ -76,6 +83,13 @@ const firebaseConfig = {
     const loginForm  = document.getElementById('login-form');
     const loginError = document.getElementById('login-error');
     const loginBtn   = document.getElementById('login-btn');
+    const totpPanel  = document.getElementById('totp-panel');
+    const totpInput  = document.getElementById('totp-code');
+    const totpError  = document.getElementById('totp-error');
+    const totpBtn    = document.getElementById('totp-btn');
+
+    // Holds the Firebase user across the two-step flow
+    let pendingUser = null;
 
     function showError(el, msg) {
       el.textContent = msg;
@@ -83,10 +97,13 @@ const firebaseConfig = {
     }
 
     function setLoading(btn, loading, defaultLabel) {
-      btn.disabled = loading;
+      btn.disabled    = loading;
       btn.textContent = loading ? 'Please wait…' : defaultLabel;
     }
 
+    // -------------------------------------------------------------------------
+    // Step 1: Email / password
+    // -------------------------------------------------------------------------
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       loginError.hidden = true;
@@ -97,20 +114,32 @@ const firebaseConfig = {
 
       try {
         const cred    = await signInWithEmailAndPassword(auth, email, password);
-        const idToken = await cred.user.getIdToken();
+        pendingUser   = cred.user;
+        const idToken = await pendingUser.getIdToken();
 
-        // Check TOTP enrollment via session API — TOTP layer added in next phase
-        const res = await fetch('/api/auth/session', {
+        // Check whether this user has completed TOTP enrollment
+        const statusRes = await fetch('/api/admin/totp-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
         });
 
-        if (res.ok) {
-          window.location.href = '/admin/dashboard';
-        } else {
-          throw new Error('Session creation failed');
+        if (!statusRes.ok) throw new Error('Status check failed');
+
+        const { enrolled } = await statusRes.json();
+
+        if (!enrolled) {
+          // Send to enrollment flow
+          window.location.href = '/admin/enroll-mfa';
+          return;
         }
+
+        // Show the TOTP panel
+        loginForm.hidden    = true;
+        totpPanel.hidden    = false;
+        totpInput.focus();
+        setLoading(loginBtn, false, 'Sign In');
+
       } catch (err) {
         const msg =
           err.code === 'auth/invalid-credential'  ? 'Invalid email or password.' :
@@ -120,6 +149,48 @@ const firebaseConfig = {
         showError(loginError, msg);
         setLoading(loginBtn, false, 'Sign In');
       }
+    });
+
+    // -------------------------------------------------------------------------
+    // Step 2: TOTP verification
+    // -------------------------------------------------------------------------
+    async function submitTotp() {
+      totpError.hidden = true;
+      const code = totpInput.value.trim();
+
+      if (!/^\d{6}$/.test(code)) {
+        showError(totpError, 'Please enter a 6-digit code.');
+        return;
+      }
+
+      setLoading(totpBtn, true, 'Verify');
+
+      try {
+        // Re-fetch token in case it has rotated since Step 1
+        const idToken   = await pendingUser.getIdToken();
+        const verifyRes = await fetch('/api/admin/totp-verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken, code }),
+        });
+
+        if (verifyRes.ok) {
+          window.location.href = '/admin/dashboard';
+        } else {
+          const { error } = await verifyRes.json();
+          showError(totpError, error ?? 'Invalid code. Please try again.');
+          setLoading(totpBtn, false, 'Verify');
+        }
+      } catch {
+        showError(totpError, 'Something went wrong. Please try again.');
+        setLoading(totpBtn, false, 'Verify');
+      }
+    }
+
+    totpBtn.addEventListener('click', submitTotp);
+
+    totpInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitTotp();
     });
   </script>
 </body>

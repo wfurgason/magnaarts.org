@@ -16,11 +16,7 @@
     "astro": "^6.0.8",
     "firebase": "^12.11.0",
     "firebase-admin": "^13.7.0",
-    "otplib": "^13.4.0",
-    "qrcode": "^1.5.4",
     "resend": "^6.10.0"
   },
-  "devDependencies": {
-    "@types/qrcode": "^1.5.6"
-  }
+  "devDependencies": {}
 }

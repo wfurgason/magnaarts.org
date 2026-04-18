@@ -16,6 +16,8 @@ const firebaseConfig = {
   <title>Set Up Two-Factor Authentication — Magna Arts</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <!-- QR code generation (client-side, no secrets leave the browser) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     .enroll-steps {
       margin: 1.25rem 0 0;
@@ -77,7 +79,7 @@ const firebaseConfig = {
         <div class="enroll-step">
           <p><strong>Step 1.</strong> Open your authenticator app (Google Authenticator, Authy, 1Password, etc.) and scan this QR code.</p>
           <div class="qr-wrapper">
-            <img id="qr-img" src="" alt="TOTP QR Code" width="240" height="240" />
+            <div id="qr-container"></div>
           </div>
           <p style="font-size:0.8rem;color:#888;margin:0;">Can't scan? Enter this key manually:</p>
           <div class="manual-key" id="manual-key"></div>
@@ -121,7 +123,7 @@ const firebaseConfig = {
     const loadingState = document.getElementById('loading-state');
     const enrollUi     = document.getElementById('enroll-ui');
     const errorState   = document.getElementById('error-state');
-    const qrImg        = document.getElementById('qr-img');
+    // qr-img removed; QR is now rendered into #qr-container by qrcodejs
     const manualKey    = document.getElementById('manual-key');
     const confirmBtn   = document.getElementById('confirm-btn');
     const enrollError  = document.getElementById('enroll-error');
@@ -179,9 +181,17 @@ const firebaseConfig = {
 
         if (!enrollRes.ok) throw new Error('Enroll request failed');
 
-        const { qrDataUrl, otpauthUri } = await enrollRes.json();
+        const { otpauthUri } = await enrollRes.json();
 
-        qrImg.src          = qrDataUrl;
+        // Generate QR code into #qr-container using qrcodejs (loaded from CDN)
+        new window.QRCode(document.getElementById('qr-container'), {
+          text:       otpauthUri,
+          width:      240,
+          height:     240,
+          colorDark:  '#000000',
+          colorLight: '#ffffff',
+        });
+
         manualKey.textContent = extractSecret(otpauthUri);
 
         loadingState.hidden = true;

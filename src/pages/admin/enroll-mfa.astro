@@ -16,8 +16,7 @@ const firebaseConfig = {
   <title>Set Up Two-Factor Authentication — Magna Arts</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
-  <!-- QR code generation (client-side, no secrets leave the browser) -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <!-- QR code generation via ESM import — no CDN script tag needed -->
   <style>
     .enroll-steps {
       margin: 1.25rem 0 0;
@@ -115,6 +114,7 @@ const firebaseConfig = {
   </div>
 
   <script type="module" define:vars={{ firebaseConfig }}>
+    import QRCode from 'https://esm.sh/qrcode@1.5.4';
     import { initializeApp }          from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
 
@@ -184,7 +184,7 @@ const firebaseConfig = {
         const { otpauthUri } = await enrollRes.json();
 
         // Generate QR code using the qrcode browser build (loaded from CDN)
-        const qrDataUrl = await window.QRCode.toDataURL(otpauthUri, {
+        const qrDataUrl = await QRCode.toDataURL(otpauthUri, {
           errorCorrectionLevel: 'M',
           width:  240,
           margin: 2,

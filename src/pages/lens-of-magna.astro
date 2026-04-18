@@ -349,6 +349,14 @@ import '../styles/global.css';
     <!-- ── CTA ── -->
     <section class="lmm-cta-banner">
       <div class="container lmm-cta-inner reveal">
+        <figure class="lmm-cta-figure">
+          <img
+            src="/images/lens-of-magna/RachelSabin.png"
+            alt="Rachel Sabin - Founder"
+            class="lmm-cta-photo"
+          />
+          <figcaption class="lmm-cta-caption">Rachel Sabin — Founder</figcaption>
+        </figure>
         <div>
           <h2>Thank You, Magna!</h2>
           <p>
@@ -793,6 +801,27 @@ import '../styles/global.css';
     gap: 40px;
   }
 
+  .lmm-cta-figure {
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .lmm-cta-photo {
+    width: 280px;
+    flex-shrink: 0;
+    border-radius: var(--radius);
+    object-fit: cover;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  }
+
+  .lmm-cta-caption {
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 0.04em;
+  }
+
   .lmm-cta-inner h2 {
     font-family: var(--font-display);
     font-size: 36px;
@@ -1056,6 +1085,7 @@ import '../styles/global.css';
     .lmm-exhibit-inner { grid-template-columns: 1fr; }
     .exhibit-flyer-wrap { order: -1; max-width: 480px; }
     .lmm-cta-inner { flex-direction: column; align-items: flex-start; }
+    .lmm-cta-photo { width: 100%; max-width: 400px; }
   }
 
   @media (max-width: 600px) {

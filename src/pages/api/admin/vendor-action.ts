@@ -66,10 +66,12 @@ function approvalEmail(opts: {
   companyName: string;
   vendorType: string;
   total: number;
+  electricity: string;
+  water: string;
   locationRequest?: string;
   siteUrl: string;
 }): string {
-  const { contactName, companyName, vendorType, total, locationRequest, siteUrl } = opts;
+  const { contactName, companyName, vendorType, total, electricity, water, locationRequest, siteUrl } = opts;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -94,11 +96,31 @@ function approvalEmail(opts: {
           </p>
 
           <!-- Fee box -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1.5px solid#fde68a;border-radius:10px;margin:0 0 28px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;margin:0 0 28px;">
             <tr><td style="padding:24px;">
-              <div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#92400e;margin-bottom:12px;">Your Booth Fee</div>
-              <div style="font-size:32px;font-weight:900;color:#c87e0a;margin-bottom:4px;">$${total}</div>
-              <div style="font-size:13px;color:#78350f;">Payment confirms your space. <strong>Space numbers are assigned after payment is received.</strong></div>
+              <div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#92400e;margin-bottom:16px;">Your Booth Fee</div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                <tr>
+                  <td style="padding:6px 0;font-size:14px;color:#78350f;">Booth Space (10&times;10 ft)</td>
+                  <td style="padding:6px 0;font-size:14px;color:#78350f;text-align:right;">${BASE_FEES[vendorType] ?? 0}</td>
+                </tr>
+                ${electricity === 'yes' ? `<tr>
+                  <td style="padding:6px 0;font-size:14px;color:#78350f;">Electricity</td>
+                  <td style="padding:6px 0;font-size:14px;color:#78350f;text-align:right;">$10</td>
+                </tr>` : ''}
+                ${water === 'yes' ? `<tr>
+                  <td style="padding:6px 0;font-size:14px;color:#78350f;">Water</td>
+                  <td style="padding:6px 0;font-size:14px;color:#78350f;text-align:right;">$10</td>
+                </tr>` : ''}
+                <tr>
+                  <td colspan="2" style="border-top:1.5px solid #fde68a;padding-top:10px;margin-top:6px;"></td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0;font-size:16px;font-weight:700;color:#92400e;">Total Due</td>
+                  <td style="padding:4px 0;font-size:22px;font-weight:900;color:#c87e0a;text-align:right;">${total}</td>
+                </tr>
+              </table>
+              <div style="font-size:12px;color:#78350f;margin-top:12px;">Payment confirms your space. <strong>Space numbers are assigned after payment is received.</strong></div>
             </td></tr>
           </table>
 
@@ -321,6 +343,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           companyName:     vendor.company_name,
           vendorType:      vendor.vendor_type,
           total,
+          electricity:     vendor.needs_electricity,
+          water:           vendor.needs_water,
           locationRequest: vendor.location_request || undefined,
           siteUrl,
         }),

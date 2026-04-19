@@ -79,7 +79,7 @@ function approvalEmail(opts: {
         <tr><td style="padding:40px;">
           <p style="margin:0 0 20px;font-size:16px;color:#1a2456;line-height:1.6;">Hi <strong>${contactName}</strong>,</p>
           <p style="margin:0 0 20px;font-size:15px;color:#5a5a7a;line-height:1.65;">
-            Great news — the festival committee has approved <strong>${companyName}</strong> as a <strong>${vendorType}</strong> at the Magna Main Street Arts Festival on <strong>Friday, August 15, 2025</strong>.
+            Great news — the festival committee has approved <strong>${companyName}</strong> as a <strong>${vendorType}</strong> at the Magna Main Street Arts Festival on <strong>Friday, August 15, 2026</strong>.
           </p>
 
           <!-- Fee box -->
@@ -131,7 +131,7 @@ function approvalEmail(opts: {
             </div>
           </div>
 
-          <p style="margin:0;font-size:15px;color:#5a5a7a;line-height:1.65;">We're excited to have you at the festival. See you on August 15th! 🎨</p>
+          <p style="margin:0;font-size:15px;color:#5a5a7a;line-height:1.65;">We're excited to have you at the festival. See you on August 15th, 2026! 🎨</p>
 
         </td></tr>
 
@@ -203,7 +203,7 @@ function paidConfirmationEmail(opts: {
                 </tr>
                 <tr>
                   <td style="padding:6px 0;font-size:14px;color:#5a5a7a;">📅 Date</td>
-                  <td style="padding:6px 0;font-size:14px;color:#1a2456;font-weight:600;">Friday, August 15, 2025</td>
+                  <td style="padding:6px 0;font-size:14px;color:#1a2456;font-weight:600;">Friday, August 15, 2026</td>
                 </tr>
                 <tr>
                   <td style="padding:6px 0;font-size:14px;color:#5a5a7a;">⏰ Hours</td>
@@ -232,7 +232,7 @@ function paidConfirmationEmail(opts: {
           <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
             <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;">⚠️ Important Reminders</div>
             <ul style="margin:0;padding-left:18px;font-size:13px;color:#78350f;line-height:1.8;">
-              <li>No vehicles on the street after 10:00 AM or before 7:00 PM</li>
+              <li>No vehicles on the street after 10:00 AM or before 6:00 PM</li>
               <li>Bring your own booth materials — awning, tables, chairs, displays, and signage</li>
               <li>All products must comply with local laws; counterfeit merchandise is prohibited</li>
               <li>Booth must remain open and staffed for the full duration of the festival</li>

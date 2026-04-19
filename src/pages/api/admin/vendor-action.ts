@@ -313,7 +313,7 @@ function paidConfirmationEmail(opts: {
     </td></tr>
   </table>
 </body>
-</html>`;
+</html>`);
 }
 
 // ── API Route ──────────────────────────────────────────────────────────────

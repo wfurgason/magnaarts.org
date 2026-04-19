@@ -185,7 +185,7 @@ function approvalEmail(opts: {
     </td></tr>
   </table>
 </body>
-</html>`);
+</html>`;
 }
 
 function minifyHtml(html: string): string {

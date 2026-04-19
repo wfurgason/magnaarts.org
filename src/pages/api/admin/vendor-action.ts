@@ -22,6 +22,7 @@ async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
+  attachments?: { filename: string; content: string }[];
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = import.meta.env.RESEND_API_KEY;
   const from   = import.meta.env.RESEND_FROM || 'Magna Arts Festival <festival@magnaarts.org>';
@@ -41,7 +42,13 @@ async function sendEmail(opts: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ from, to: opts.to, subject: opts.subject, html: opts.html }),
+      body: JSON.stringify({
+        from,
+        to: opts.to,
+        subject: opts.subject,
+        html: opts.html,
+        ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
+      }),
     });
 
     const body = await res.text();
@@ -56,6 +63,22 @@ async function sendEmail(opts: {
     const msg = `sendEmail fetch threw: ${err?.message ?? err}`;
     console.error('[vendor-action]', msg);
     return { ok: false, error: msg };
+  }
+}
+
+// Fetch a public static asset and return it as a base64 string for Resend attachments.
+async function fetchAsBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn('[vendor-action] Could not fetch attachment:', url, res.status);
+      return null;
+    }
+    const buffer = await res.arrayBuffer();
+    return Buffer.from(buffer).toString('base64');
+  } catch (err) {
+    console.warn('[vendor-action] fetchAsBase64 error for', url, err);
+    return null;
   }
 }
 
@@ -244,6 +267,15 @@ function paidConfirmationEmail(opts: {
             </td></tr>
           </table>
 
+          <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
+            <div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:6px;">📎 Attachments Included</div>
+            <ul style="margin:0;padding-left:18px;font-size:13px;color:#1e3a8a;line-height:1.8;">
+              <li><b>Vendor Info Sheet</b> — key reminders, timeline, and directions to your booth</li>
+              <li><b>Festival Map</b> — booth layout for all spaces along Magna Main Street</li>
+              <li><b>Festival Flyer</b> — share it with your customers and followers!</li>
+            </ul>
+          </div>
+
           <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
             <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;">⚠️ Important Reminders</div>
             <ul style="margin:0;padding-left:18px;font-size:13px;color:#78350f;line-height:1.8;">
@@ -396,6 +428,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         paidAt:        FieldValue.serverTimestamp(),
       });
 
+      // Fetch festival attachments in parallel — failures are non-fatal
+      const [infoBase64, mapBase64, flyerBase64] = await Promise.all([
+        fetchAsBase64(`${siteUrl}/downloads/festival/vendor-info-sheet.pdf`),
+        fetchAsBase64(`${siteUrl}/downloads/festival/festival-map.pdf`),
+        fetchAsBase64(`${siteUrl}/downloads/festival/festival-flyer.png`),
+      ]);
+
+      const attachments: { filename: string; content: string }[] = [];
+      if (infoBase64)  attachments.push({ filename: 'Vendor-Info-Sheet.pdf',      content: infoBase64 });
+      if (mapBase64)   attachments.push({ filename: 'Festival-Map.pdf',            content: mapBase64 });
+      if (flyerBase64) attachments.push({ filename: 'Festival-Flyer-2026.png',    content: flyerBase64 });
+
       await sendEmail({
         to:      vendor.email,
         subject: `✅ Payment Confirmed — Space ${spaceNumber} — ${vendor.company_name}`,
@@ -408,6 +452,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           needsWater:       vendor.needs_water,
           siteUrl,
         }),
+        attachments,
       });
 
       return new Response(JSON.stringify({ success: true }), { status: 200 });

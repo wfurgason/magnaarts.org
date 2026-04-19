@@ -283,11 +283,13 @@ function paidConfirmationEmail(opts: {
               <li>Bring your own booth materials — awning, tables, chairs, displays, and signage</li>
               <li>All products must comply with local laws; counterfeit merchandise is prohibited</li>
               <li>Booth must remain open and staffed for the full duration of the festival</li>
+              <li>Please share the attached flyer on your socials — help us spread the word!</li>
             </ul>
           </div>
 
           <p style="margin:0 0 8px;font-size:15px;color:#5a5a7a;line-height:1.65;">Questions? Reach us at <a href="mailto:magnaartsfestival@gmail.com" style="color:#c87e0a;font-weight:600;">magnaartsfestival@gmail.com</a></p>
-          <p style="margin:0;font-size:15px;color:#5a5a7a;line-height:1.65;">Can't wait to see you there! 🎨🎶</p>
+          <p style="margin:0 0 4px;font-size:15px;color:#5a5a7a;line-height:1.65;">Can't wait to see you there! 🎨🎶</p>
+          <p style="margin:0;font-size:14px;color:#5a5a7a;line-height:1.65;"><em>~Tammy Furgason, Festival Coordinator</em></p>
 
         </td></tr>
 

@@ -22,27 +22,40 @@ async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
-}) {
+}): Promise<{ ok: boolean; error?: string }> {
   const apiKey = import.meta.env.RESEND_API_KEY;
   const from   = import.meta.env.RESEND_FROM || 'Magna Arts Festival <festival@magnaarts.org>';
 
+  console.log('[vendor-action] sendEmail called — to:', opts.to, '| from:', from, '| key set:', !!apiKey);
+
   if (!apiKey || apiKey === 're_your_key_here') {
-    console.warn('[vendor-action] RESEND_API_KEY not configured — email skipped');
-    return;
+    const msg = 'RESEND_API_KEY not configured — email skipped';
+    console.warn('[vendor-action]', msg);
+    return { ok: false, error: msg };
   }
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ from, to: opts.to, subject: opts.subject, html: opts.html }),
-  });
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from, to: opts.to, subject: opts.subject, html: opts.html }),
+    });
 
-  if (!res.ok) {
     const body = await res.text();
-    console.error('[vendor-action] Resend error:', res.status, body);
+    console.log('[vendor-action] Resend response:', res.status, body);
+
+    if (!res.ok) {
+      return { ok: false, error: `Resend ${res.status}: ${body}` };
+    }
+
+    return { ok: true };
+  } catch (err: any) {
+    const msg = `sendEmail fetch threw: ${err?.message ?? err}`;
+    console.error('[vendor-action]', msg);
+    return { ok: false, error: msg };
   }
 }
 
@@ -54,11 +67,9 @@ function approvalEmail(opts: {
   vendorType: string;
   total: number;
   locationRequest?: string;
-  paypalLink: string;
-  venmoHandle: string;
   siteUrl: string;
 }): string {
-  const { contactName, companyName, vendorType, total, locationRequest, paypalLink, venmoHandle, siteUrl } = opts;
+  const { contactName, companyName, vendorType, total, locationRequest, siteUrl } = opts;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -91,26 +102,6 @@ function approvalEmail(opts: {
             </td></tr>
           </table>
 
-          <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;color:#1a2456;">How to Pay</h2>
-          <p style="margin:0 0 16px;font-size:15px;color:#5a5a7a;line-height:1.65;">Please pay your booth fee using one of the options below. Include <strong>"${companyName} – Vendor Fee"</strong> in the payment notes.</p>
-
-          <!-- Payment buttons -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-            <tr>
-              <td width="48%" style="padding-right:8px;">
-                <a href="${paypalLink}/${total}" style="display:block;background:#0070ba;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;text-align:center;font-weight:700;font-size:15px;">
-                  💳 Pay via PayPal<br><span style="font-size:12px;font-weight:400;opacity:0.85;">$${total}</span>
-                </a>
-              </td>
-              <td width="4%"></td>
-              <td width="48%">
-                <a href="https://venmo.com/${venmoHandle.replace('@','')}" style="display:block;background:#3d95ce;color:#ffffff;text-decoration:none;padding:14px 20px;border-radius:8px;text-align:center;font-weight:700;font-size:15px;">
-                  📱 Pay via Venmo<br><span style="font-size:12px;font-weight:400;opacity:0.85;">${venmoHandle}</span>
-                </a>
-              </td>
-            </tr>
-          </table>
-
           ${locationRequest ? `
           <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
             <div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#1e40af;margin-bottom:6px;">Your Space Request</div>
@@ -119,15 +110,17 @@ function approvalEmail(opts: {
           </div>` : ''}
 
           <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:#1a2456;">What Happens Next</h2>
-          <ol style="margin:0 0 28px;padding-left:20px;color:#5a5a7a;font-size:15px;line-height:1.8;">
-            <li>Submit your payment using one of the links above</li>
-            <li>Our team verifies the payment (usually within 2 business days)</li>
-            <li>You'll receive a confirmation email with your <strong>assigned space number</strong> and setup details</li>
+          <ol style="margin:0 0 16px;padding-left:20px;color:#5a5a7a;font-size:15px;line-height:1.8;">
+            <li>You will receive an invoice from <strong>service@paypal.com</strong>. Please select the <strong>&ldquo;View Your Invoice&rdquo;</strong> button to pay your festival fees.</li>
+            <li>Once we have verified your payment you&rsquo;ll receive a confirmation email with your <strong>assigned space number</strong> and setup details.</li>
           </ol>
+          <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:8px;padding:14px 18px;margin:0 0 28px;font-size:13px;color:#9a3412;line-height:1.7;">
+            <strong>⚠️ Important:</strong> Please pay your invoice as soon as possible to secure your booth space. No spaces will be assigned until fees are paid. If all spaces are filled, any approved vendors with unpaid fees will not be able to attend.
+          </div>
 
           <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:0 0 28px;">
             <div style="font-size:14px;color:#166534;line-height:1.6;">
-              <strong>Questions?</strong> Email us at <a href="mailto:magnaartsfestival@gmail.com" style="color:#16a34a;">magnaartsfestival@gmail.com</a>
+              <strong>Questions?</strong> Email us at <a href="mailto:festival@magnaarts.org" style="color:#16a34a;">festival@magnaarts.org</a>
             </div>
           </div>
 
@@ -304,7 +297,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
       const total = calcTotal(vendor.vendor_type, vendor.needs_electricity, vendor.needs_water);
 
-      await sendEmail({
+      const emailResult = await sendEmail({
         to:      vendor.email,
         subject: `✓ Your Vendor Application is Approved — ${vendor.company_name}`,
         html:    approvalEmail({
@@ -313,11 +306,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           vendorType:      vendor.vendor_type,
           total,
           locationRequest: vendor.location_request || undefined,
-          paypalLink,
-          venmoHandle:     venmo,
           siteUrl,
         }),
       });
+
+      if (!emailResult.ok) {
+        return new Response(JSON.stringify({
+          success: true,
+          emailError: emailResult.error,
+        }), { status: 200 });
+      }
 
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }

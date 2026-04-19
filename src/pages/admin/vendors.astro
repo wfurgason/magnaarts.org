@@ -419,6 +419,10 @@ function calcTotal(v: Vendor): number {
         });
 
         if (res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (json.emailError) {
+            alert(`⚠️ Status updated, but email failed to send:\n\n${json.emailError}\n\nCheck the server logs for more detail.`);
+          }
           window.location.reload();
         } else {
           const json = await res.json().catch(() => ({}));

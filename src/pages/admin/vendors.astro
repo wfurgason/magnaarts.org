@@ -215,8 +215,8 @@ function calcTotal(v: Vendor): number {
                   <button class="btn btn-paid" data-action="open-paid-modal" data-id={v.id} data-company={v.company_name} data-total={total}>
                     💳 Mark as Paid &amp; Assign Space
                   </button>
-                  <button class="btn btn-muted" data-action="reject" data-id={v.id} data-company={v.company_name}>
-                    Revoke
+                  <button class="btn btn-muted" data-action="unapprove" data-id={v.id} data-company={v.company_name}>
+                    Undo Approval
                   </button>
                 </>
               )}
@@ -358,7 +358,7 @@ function calcTotal(v: Vendor): number {
           return;
         }
 
-        const label = action === 'approve' ? 'approved' : 'rejected';
+        const label = action === 'approve' ? 'approved' : action === 'unapprove' ? 'moved back to pending' : 'rejected';
         if (!confirm(`Set "${company}" to "${label}"?`)) return;
 
         el.disabled    = true;

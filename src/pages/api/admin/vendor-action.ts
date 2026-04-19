@@ -278,7 +278,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await request.json();
     const { action, id } = body;
 
-    if (!['approve', 'reject', 'mark-paid', 'delete'].includes(action)) {
+    if (!['approve', 'unapprove', 'reject', 'mark-paid', 'delete'].includes(action)) {
       return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400 });
     }
 
@@ -319,6 +319,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }),
       });
 
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }
+
+    // ── UNAPPROVE ────────────────────────────────────────────────────────────
+    if (action === 'unapprove') {
+      await docRef.update({
+        status:     'pending',
+        reviewedBy: null,
+        reviewedAt: null,
+      });
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }
 

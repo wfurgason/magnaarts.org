@@ -327,7 +327,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   let reviewer: import('firebase-admin/auth').DecodedIdToken;
   try {
     reviewer = await adminAuth.verifySessionCookie(sessionCookie, true);
-  } catch {
+  } catch (_e) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 

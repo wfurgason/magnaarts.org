@@ -185,7 +185,15 @@ function approvalEmail(opts: {
     </td></tr>
   </table>
 </body>
-</html>`;
+</html>`);
+}
+
+function minifyHtml(html: string): string {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, '')   // strip comments
+    .replace(/>\s+</g, '><')            // remove whitespace between tags
+    .replace(/\s{2,}/g, ' ')            // collapse runs of spaces
+    .trim();
 }
 
 function paidConfirmationEmail(opts: {
@@ -199,9 +207,9 @@ function paidConfirmationEmail(opts: {
 }): string {
   const { contactName, companyName, spaceNumber, vendorType, needsElectricity, needsWater, siteUrl } = opts;
 
-  return `<!DOCTYPE html>
+  return minifyHtml(`<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment Confirmed — You're All Set!</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment Confirmed</title></head>
 <body style="margin:0;padding:0;background:#f7f5f0;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5f0;padding:40px 20px;">
     <tr><td align="center">

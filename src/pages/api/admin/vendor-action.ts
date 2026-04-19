@@ -271,7 +271,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await request.json();
     const { action, id } = body;
 
-    if (!['approve', 'unapprove', 'reject', 'mark-paid', 'delete'].includes(action)) {
+    if (!['approve', 'unapprove', 'reject', 'mark-paid', 'edit', 'delete'].includes(action)) {
       return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400 });
     }
 
@@ -286,6 +286,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const siteUrl    = import.meta.env.SITE_URL || 'https://magnaarts.org';
     const paypalLink = import.meta.env.PAYPAL_ME_LINK || 'https://paypal.me/MagnaArtsFestival';
     const venmo      = import.meta.env.VENMO_HANDLE || '@MagnaArtsFestival';
+
+    // ── EDIT ───────────────────────────────────────────────────────────
+    if (action === 'edit') {
+      const { vendorType, needsElectricity, needsWater } = body;
+      if (!vendorType) {
+        return new Response(JSON.stringify({ error: 'Vendor type required' }), { status: 400 });
+      }
+      await docRef.update({
+        vendor_type:       vendorType,
+        needs_electricity: needsElectricity || 'no',
+        needs_water:       needsWater || 'no',
+        editedBy:          reviewer.email,
+        editedAt:          FieldValue.serverTimestamp(),
+      });
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }
 
     // ── APPROVE ─────────────────────────────────────────────────────────────
     if (action === 'approve') {

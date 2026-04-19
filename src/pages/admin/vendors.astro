@@ -204,6 +204,14 @@ function calcTotal(v: Vendor): number {
                   <button class="btn btn-success" data-action="approve" data-id={v.id} data-company={v.company_name}>
                     ✓ Approve &amp; Notify
                   </button>
+                  <button class="btn btn-edit" data-action="open-edit-modal"
+                    data-id={v.id}
+                    data-company={v.company_name}
+                    data-vendor-type={v.vendor_type}
+                    data-electricity={v.needs_electricity}
+                    data-water={v.needs_water}>
+                    ✏️ Edit
+                  </button>
                   <button class="btn btn-danger" data-action="reject" data-id={v.id} data-company={v.company_name}>
                     Reject
                   </button>
@@ -285,6 +293,54 @@ function calcTotal(v: Vendor): number {
     </div>
   </div>
 
+  <!-- ── Edit Modal ── -->
+  <div id="edit-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>✏️ Edit Vendor Application</h2>
+        <button id="edit-modal-close" class="modal-close" aria-label="Close">✕</button>
+      </div>
+      <p class="modal-sub" id="edit-modal-company"></p>
+
+      <div class="modal-field">
+        <label for="edit-vendor-type">Vendor Type <span class="req">*</span></label>
+        <select id="edit-vendor-type">
+          <option value="Individual Artist">Individual Artist — $25</option>
+          <option value="Retail / Franchise / non-profit">Retail / Franchise / Non-Profit — $50</option>
+          <option value="Political">Political — $75</option>
+          <option value="Food Vendor">Food Vendor — $100</option>
+        </select>
+      </div>
+
+      <div class="modal-field">
+        <label for="edit-electricity">Needs Electricity?</label>
+        <select id="edit-electricity">
+          <option value="no">No</option>
+          <option value="yes">Yes (+$10)</option>
+        </select>
+      </div>
+
+      <div class="modal-field">
+        <label for="edit-water">Needs Water?</label>
+        <select id="edit-water">
+          <option value="no">No</option>
+          <option value="yes">Yes (+$10)</option>
+        </select>
+      </div>
+
+      <div class="edit-fee-preview">
+        <span class="edit-fee-label">Updated Fee Total</span>
+        <span class="edit-fee-amount" id="edit-fee-amount">$0</span>
+        <span class="edit-fee-breakdown" id="edit-fee-breakdown"></span>
+      </div>
+
+      <div class="modal-actions">
+        <button id="edit-modal-cancel" class="btn btn-muted">Cancel</button>
+        <button id="edit-modal-confirm" class="btn btn-edit-confirm">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Delete Confirmation Modal ── -->
   <div id="delete-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true">
     <div class="modal-box">
@@ -307,6 +363,77 @@ function calcTotal(v: Vendor): number {
     let pendingPaidId: string | null = null;
     let pendingTotal: number = 0;
     let pendingDeleteId: string | null = null;
+    let pendingEditId: string | null = null;
+
+    // ── Fee map (must match server) ────────────────────────────────────────
+    const FEE_MAP: Record<string, number> = {
+      'Individual Artist': 25,
+      'Food Vendor': 100,
+      'Retail / Franchise / non-profit': 50,
+      'Political': 75,
+    };
+
+    function calcEditFee(type: string, elec: string, water: string): number {
+      return (FEE_MAP[type] ?? 0)
+        + (elec === 'yes' ? 10 : 0)
+        + (water === 'yes' ? 10 : 0);
+    }
+
+    function updateEditFeeDisplay() {
+      const type  = (document.getElementById('edit-vendor-type') as HTMLSelectElement).value;
+      const elec  = (document.getElementById('edit-electricity') as HTMLSelectElement).value;
+      const water = (document.getElementById('edit-water') as HTMLSelectElement).value;
+      const total = calcEditFee(type, elec, water);
+      const parts = [
+        `${type}: ${FEE_MAP[type] ?? 0}`,
+        elec  === 'yes' ? '+$10 electric' : '',
+        water === 'yes' ? '+$10 water'    : '',
+      ].filter(Boolean).join(' · ');
+      (document.getElementById('edit-fee-amount') as HTMLElement).textContent = `${total}`;
+      (document.getElementById('edit-fee-breakdown') as HTMLElement).textContent = parts;
+    }
+
+    // ── Edit modal ──────────────────────────────────────────────────────
+    function openEditModal(id: string, company: string, vendorType: string, electricity: string, water: string) {
+      pendingEditId = id;
+      (document.getElementById('edit-modal-company') as HTMLElement).textContent = company;
+      (document.getElementById('edit-vendor-type') as HTMLSelectElement).value = vendorType;
+      (document.getElementById('edit-electricity') as HTMLSelectElement).value = electricity || 'no';
+      (document.getElementById('edit-water') as HTMLSelectElement).value = water || 'no';
+      updateEditFeeDisplay();
+      (document.getElementById('edit-modal') as HTMLElement).style.display = 'flex';
+    }
+
+    function closeEditModal() {
+      (document.getElementById('edit-modal') as HTMLElement).style.display = 'none';
+      pendingEditId = null;
+      const btn = document.getElementById('edit-modal-confirm') as HTMLButtonElement;
+      btn.disabled    = false;
+      btn.textContent = 'Save Changes';
+    }
+
+    document.getElementById('edit-vendor-type')?.addEventListener('change', updateEditFeeDisplay);
+    document.getElementById('edit-electricity')?.addEventListener('change', updateEditFeeDisplay);
+    document.getElementById('edit-water')?.addEventListener('change', updateEditFeeDisplay);
+    document.getElementById('edit-modal-close')?.addEventListener('click', closeEditModal);
+    document.getElementById('edit-modal-cancel')?.addEventListener('click', closeEditModal);
+    document.getElementById('edit-modal')?.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).id === 'edit-modal') closeEditModal();
+    });
+
+    document.getElementById('edit-modal-confirm')?.addEventListener('click', async () => {
+      if (!pendingEditId) return;
+      const btn = document.getElementById('edit-modal-confirm') as HTMLButtonElement;
+      btn.disabled    = true;
+      btn.textContent = 'Saving…';
+      await doVendorAction({
+        action:           'edit',
+        id:               pendingEditId,
+        vendorType:       (document.getElementById('edit-vendor-type') as HTMLSelectElement).value,
+        needsElectricity: (document.getElementById('edit-electricity') as HTMLSelectElement).value,
+        needsWater:       (document.getElementById('edit-water') as HTMLSelectElement).value,
+      });
+    });
 
     // ── Delete modal ────────────────────────────────────────────────────
     function openDeleteModal(id: string, company: string) {
@@ -345,6 +472,17 @@ function calcTotal(v: Vendor): number {
         const total   = Number(el.dataset.total || 0);
 
         if (action === 'delete') { openDeleteModal(id, company); return; }
+
+        if (action === 'open-edit-modal') {
+          openEditModal(
+            id,
+            company,
+            el.dataset.vendorType || '',
+            el.dataset.electricity || 'no',
+            el.dataset.water || 'no',
+          );
+          return;
+        }
 
         if (action === 'open-paid-modal') {
           pendingPaidId = id;
@@ -648,6 +786,10 @@ function calcTotal(v: Vendor): number {
     .btn-paid:hover:not(:disabled) { background: #1e40af; }
     .btn-muted   { background: var(--border); color: var(--muted); }
     .btn-muted:hover:not(:disabled) { background: #d1d5db; color: var(--navy); }
+    .btn-edit  { background: #eff6ff; color: #1e40af; border: 1.5px solid #bfdbfe; }
+    .btn-edit:hover:not(:disabled) { background: #dbeafe; }
+    .btn-edit-confirm { background: var(--navy); color: #fff; }
+    .btn-edit-confirm:hover:not(:disabled) { background: var(--navy-dk); }
     .btn-delete  { background: #fff0f0; color: #991b1b; border: 1.5px solid #fca5a5; margin-left: auto; }
     .btn-delete:hover:not(:disabled) { background: #fee2e2; }
 
@@ -738,6 +880,38 @@ function calcTotal(v: Vendor): number {
     }
 
     .req { color: var(--red); }
+
+    .edit-fee-preview {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      background: #f0fdf4;
+      border: 1.5px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 4px 0 8px;
+    }
+
+    .edit-fee-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #166534;
+      white-space: nowrap;
+    }
+
+    .edit-fee-amount {
+      font-size: 24px;
+      font-weight: 800;
+      color: #15803d;
+    }
+
+    .edit-fee-breakdown {
+      font-size: 12px;
+      color: #166534;
+      opacity: 0.8;
+    }
 
     .modal-actions {
       display: flex;

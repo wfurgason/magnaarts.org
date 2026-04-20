@@ -65,6 +65,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
       batch.update(adminDb.collection('band_applications').doc(bandId), {
         status:          'assigned',
+        everAssigned:    true,
         assignedShellId: shellId,
         assignedDate:    shellData.date,
         assignedAt:      FieldValue.serverTimestamp(),
@@ -197,7 +198,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
       if (s.bandId) {
         batch.update(adminDb.collection('band_applications').doc(s.bandId), {
-          status: 'published',
+          status:        'published',
+          everPublished: true,
         });
       }
 

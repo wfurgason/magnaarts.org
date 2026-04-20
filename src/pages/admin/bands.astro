@@ -4,13 +4,6 @@ import { adminDb } from '../../lib/firebase-admin';
 
 const user = Astro.locals.user;
 
-const statusOptions: Record<string, { value: string; label: string }[]> = {
-  approved:      [{ value: 'good_standing', label: '⭐ Good Standing' }, { value: 'rejected', label: 'Reject' }],
-  assigned:      [{ value: 'good_standing', label: '⭐ Good Standing' }, { value: 'rejected', label: 'Reject' }],
-  published:     [{ value: 'good_standing', label: '⭐ Good Standing' }, { value: 'rejected', label: 'Reject' }],
-  good_standing: [{ value: 'approved', label: 'Remove Good Standing' }, { value: 'rejected', label: 'Reject' }],
-  rejected:      [{ value: 'approved', label: 'Approve' }],
-};
 const filterParam = Astro.url.searchParams.get('filter') || 'all';
 
 // Load band applications
@@ -40,6 +33,11 @@ type Band = {
   assignedShellId?: string;
   assignedDate?: string;
   submittedAt?: any;
+  everApproved?: boolean;
+  everAssigned?: boolean;
+  everPublished?: boolean;
+  goodStanding?: boolean;
+  rejectionNotes?: string;
 };
 
 let bands = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Band[];
@@ -48,7 +46,29 @@ let bands = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Band[];
 const filters = ['all', 'pending', 'approved', 'assigned', 'good_standing', 'rejected', 'published'];
 
 if (filterParam !== 'all') {
-  bands = bands.filter(b => (b.status || 'pending') === filterParam);
+  if (filterParam === 'approved') {
+    // Backwards-compat: also catch old records that advanced past pending without everApproved flag
+    bands = bands.filter(b =>
+      (b.everApproved || ['approved','assigned','published','good_standing'].includes(b.status))
+      && b.status !== 'rejected'
+    );
+  } else if (filterParam === 'assigned') {
+    bands = bands.filter(b =>
+      (b.everAssigned || ['assigned','published'].includes(b.status))
+      && b.status !== 'rejected'
+    );
+  } else if (filterParam === 'published') {
+    bands = bands.filter(b =>
+      (b.everPublished || b.status === 'published')
+      && b.status !== 'rejected'
+    );
+  } else if (filterParam === 'good_standing') {
+    bands = bands.filter(b => b.goodStanding || b.status === 'good_standing');
+  } else if (filterParam === 'rejected') {
+    bands = bands.filter(b => b.status === 'rejected');
+  } else {
+    bands = bands.filter(b => (b.status || 'pending') === filterParam);
+  }
 }
 
 // Load available event shells for the assignment dropdown
@@ -145,10 +165,18 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
             )}
 
             {/* Good Standing notice */}
-            {band.status === 'good_standing' && (
+            {(band.goodStanding || band.status === 'good_standing') && (
               <div class="good-standing-notice">
                 <span>⭐</span>
                 <span>This band is in <strong>Good Standing</strong> — reliable and welcome back for future seasons.</span>
+              </div>
+            )}
+
+            {/* Rejection notes */}
+            {band.status === 'rejected' && band.rejectionNotes && (
+              <div class="rejection-notes-display">
+                <div class="detail-label">Rejection Notes</div>
+                <p class="rejection-notes-text">{band.rejectionNotes}</p>
               </div>
             )}
 
@@ -184,27 +212,22 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
                 >
                   Approve &amp; Assign Date →
                 </button>
-                <button class="btn btn-danger" data-action="reject" data-id={band.id} data-collection="band_applications">
+                <button class="btn btn-danger" data-action="reject" data-id={band.id} data-band-name={band.band_name} data-collection="band_applications">
                   Reject
                 </button>
               </>
             )}
 
-            {/* Approved: can still reject OR assign to a date */}
+            {/* Approved: assign to a date */}
             {(band.status === 'approved') && (
-              <>
-                <button
-                  class="btn btn-primary assign-btn"
-                  data-band-id={band.id}
-                  data-band-name={band.band_name}
-                  data-available={JSON.stringify(band.available_dates || [])}
-                >
-                  Assign to Date →
-                </button>
-                <button class="btn btn-danger" data-action="reject" data-id={band.id} data-collection="band_applications">
-                  Reject
-                </button>
-              </>
+              <button
+                class="btn btn-primary assign-btn"
+                data-band-id={band.id}
+                data-band-name={band.band_name}
+                data-available={JSON.stringify(band.available_dates || [])}
+              >
+                Assign to Date →
+              </button>
             )}
 
             {/* Assigned: can unassign (reassign) */}
@@ -245,17 +268,17 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
               </button>
             )}
 
-            {/* Status change dropdown — shown for all actionable statuses except pending */}
-            {statusOptions[band.status] && (
-              <select
-                class="status-select"
-                data-band-id={band.id}
-                data-band-name={band.band_name}
-              >
+            {/* Status change dropdown — shown for all non-pending bands */}
+            {band.status !== 'pending' && (
+              <select class="status-select" data-band-id={band.id} data-band-name={band.band_name}>
                 <option value="" disabled selected>Change status…</option>
-                {statusOptions[band.status].map(opt => (
-                  <option value={opt.value}>{opt.label}</option>
-                ))}
+                {band.status === 'rejected'
+                  ? <option value="approve">Approve</option>
+                  : <option value={band.goodStanding ? 'remove-good-standing' : 'add-good-standing'}>
+                      {band.goodStanding ? 'Remove Good Standing' : '⭐ Mark Good Standing'}
+                    </option>
+                }
+                {band.status !== 'rejected' && <option value="reject">Reject</option>}
               </select>
             )}
           </div>
@@ -303,6 +326,24 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
         <button type="button" id="assign-submit" class="btn btn-primary" disabled>
           Assign Date →
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── REJECTION MODAL ─────────────────────────────────────────────────────────── -->
+  <div id="reject-modal" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Reject Band</h2>
+        <button id="reject-close" class="modal-close" aria-label="Close">✕</button>
+      </div>
+      <p class="modal-sub">Rejecting <strong id="reject-band-name"></strong>. All milestone flags will be cleared.</p>
+      <label class="reject-label" for="reject-notes">Reason for rejection <span class="reject-optional">(optional — internal only)</span></label>
+      <textarea id="reject-notes" class="reject-textarea" rows="4" placeholder="e.g. No-show, unprofessional conduct, could not confirm availability…"></textarea>
+      <div id="reject-error" class="error-msg" hidden></div>
+      <div class="modal-actions">
+        <button type="button" id="reject-cancel" class="btn btn-ghost">Cancel</button>
+        <button type="button" id="reject-submit" class="btn btn-danger">Reject Band</button>
       </div>
     </div>
   </div>
@@ -414,6 +455,30 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
       border: none;
     }
     .btn-gold:hover { background: var(--gold-lt, #f5b942); }
+
+    .rejection-notes-display {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 12px;
+    }
+    .rejection-notes-text { font-size: 13px; color: #7f1d1d; margin: 4px 0 0; }
+
+    .reject-label { display: block; font-size: 13px; font-weight: 600; color: var(--navy, #1a2456); margin: 16px 0 6px; }
+    .reject-optional { font-weight: 400; color: var(--muted, #5a5a7a); }
+    .reject-textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border, #e5e5e5);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 90px;
+    }
+    .reject-textarea:focus { outline: none; border-color: var(--blue, #2563b0); }
 
     .status-select {
       height: 36px;

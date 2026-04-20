@@ -32,18 +32,24 @@ function bandsInit() {
     if (assignModal) assignModal.style.display = 'none';
   }
 
-  // Approve / Reject
-  document.querySelectorAll('[data-action="approve"], [data-action="reject"]').forEach(function(btn) {
+  // Approve button (pending bands)
+  document.querySelectorAll('[data-action="approve"]').forEach(function(btn) {
     btn.addEventListener('click', async function() {
-      var status = btn.dataset.action === 'approve' ? 'approved' : 'rejected';
       btn.disabled = true;
-      var res = await fetch('/api/admin/update-submission', {
+      var res = await fetch('/api/admin/band-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: btn.dataset.id, collection: btn.dataset.collection, status: status }),
+        body: JSON.stringify({ action: 'approve', bandId: btn.dataset.id }),
       });
       if (res.ok) window.location.reload();
       else { alert('Action failed.'); btn.disabled = false; }
+    });
+  });
+
+  // Reject button (pending bands) — opens modal
+  document.querySelectorAll('[data-action="reject"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      openRejectModal(btn.dataset.id || '', btn.dataset.bandName || '');
     });
   });
 
@@ -96,10 +102,10 @@ function bandsInit() {
 
       // If band is still pending, approve it first
       if (currentAutoApprove) {
-        await fetch('/api/admin/update-submission', {
+        await fetch('/api/admin/band-action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: currentBandId, collection: 'band_applications', status: 'approved' }),
+          body: JSON.stringify({ action: 'approve', bandId: currentBandId }),
         });
       }
 
@@ -126,24 +132,98 @@ function bandsInit() {
   // Status change dropdown
   document.querySelectorAll('.status-select').forEach(function(sel) {
     sel.addEventListener('change', async function() {
-      var newStatus = sel.value;
-      if (!newStatus) return;
+      var action = sel.value;
+      if (!action) return;
+      var bandId = sel.dataset.bandId || '';
       var bandName = sel.dataset.bandName || 'this band';
-      var labels = { good_standing: 'Good Standing', rejected: 'Rejected', approved: 'Approved' };
-      if (!confirm('Change ' + bandName + ' to ' + (labels[newStatus] || newStatus) + '?')) {
+
+      if (action === 'reject') {
         sel.value = '';
+        openRejectModal(bandId, bandName);
         return;
       }
-      sel.disabled = true;
-      var res = await fetch('/api/admin/update-submission', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: sel.dataset.bandId, collection: 'band_applications', status: newStatus }),
-      });
-      if (res.ok) window.location.reload();
-      else { alert('Action failed.'); sel.disabled = false; sel.value = ''; }
+
+      if (action === 'approve') {
+        if (!confirm('Approve ' + bandName + '?')) { sel.value = ''; return; }
+        sel.disabled = true;
+        var res = await fetch('/api/admin/band-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'approve', bandId: bandId }),
+        });
+        if (res.ok) window.location.reload();
+        else { alert('Action failed.'); sel.disabled = false; sel.value = ''; }
+        return;
+      }
+
+      if (action === 'add-good-standing' || action === 'remove-good-standing') {
+        var adding = action === 'add-good-standing';
+        var msg = adding ? 'Mark ' + bandName + ' as Good Standing?' : 'Remove Good Standing from ' + bandName + '?';
+        if (!confirm(msg)) { sel.value = ''; return; }
+        sel.disabled = true;
+        var res2 = await fetch('/api/admin/band-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set-good-standing', bandId: bandId, value: adding }),
+        });
+        if (res2.ok) window.location.reload();
+        else { alert('Action failed.'); sel.disabled = false; sel.value = ''; }
+      }
     });
   });
+
+  // Rejection modal
+  var rejectModal      = document.getElementById('reject-modal');
+  var rejectBandNameEl = document.getElementById('reject-band-name');
+  var rejectNotesEl    = document.getElementById('reject-notes');
+  var rejectError      = document.getElementById('reject-error');
+  var rejectSubmit     = document.getElementById('reject-submit');
+  var currentRejectBandId = '';
+
+  function openRejectModal(bandId, bandName) {
+    currentRejectBandId = bandId;
+    if (rejectBandNameEl) rejectBandNameEl.textContent = bandName;
+    if (rejectNotesEl) rejectNotesEl.value = '';
+    if (rejectError) rejectError.hidden = true;
+    if (rejectSubmit) { rejectSubmit.disabled = false; rejectSubmit.textContent = 'Reject Band'; }
+    if (rejectModal) rejectModal.style.display = 'flex';
+  }
+
+  function closeRejectModal() {
+    if (rejectModal) rejectModal.style.display = 'none';
+    currentRejectBandId = '';
+  }
+
+  var rejectCloseBtn  = document.getElementById('reject-close');
+  var rejectCancelBtn = document.getElementById('reject-cancel');
+  if (rejectCloseBtn)  rejectCloseBtn.addEventListener('click', closeRejectModal);
+  if (rejectCancelBtn) rejectCancelBtn.addEventListener('click', closeRejectModal);
+  if (rejectModal) {
+    rejectModal.addEventListener('click', function(e) {
+      if (e.target === rejectModal) closeRejectModal();
+    });
+  }
+
+  if (rejectSubmit) {
+    rejectSubmit.addEventListener('click', async function() {
+      if (!currentRejectBandId) return;
+      rejectSubmit.disabled = true;
+      rejectSubmit.textContent = 'Rejecting…';
+      var notes = rejectNotesEl ? rejectNotesEl.value.trim() : '';
+      var res = await fetch('/api/admin/band-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject', bandId: currentRejectBandId, notes: notes }),
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        if (rejectError) { rejectError.textContent = 'Rejection failed.'; rejectError.hidden = false; }
+        rejectSubmit.disabled = false;
+        rejectSubmit.textContent = 'Reject Band';
+      }
+    });
+  }
 
   // Delete band
   document.querySelectorAll('.delete-btn').forEach(function(btn) {

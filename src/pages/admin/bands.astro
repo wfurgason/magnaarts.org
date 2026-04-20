@@ -54,12 +54,12 @@ if (filterParam !== 'all') {
     );
   } else if (filterParam === 'assigned') {
     bands = bands.filter(b =>
-      (b.everAssigned || ['assigned','published'].includes(b.status))
+      (b.everAssigned || ['assigned','published','good_standing'].includes(b.status))
       && b.status !== 'rejected'
     );
   } else if (filterParam === 'published') {
     bands = bands.filter(b =>
-      (b.everPublished || b.status === 'published')
+      (b.everPublished || ['published','good_standing'].includes(b.status))
       && b.status !== 'rejected'
     );
   } else if (filterParam === 'good_standing') {

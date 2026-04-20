@@ -123,18 +123,25 @@ function bandsInit() {
     });
   }
 
-  // Good Standing
-  document.querySelectorAll('.good-standing-btn').forEach(function(btn) {
-    btn.addEventListener('click', async function() {
-      if (!confirm('Mark ' + (btn.dataset.bandName || 'this band') + ' as Good Standing? They will appear in your trusted roster for future seasons.')) return;
-      btn.disabled = true;
+  // Status change dropdown
+  document.querySelectorAll('.status-select').forEach(function(sel) {
+    sel.addEventListener('change', async function() {
+      var newStatus = sel.value;
+      if (!newStatus) return;
+      var bandName = sel.dataset.bandName || 'this band';
+      var labels = { good_standing: 'Good Standing', rejected: 'Rejected', approved: 'Approved' };
+      if (!confirm('Change ' + bandName + ' to ' + (labels[newStatus] || newStatus) + '?')) {
+        sel.value = '';
+        return;
+      }
+      sel.disabled = true;
       var res = await fetch('/api/admin/update-submission', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: btn.dataset.bandId, collection: 'band_applications', status: 'good_standing' }),
+        body: JSON.stringify({ id: sel.dataset.bandId, collection: 'band_applications', status: newStatus }),
       });
       if (res.ok) window.location.reload();
-      else { alert('Action failed.'); btn.disabled = false; }
+      else { alert('Action failed.'); sel.disabled = false; sel.value = ''; }
     });
   });
 

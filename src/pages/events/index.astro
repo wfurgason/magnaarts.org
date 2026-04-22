@@ -336,7 +336,7 @@ const hasFeatured = featuredEvents.length > 0;
                 </div>` : (!isArtNight && e.description) ? `
                 <div class="published-bio">
                   <div class="published-bio-label">${e.eventType === 'open_mic' ? 'Take The Stage' : e.eventType === 'writing_group' ? 'Do you enjoy writing?' : 'About the Band'}</div>
-                  <p class="published-desc">${bio.short}${bio.truncated ? `<span class="bio-ellipsis">… <a href="#" class="bio-more-link" data-full="${e.description.replace(/"/g,'&quot;')}">more</a></span>` : ''}</p>
+                  <p class="published-desc">${e.description}</p>
                 </div>` : ''}
               ${e.movieTitle ? `
                 <div class="published-movie">

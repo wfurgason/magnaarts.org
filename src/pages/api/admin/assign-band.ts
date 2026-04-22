@@ -151,10 +151,25 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
 
       const s = shellDoc.data()!;
+
+      // Re-fetch the band application to get the latest bio/photo/etc.
+      let bandData: Record<string, any> = {};
+      if (s.bandId) {
+        const bandDoc = await adminDb.collection('band_applications').doc(s.bandId).get();
+        if (bandDoc.exists) bandData = bandDoc.data()!;
+      }
+
       const batch = adminDb.batch();
 
       // Use timeToISO() — consistent with Open Mic and Art Night
       const eventDateObj = Timestamp.fromDate(new Date(s.date + 'T' + timeToISO(s.startTime)));
+
+      // Prefer fresh band application data; fall back to shell fields
+      const bio       = bandData.bio       || s.bandBio       || '';
+      const genre     = bandData.genre     || s.bandGenre     || null;
+      const website   = bandData.website   || s.bandWebsite   || null;
+      const musicLink = bandData.music_link || s.bandMusicLink || null;
+      const photoUrl  = bandData.promo_photo_url || s.imageUrl || s.bandPhotoUrl || null;
 
       const eventRef = adminDb.collection('events').doc(shellId);
       batch.set(eventRef, {
@@ -171,14 +186,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         eventType:    'music_movie_in_park',
         category:     'Concert',
         bandName:     s.bandName,
-        genre:        s.bandGenre,
-        bandBio:      s.bandBio,
-        bandGenre:    s.bandGenre,
-        bandWebsite:  s.bandWebsite || null,
-        musicLink:    s.bandMusicLink || null,
-        photoUrl:     s.imageUrl || s.bandPhotoUrl || null,
-        posterUrl:    s.imageUrl || s.bandPhotoUrl || null,
-        description:  s.bandBio || '',
+        genre,
+        bandBio:      bio,
+        bandGenre:    genre,
+        bandWebsite:  website,
+        musicLink,
+        photoUrl,
+        posterUrl:    photoUrl,
+        description:  bio,
         movie:             s.movie || null,
         movieToken:        s.movieToken || null,
         movieTitle:        s.movie_title || null,

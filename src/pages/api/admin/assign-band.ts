@@ -164,12 +164,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       // Use timeToISO() — consistent with Open Mic and Art Night
       const eventDateObj = Timestamp.fromDate(new Date(s.date + 'T' + timeToISO(s.startTime)));
 
-      // Prefer fresh band application data; fall back to shell fields
+      // For text fields: prefer fresh band application data; fall back to shell fields
+      // For photo: prefer the shell's imageUrl (set via planning edit modal) over the application's
       const bio       = bandData.bio       || s.bandBio       || '';
       const genre     = bandData.genre     || s.bandGenre     || null;
       const website   = bandData.website   || s.bandWebsite   || null;
       const musicLink = bandData.music_link || s.bandMusicLink || null;
-      const photoUrl  = bandData.promo_photo_url || s.imageUrl || s.bandPhotoUrl || null;
+      const photoUrl  = s.imageUrl || s.bandPhotoUrl || bandData.promo_photo_url || null;
 
       const eventRef = adminDb.collection('events').doc(shellId);
       batch.set(eventRef, {

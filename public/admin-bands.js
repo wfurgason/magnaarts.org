@@ -32,6 +32,70 @@ function bandsInit() {
     if (assignModal) assignModal.style.display = 'none';
   }
 
+  // Edit band — toggle form
+  document.querySelectorAll('.edit-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var bandId = btn.dataset.bandId;
+      var form = document.getElementById('edit-' + bandId);
+      if (!form) return;
+      var isOpen = form.style.display !== 'none';
+      form.style.display = isOpen ? 'none' : 'block';
+      btn.textContent = isOpen ? '✏️ Edit' : 'Cancel Edit';
+    });
+  });
+
+  // Edit — cancel
+  document.querySelectorAll('.edit-cancel-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var form = document.getElementById('edit-' + btn.dataset.bandId);
+      if (form) form.style.display = 'none';
+      var editBtn = document.querySelector('.edit-btn[data-band-id="' + btn.dataset.bandId + '"]');
+      if (editBtn) editBtn.textContent = '✏️ Edit';
+    });
+  });
+
+  // Edit — save
+  document.querySelectorAll('.edit-save-btn').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      var bandId = btn.dataset.bandId;
+      var form = document.getElementById('edit-' + bandId);
+      if (!form) return;
+
+      var errEl = form.querySelector('.edit-error');
+      if (errEl) errEl.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+
+      var fields = {};
+      form.querySelectorAll('input[name], textarea[name]').forEach(function(el) {
+        var name = el.name;
+        if (el.type === 'checkbox') {
+          fields[name] = el.checked;
+        } else if (name === 'available_dates') {
+          fields[name] = el.value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+        } else if (name === 'member_count') {
+          fields[name] = el.value ? parseInt(el.value, 10) : null;
+        } else {
+          fields[name] = el.value.trim();
+        }
+      });
+
+      var res = await fetch('/api/admin/update-band', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bandId: bandId, fields: fields }),
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        if (errEl) { errEl.textContent = 'Save failed. Please try again.'; errEl.style.display = 'inline'; }
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+      }
+    });
+  });
+
   // Approve button (pending bands)
   document.querySelectorAll('[data-action="approve"]').forEach(function(btn) {
     btn.addEventListener('click', async function() {

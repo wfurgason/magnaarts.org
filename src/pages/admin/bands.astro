@@ -196,6 +196,65 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
             )}
           </div>
 
+          <!-- ── INLINE EDIT FORM ── -->
+          <div class="band-edit-form" id={`edit-${band.id}`} style="display:none">
+            <div class="edit-grid">
+              <label class="edit-field">
+                <span class="edit-label">Genre</span>
+                <input type="text" name="genre" value={band.genre || ''} />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">Set Length</span>
+                <input type="text" name="set_length" value={band.set_length || ''} placeholder="e.g. 45-60 min" />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">Member Count</span>
+                <input type="number" name="member_count" value={band.member_count || ''} min="1" />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">Contact Name</span>
+                <input type="text" name="contact_name" value={band.contact_name || ''} />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">Contact Email</span>
+                <input type="email" name="contact_email" value={band.contact_email || ''} />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">Contact Phone</span>
+                <input type="tel" name="contact_phone" value={band.contact_phone || ''} />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">Music Link</span>
+                <input type="url" name="music_link" value={band.music_link || ''} placeholder="https://" />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">Website</span>
+                <input type="url" name="website" value={band.website || ''} placeholder="https://" />
+              </label>
+              <label class="edit-field edit-field--full">
+                <span class="edit-label">Available Dates <span class="edit-hint">(comma-separated, YYYY-MM-DD)</span></span>
+                <input type="text" name="available_dates" value={(band.available_dates || []).join(', ')} />
+              </label>
+              <label class="edit-field edit-field--full">
+                <span class="edit-label">Bio</span>
+                <textarea name="bio" rows="4">{band.bio || ''}</textarea>
+              </label>
+              <label class="edit-field edit-field--full">
+                <span class="edit-label">Additional Notes</span>
+                <textarea name="additional_notes" rows="3">{band.additional_notes || ''}</textarea>
+              </label>
+              <label class="edit-field edit-check">
+                <input type="checkbox" name="performed_before" checked={!!band.performed_before} />
+                <span class="edit-label">Performed with us before?</span>
+              </label>
+            </div>
+            <div class="edit-actions">
+              <span class="edit-error" style="display:none"></span>
+              <button type="button" class="btn btn-ghost edit-cancel-btn" data-band-id={band.id}>Cancel</button>
+              <button type="button" class="btn btn-success edit-save-btn" data-band-id={band.id}>Save Changes</button>
+            </div>
+          </div>
+
           <div class="submission-actions">
             {/* Approve / Reject for pending bands */}
             {(band.status === 'pending') && (
@@ -254,6 +313,14 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
                 </button>
               </>
             )}
+
+            {/* Edit button — always available */}
+            <button
+              class="btn btn-outline edit-btn"
+              data-band-id={band.id}
+            >
+              ✏️ Edit
+            </button>
 
             {/* Delete button — always available except published */}
             {(band.status !== 'published') && (
@@ -493,6 +560,48 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
       margin-left: auto;
     }
     .status-select:focus { outline: none; border-color: var(--blue, #2563b0); }
+
+    /* ── Inline edit form ── */
+    .band-edit-form {
+      border-top: 1.5px solid #e5e5e5;
+      padding: 20px 0 8px;
+      margin-top: 4px;
+    }
+    .edit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 20px;
+    }
+    .edit-field { display: flex; flex-direction: column; gap: 4px; }
+    .edit-field--full { grid-column: 1 / -1; }
+    .edit-check { flex-direction: row; align-items: center; gap: 8px; grid-column: 1 / -1; }
+    .edit-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #5a5a7a; }
+    .edit-hint  { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 11px; color: #9ca3af; }
+    .edit-field input[type="text"],
+    .edit-field input[type="email"],
+    .edit-field input[type="tel"],
+    .edit-field input[type="url"],
+    .edit-field input[type="number"],
+    .edit-field textarea {
+      padding: 8px 10px;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #1a2456;
+      background: #fff;
+    }
+    .edit-field input:focus,
+    .edit-field textarea:focus { outline: none; border-color: #2563b0; }
+    .edit-field textarea { resize: vertical; min-height: 80px; }
+    .edit-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      justify-content: flex-end;
+    }
+    .edit-error { font-size: 13px; color: #b52626; margin-right: auto; }
   </style>
 
 </AdminLayout>

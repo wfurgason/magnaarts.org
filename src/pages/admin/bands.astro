@@ -199,6 +199,10 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
           <!-- ── INLINE EDIT FORM ── -->
           <div class="band-edit-form" id={`edit-${band.id}`} style="display:none">
             <div class="edit-grid">
+              <label class="edit-field edit-field--full">
+                <span class="edit-label">Band Name</span>
+                <input type="text" name="band_name" value={band.band_name || ''} />
+              </label>
               <label class="edit-field">
                 <span class="edit-label">Genre</span>
                 <input type="text" name="genre" value={band.genre || ''} />
@@ -242,6 +246,22 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
               <label class="edit-field edit-field--full">
                 <span class="edit-label">Additional Notes</span>
                 <textarea name="additional_notes" rows="3">{band.additional_notes || ''}</textarea>
+              </label>
+              <label class="edit-field edit-field--full">
+                <span class="edit-label">Promo Photo</span>
+                {band.promo_photo_url && (
+                  <img
+                    src={band.promo_photo_url}
+                    alt="Current promo photo"
+                    class="edit-photo-preview"
+                    id={`photo-preview-${band.id}`}
+                  />
+                )}
+                {!band.promo_photo_url && (
+                  <div class="edit-photo-preview edit-photo-empty" id={`photo-preview-${band.id}`}>No photo on file</div>
+                )}
+                <input type="file" name="promo_photo_file" accept="image/*" data-band-id={band.id} />
+                <span class="edit-hint">JPG, PNG, WEBP — replaces existing photo</span>
               </label>
               <label class="edit-field edit-check">
                 <input type="checkbox" name="performed_before" checked={!!band.performed_before} />
@@ -602,6 +622,28 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
       justify-content: flex-end;
     }
     .edit-error { font-size: 13px; color: #b52626; margin-right: auto; }
+    .edit-photo-preview {
+      display: block;
+      width: 120px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1.5px solid #e5e5e5;
+      margin-bottom: 8px;
+      background: #f3f4f6;
+    }
+    .edit-photo-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .edit-field input[type="file"] {
+      font-size: 13px;
+      color: #1a2456;
+      padding: 4px 0;
+    }
   </style>
 
 </AdminLayout>

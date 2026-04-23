@@ -17,9 +17,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (!bandId || !fields) return new Response(JSON.stringify({ error: 'bandId and fields required' }), { status: 400 });
 
     const allowed = [
-      'genre', 'contact_name', 'contact_email', 'contact_phone',
+      'band_name', 'genre', 'contact_name', 'contact_email', 'contact_phone',
       'bio', 'music_link', 'website', 'set_length', 'member_count',
       'available_dates', 'availability', 'performed_before', 'additional_notes',
+      'promo_photo_url',
     ];
 
     const update: Record<string, any> = { updatedAt: FieldValue.serverTimestamp() };

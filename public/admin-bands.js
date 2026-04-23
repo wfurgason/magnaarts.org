@@ -67,7 +67,31 @@ function bandsInit() {
       btn.textContent = 'Saving…';
 
       var fields = {};
-      form.querySelectorAll('input[name], textarea[name]').forEach(function(el) {
+
+      // Handle photo upload first (file input is kept separate)
+      var photoInput = form.querySelector('input[type="file"][name="promo_photo_file"]');
+      if (photoInput && photoInput.files && photoInput.files[0]) {
+        btn.textContent = 'Uploading photo…';
+        var photoForm = new FormData();
+        photoForm.append('bandId', bandId);
+        photoForm.append('file', photoInput.files[0]);
+        var uploadRes = await fetch('/api/admin/upload-band-photo', {
+          method: 'POST',
+          body: photoForm,
+        });
+        if (!uploadRes.ok) {
+          if (errEl) { errEl.textContent = 'Photo upload failed. Please try again.'; errEl.style.display = 'inline'; }
+          btn.disabled = false;
+          btn.textContent = 'Save Changes';
+          return;
+        }
+        var uploadData = await uploadRes.json();
+        if (uploadData.url) fields['promo_photo_url'] = uploadData.url;
+        btn.textContent = 'Saving…';
+      }
+
+      // Collect all non-file named inputs
+      form.querySelectorAll('input[name]:not([type="file"]), textarea[name]').forEach(function(el) {
         var name = el.name;
         if (el.type === 'checkbox') {
           fields[name] = el.checked;

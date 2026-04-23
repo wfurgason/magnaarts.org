@@ -52,13 +52,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         status:        'band_assigned',
         bandId,
         bandName:      bandData.band_name,
-        bandEmail:     bandData.contact_email,
-        bandPhone:     bandData.contact_phone || null,
-        bandBio:       bandData.bio,
-        bandGenre:     bandData.genre,
-        bandWebsite:   bandData.website || null,
-        bandMusicLink: bandData.music_link || null,
-        bandPhotoUrl:  bandData.promo_photo_url || null,
         bandConfirmed: false,
         assignedAt:    FieldValue.serverTimestamp(),
       });
@@ -96,13 +89,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         status:        'shell',
         bandId:        null,
         bandName:      null,
-        bandEmail:     null,
-        bandPhone:     null,
-        bandBio:       null,
-        bandGenre:     null,
-        bandWebsite:   null,
-        bandMusicLink: null,
-        bandPhotoUrl:  null,
         bandConfirmed: false,
         assignedAt:    null,
       });
@@ -164,13 +150,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       // Use timeToISO() — consistent with Open Mic and Art Night
       const eventDateObj = Timestamp.fromDate(new Date(s.date + 'T' + timeToISO(s.startTime)));
 
-      // For text fields: prefer fresh band application data; fall back to shell fields
-      // For photo: prefer the shell's imageUrl (set via planning edit modal) over the application's
-      const bio       = bandData.bio       || s.bandBio       || '';
-      const genre     = bandData.genre     || s.bandGenre     || null;
-      const website   = bandData.website   || s.bandWebsite   || null;
-      const musicLink = bandData.music_link || s.bandMusicLink || null;
-      const photoUrl  = s.imageUrl || s.bandPhotoUrl || bandData.promo_photo_url || null;
+      // All band detail fields come from band_applications (re-fetched above).
+      // For photo: the shell's imageUrl (set via planning edit modal) takes precedence.
+      const bio       = bandData.bio        || '';
+      const genre     = bandData.genre      || null;
+      const website   = bandData.website    || null;
+      const musicLink = bandData.music_link || null;
+      const photoUrl  = s.imageUrl || bandData.promo_photo_url || null;
+      const bandName  = bandData.band_name  || s.bandName || '';
 
       const eventRef = adminDb.collection('events').doc(shellId);
       batch.set(eventRef, {
@@ -186,7 +173,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         address:      s.address,
         eventType:    'music_movie_in_park',
         category:     'Concert',
-        bandName:     s.bandName,
+        bandName:     bandName,
         genre,
         bandBio:      bio,
         bandGenre:    genre,

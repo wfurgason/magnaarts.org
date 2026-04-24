@@ -23,8 +23,7 @@ async function sendEmail(opts: {
   html: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY || (import.meta as any).env?.RESEND_API_KEY;
-  const from   = process.env.RESEND_FROM   || (import.meta as any).env?.RESEND_FROM
-                 || 'Magna Arts Council <wfurgason@magnaarts.org>';
+  const from   = 'Magna Arts Council <wfurgason@magnaarts.org>';
 
   if (!apiKey || apiKey === 're_your_key_here') {
     console.warn('[artistInvite] RESEND_API_KEY not configured — email skipped');

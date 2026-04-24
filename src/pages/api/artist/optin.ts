@@ -19,15 +19,11 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: 'Missing token' }), { status: 400 });
     }
 
-    // Query collectionGroup — usedAt null filters out burned tokens, then we match by doc ID
-    const snapshot = await adminDb
-      .collectionGroup('optinTokens')
-      .where('usedAt', '==', null)
-      .get();
+    // Tokens are stored in the top-level 'optinTokens' collection for direct lookup (no index needed)
+    const tokenDocRef = adminDb.collection('optinTokens').doc(token);
+    const tokenDoc = await tokenDocRef.get();
 
-    const tokenDoc = snapshot.docs.find(d => d.id === token);
-
-    if (!tokenDoc) {
+    if (!tokenDoc.exists) {
       return new Response(
         JSON.stringify({ error: 'Invalid or already-used link' }),
         { status: 404 }
@@ -59,14 +55,14 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Burn the token before sending email (prevents race condition double-use)
-    await tokenDoc.ref.update({ usedAt: Date.now() });
+    await tokenDocRef.update({ usedAt: Date.now() });
 
     // Send the Firebase auth link email
     const result = await sendArtistAuthLink({ bandId, email, bandName, isReturning });
 
     if (!result.ok) {
       // Un-burn on failure so they can try again
-      await tokenDoc.ref.update({ usedAt: null });
+      await tokenDocRef.update({ usedAt: null });
       return new Response(JSON.stringify({ success: false, error: result.error }), { status: 500 });
     }
 

@@ -269,7 +269,6 @@ export async function sendArtistInvite(opts: SendArtistInviteOptions): Promise<S
   const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days — plenty of time to decide
 
   await adminDb
-    .collection('artists').doc(bandId)
     .collection('optinTokens').doc(token)
     .set({ email, bandId, isReturning, expiresAt, usedAt: null, createdAt: FieldValue.serverTimestamp() });
 

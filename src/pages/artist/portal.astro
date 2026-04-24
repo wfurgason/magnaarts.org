@@ -1110,18 +1110,24 @@ const firebaseConfig = {
       uploadBtn.textContent = 'Uploading…';
 
       try {
+        // 1. Upload MP3 directly to Firebase Storage from browser
+        const timestamp = Date.now();
+        const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const filename  = `${safeTitle}_${timestamp}.mp3`;
+        const path      = `artist_tracks/${bandId}/${filename}`;
+        const fileRef   = storageRef(storage, path);
+        const snap      = await uploadBytes(fileRef, selectedMp3, { contentType: 'audio/mpeg' });
+        const url       = await getDownloadURL(snap.ref);
+
+        // 2. Register track in Firestore via API
         const idToken = await currentUser.getIdToken();
-
-        const formData = new FormData();
-        formData.append('bandId', bandId);
-        formData.append('title',  title);
-        formData.append('order',  String(tracksData.length + 1));
-        formData.append('file',   selectedMp3);
-
         const res = await fetch('/api/artist/upload-track', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${idToken}` },
-          body: formData,
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ bandId, title, storagePath: path, url }),
         });
 
         const data = await res.json();

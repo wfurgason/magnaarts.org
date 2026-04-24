@@ -79,7 +79,7 @@ function buildInvitationEmail(opts: {
         <tr><td style="background:linear-gradient(135deg,#1a2456,#2d3e8e,#4a5fa8);padding:40px 40px 32px;text-align:center;">
           <div style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.8);margin-bottom:12px;">Magna Arts Council</div>
           <h1 style="margin:0;font-size:26px;font-weight:900;color:#ffffff;line-height:1.2;">🎶 You're Invited to Join Local Artists</h1>
-          <p style="margin:12px 0 0;font-size:15px;color:#ffffff;">A free listing for your band on magnaarts.org</p>
+          <p style="margin:12px 0 0;font-size:15px;color:#ffffff;">A free listing for your band on our website</p>
         </td></tr>
 
         <!-- Body -->

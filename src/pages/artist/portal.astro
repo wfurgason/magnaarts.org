@@ -944,8 +944,6 @@ const firebaseConfig = {
     });
 
     // ── Load tracks ─────────────────────────────────────────────────────
-    let tracksData = [];
-
     async function loadTracks() {
       try {
         const tracksSnap = await getDocs(

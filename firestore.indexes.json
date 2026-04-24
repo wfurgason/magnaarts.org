@@ -1,22 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "band_applications",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "submitted_at", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "park_events",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "optinTokens",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

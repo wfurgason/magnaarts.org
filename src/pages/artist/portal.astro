@@ -650,6 +650,7 @@ const firebaseConfig = {
     let currentUser = null;
     let artistData  = null;
     let bandId      = null;
+    let tracksData  = [];
 
     // ── Auth guard ─────────────────────────────────────────────────────
     onAuthStateChanged(auth, async user => {
@@ -662,24 +663,28 @@ const firebaseConfig = {
       await loadPortal();
     });
 
-    // ── Load artist doc by uid ─────────────────────────────────────────
+    // ── Load artist doc via server API (bypasses Firestore rules) ──────
     async function loadPortal() {
       try {
-        const q    = query(collection(db, 'artists'), where('uid', '==', currentUser.uid));
-        const snap = await getDocs(q);
+        const idToken = await currentUser.getIdToken();
+        const res = await fetch('/api/artist/me', {
+          headers: { 'Authorization': `Bearer ${idToken}` },
+        });
 
-        if (snap.empty) {
+        if (res.status === 404) {
           showState('no-profile');
           return;
         }
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
 
-        const docSnap = snap.docs[0];
-        bandId     = docSnap.id;
-        artistData = docSnap.data();
+        const data = await res.json();
+        bandId     = data.bandId;
+        artistData = data.artist;
+        tracksData = data.tracks || [];
 
         renderStatusBanner();
         renderProfileDisplay();
-        await loadTracks();
+        renderTrackList();
         showState('portal');
 
       } catch (err) {

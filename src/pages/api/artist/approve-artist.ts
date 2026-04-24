@@ -9,7 +9,7 @@ async function sendEmail(opts: {
   html: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = import.meta.env.RESEND_API_KEY;
-  const from   = import.meta.env.RESEND_FROM || 'Magna Arts Council <festival@magnaarts.org>';
+  const from   = 'Magna Arts Council <wfurgason@magnaarts.org>';
 
   if (!apiKey || apiKey === 're_your_key_here') {
     console.warn('[approve-artist] RESEND_API_KEY not configured — email skipped');
@@ -74,7 +74,7 @@ function approvedWithTracksEmail(opts: { bandName: string; siteUrl: string }): s
           </p>
           <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
             <div style="font-size:14px;color:#166534;line-height:1.6;">
-              Questions? Email us at <a href="mailto:festival@magnaarts.org" style="color:#16a34a;">festival@magnaarts.org</a>
+              Questions? Email us at <a href="mailto:wfurgason@magnaarts.org" style="color:#16a34a;">wfurgason@magnaarts.org</a>
             </div>
           </div>
           <p style="margin:0;font-size:15px;color:#5a5a7a;line-height:1.65;">Thank you for being part of the Magna arts community! 🎨</p>
@@ -114,7 +114,7 @@ function approvedNoTracksEmail(opts: { bandName: string; siteUrl: string }): str
             upload at least one MP3 track from your Artist Portal.
           </p>
           <div style="text-align:center;margin:32px 0;">
-            <a href="${siteUrl}/artist/portal" style="display:inline-block;background:#0284c7;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;">Go to Artist Portal →</a>
+            <a href="${siteUrl}/artist/login" style="display:inline-block;background:#0284c7;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;">Go to Artist Portal →</a>
           </div>
           <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
             <div style="font-size:13px;color:#92400e;line-height:1.7;">
@@ -125,7 +125,7 @@ function approvedNoTracksEmail(opts: { bandName: string; siteUrl: string }): str
           </div>
           <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
             <div style="font-size:14px;color:#166534;">
-              Questions? Email <a href="mailto:festival@magnaarts.org" style="color:#16a34a;">festival@magnaarts.org</a>
+            Questions? Email <a href="mailto:wfurgason@magnaarts.org" style="color:#16a34a;">wfurgason@magnaarts.org</a>
             </div>
           </div>
         </td></tr>

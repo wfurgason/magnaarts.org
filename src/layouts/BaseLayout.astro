@@ -2,12 +2,33 @@
 interface Props {
   title?: string;
   description?: string;
+  image?: string;
 }
 
 const {
   title = 'Magna Arts Council',
-  description = 'Magna, Utah\'s Designated Local Arts Agency. Free music, art, film, and culture for the community.',
+  description = "Magna, Utah's Designated Local Arts Agency. Free music, art, film, and culture for the community.",
+  image = '/images/ArtsCouncil_logo.png',
 } = Astro.props;
+
+const canonicalURL = Astro.url.href;
+const ogImageURL = new URL(image, Astro.url).href;
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Magna Arts Council",
+  "url": "https://magnaarts.org",
+  "logo": "https://magnaarts.org/images/ArtsCouncil_logo.png",
+  "description": "Magna, Utah's Designated Local Arts Agency. Free music, art, film, and culture for the community.",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Magna",
+    "addressRegion": "UT",
+    "addressCountry": "US"
+  },
+  "sameAs": []
+};
 ---
 
 <!doctype html>
@@ -20,6 +41,9 @@ const {
 
     <title>{title}</title>
 
+    <!-- Canonical URL -->
+    <link rel="canonical" href={canonicalURL} />
+
     <!-- Favicons -->
     <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
@@ -31,7 +55,19 @@ const {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://magnaarts.org" />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:image" content={ogImageURL} />
+    <meta property="og:site_name" content="Magna Arts Council" />
+
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageURL} />
+
+    <!-- JSON-LD: Organization -->
+    <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+
     <slot name="head" />
   </head>
   <body>

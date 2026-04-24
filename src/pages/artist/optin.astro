@@ -1,0 +1,210 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const token = Astro.url.searchParams.get('token') || '';
+---
+
+<BaseLayout
+  title="Opt In — Magna Local Artists"
+  description="Confirm your invitation to join the Magna Local Artists directory."
+>
+  <Header />
+
+  <main class="optin-main">
+    <div class="optin-card" id="optin-card">
+
+      <!-- Pending state -->
+      <div id="state-pending">
+        <div class="optin-icon">🎶</div>
+        <h1 class="optin-title">Join the Local Artists Directory</h1>
+        <p class="optin-body">
+          Click the button below when you're ready to set up your artist profile.
+          We'll immediately send a secure sign-in link to your email address.
+          That link is <strong>good for 6 hours</strong>, so only click when you
+          have a few minutes to complete your profile.
+        </p>
+        <button id="optin-btn" class="btn-optin">
+          Opt In — Send My Access Link
+        </button>
+        <p class="optin-note">No password required — ever.</p>
+      </div>
+
+      <!-- Loading state -->
+      <div id="state-loading" style="display:none">
+        <div class="optin-spinner"></div>
+        <p class="optin-body">Sending your access link&hellip;</p>
+      </div>
+
+      <!-- Success state -->
+      <div id="state-success" style="display:none">
+        <div class="optin-icon">✅</div>
+        <h1 class="optin-title">Check Your Email</h1>
+        <p class="optin-body">
+          Your sign-in link is on its way. It will arrive within a minute or two.
+          The link is good for <strong>6 hours</strong> — click it when you're ready
+          to create your profile.
+        </p>
+        <p class="optin-note">
+          After your first sign-in, you can always return at
+          <a href="/artist/login">magnaarts.org/artist/login</a> for a fresh link.
+        </p>
+      </div>
+
+      <!-- Error state -->
+      <div id="state-error" style="display:none">
+        <div class="optin-icon">⚠️</div>
+        <h1 class="optin-title">Something Went Wrong</h1>
+        <p class="optin-body" id="error-msg">
+          This link may be invalid or expired.
+        </p>
+        <p class="optin-note">
+          Contact <a href="mailto:wfurgason@magnaarts.org">wfurgason@magnaarts.org</a> for help.
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <Footer />
+
+  <script define:vars={{ token }}>
+    window.__OPTIN_TOKEN__ = token;
+  </script>
+
+  <script type="module">
+    const token    = window.__OPTIN_TOKEN__;
+    const btn      = document.getElementById('optin-btn');
+    const pending  = document.getElementById('state-pending');
+    const loading  = document.getElementById('state-loading');
+    const success  = document.getElementById('state-success');
+    const errorEl  = document.getElementById('state-error');
+    const errorMsg = document.getElementById('error-msg');
+
+    function show(el) {
+      [pending, loading, success, errorEl].forEach(e => e.style.display = 'none');
+      el.style.display = 'block';
+    }
+
+    if (!token) {
+      show(errorEl);
+      errorMsg.textContent = 'No opt-in token found in this link.';
+    }
+
+    btn?.addEventListener('click', async () => {
+      show(loading);
+      try {
+        const res  = await fetch('/api/artist/optin', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ token }),
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          show(success);
+        } else {
+          show(errorEl);
+          errorMsg.textContent = data.error || 'An unexpected error occurred.';
+        }
+      } catch (err) {
+        show(errorEl);
+        errorMsg.textContent = 'Network error — please try again or contact wfurgason@magnaarts.org.';
+      }
+    });
+  </script>
+
+</BaseLayout>
+
+<style>
+  .optin-main {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cream);
+    padding: 60px 20px;
+  }
+
+  .optin-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    padding: 52px 48px;
+    max-width: 520px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .optin-icon {
+    font-size: 52px;
+    margin-bottom: 20px;
+    line-height: 1;
+  }
+
+  .optin-title {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--navy);
+    margin: 0 0 16px;
+    line-height: 1.2;
+  }
+
+  .optin-body {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin: 0 0 28px;
+  }
+
+  .optin-note {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 16px;
+  }
+
+  .optin-note a {
+    color: var(--navy);
+  }
+
+  .btn-optin {
+    display: inline-block;
+    background: var(--navy);
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    padding: 14px 32px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.18s;
+  }
+
+  .btn-optin:hover {
+    background: #2d3e8e;
+  }
+
+  /* Spinner */
+  .optin-spinner {
+    width: 44px;
+    height: 44px;
+    border: 4px solid var(--border);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 24px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (max-width: 560px) {
+    .optin-card { padding: 36px 24px; }
+    .optin-title { font-size: 22px; }
+  }
+</style>

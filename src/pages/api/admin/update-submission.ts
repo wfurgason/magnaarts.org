@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { adminAuth, adminDb } from '../../../lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { sendArtistInvite } from '../../../lib/sendArtistInvite';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   // Verify session
@@ -31,6 +32,24 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       reviewedBy: reviewer.email,
       reviewedAt: FieldValue.serverTimestamp(),
     });
+
+    // Fire artist invite when a band is marked Good Standing
+    if (collection === 'band_applications' && status === 'good_standing') {
+      try {
+        const bandDoc = await adminDb.collection('band_applications').doc(id).get();
+        const band = bandDoc.data();
+        if (band?.contact_email && band?.band_name) {
+          await sendArtistInvite({
+            bandId: id,
+            email: band.contact_email,
+            bandName: band.band_name,
+          });
+        }
+      } catch (inviteErr) {
+        // Non-fatal — status was already saved; log and continue
+        console.error('[update-submission] Artist invite failed:', inviteErr);
+      }
+    }
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (error) {

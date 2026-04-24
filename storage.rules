@@ -71,5 +71,17 @@ service firebase.storage {
     match /{allPaths=**} {
       allow read, write: if false;
     }
+
+    // ── MP3 tracks — written only via Admin SDK; public read ──
+    match /artist_tracks/{bandId}/{filename} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── Artist profile photos — written only via Admin SDK; public read ──
+    match /artist_photos/{bandId}/{filename} {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }

@@ -79,6 +79,12 @@ const shellsSnap = await adminDb.collection('park_events')
   .get();
 
 const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
+// Load approved artist profile IDs — used to show the Sync button on band cards
+const approvedArtistsSnap = await adminDb.collection('artists')
+  .where('status', '==', 'approved')
+  .get();
+const approvedArtistIds = new Set<string>(approvedArtistsSnap.docs.map(d => d.id));
 ---
 
 <AdminLayout title="Band Applications" user={user}>
@@ -334,6 +340,17 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
               </>
             )}
 
+            {/* Sync Artist Profile — shown when band has an approved artist listing */}
+            {approvedArtistIds.has(band.id) && (
+              <button
+                class="btn btn-outline sync-artist-btn"
+                data-band-id={band.id}
+                data-band-name={band.band_name}
+              >
+                ↻ Sync Artist Profile
+              </button>
+            )}
+
             {/* Edit button — always available */}
             <button
               class="btn btn-outline edit-btn"
@@ -436,6 +453,39 @@ const availableShells = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as
   </div>
 
   <script src="/admin-bands.js" defer></script>
+
+  <script>
+    // Sync Artist Profile buttons
+    document.querySelectorAll<HTMLButtonElement>('.sync-artist-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id   = btn.dataset.bandId!;
+        const name = btn.dataset.bandName!;
+        if (!confirm(`Sync "${name}" artist profile fields back into their band application?`)) return;
+        btn.disabled = true;
+        btn.textContent = '↻ Syncing…';
+        try {
+          const res = await fetch('/api/artist/sync-artist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bandId: id }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            btn.textContent = '✓ Synced';
+            setTimeout(() => { btn.textContent = '↻ Sync Artist Profile'; btn.disabled = false; }, 2500);
+          } else {
+            alert(`Sync failed: ${data.error || 'Unknown error'}`);
+            btn.textContent = '↻ Sync Artist Profile';
+            btn.disabled = false;
+          }
+        } catch {
+          alert('Sync request failed — check the console.');
+          btn.textContent = '↻ Sync Artist Profile';
+          btn.disabled = false;
+        }
+      });
+    });
+  </script>
 
   <style>
     .date-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }

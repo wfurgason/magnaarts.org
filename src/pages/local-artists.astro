@@ -1,0 +1,571 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+
+const serviceAccount = JSON.parse(import.meta.env.FIREBASE_SERVICE_ACCOUNT);
+if (!getApps().length) {
+  initializeApp({ credential: cert(serviceAccount) });
+}
+const adminDb = getFirestore();
+
+const snapshot = await adminDb
+  .collection('artists')
+  .where('visible', '==', true)
+  .where('status', '==', 'approved')
+  .get();
+
+const artists = snapshot.docs
+  .map(doc => ({ id: doc.id, ...doc.data() }))
+  .sort((a, b) => (a.band_name || '').localeCompare(b.band_name || ''));
+
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
+---
+
+<BaseLayout
+  title="Local Artists — Magna Arts Council"
+  description="Discover local musicians from the Magna community. Stream tracks and explore the artists that make Magna's music scene."
+>
+  <Header />
+
+  <main>
+
+    <!-- ── PAGE HERO ── -->
+    <section class="la-hero">
+      <div class="container">
+        <h1>Local Artists</h1>
+        <p class="la-hero-sub">Discover the musicians of Magna. Stream tracks from community artists right here.</p>
+      </div>
+    </section>
+
+    <!-- ── ARTIST GRID ── -->
+    <section class="section la-section">
+      <div class="container">
+
+        {artists.length === 0 ? (
+          <div class="la-empty">
+            <div class="la-empty-icon">🎵</div>
+            <p>No artists listed yet — check back soon!</p>
+          </div>
+        ) : (
+          <div class="la-grid" id="la-grid">
+            {artists.map(a => (
+              <article class="la-card" data-band-id={a.id}>
+                <div class="la-card-photo">
+                  {a.photo_url
+                    ? <img src={a.photo_url} alt={a.band_name} loading="lazy" />
+                    : <div class="la-photo-placeholder">🎵</div>
+                  }
+                </div>
+                <div class="la-card-body">
+                  <div class="la-card-top">
+                    <h2 class="la-band-name">{a.band_name}</h2>
+                    {a.genre && <span class="la-genre">{a.genre}</span>}
+                  </div>
+                  {a.bio && (
+                    <p class="la-bio">
+                      {a.bio.length > 120 ? a.bio.slice(0, 120).trimEnd() + '…' : a.bio}
+                    </p>
+                  )}
+                  <div class="la-links">
+                    {a.website          && <a href={a.website}          target="_blank" rel="noopener" class="la-link">🌐 Website</a>}
+                    {a.music_link       && <a href={a.music_link}       target="_blank" rel="noopener" class="la-link">🎵 Music</a>}
+                    {a.social_instagram && <a href={a.social_instagram} target="_blank" rel="noopener" class="la-link">📸 Instagram</a>}
+                    {a.social_facebook  && <a href={a.social_facebook}  target="_blank" rel="noopener" class="la-link">👍 Facebook</a>}
+                  </div>
+                </div>
+                <!-- Play button overlay -->
+                <button class="la-play-btn" data-band-id={a.id} aria-label={`Play tracks from ${a.band_name}`}>
+                  ▶
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
+
+      </div>
+    </section>
+
+    <!-- ── CTA ── -->
+    <section class="la-cta">
+      <div class="container la-cta-inner">
+        <div>
+          <h2>Are You a Local Musician?</h2>
+          <p>Bands with Good Standing status can apply for a free listing on this page. Contact the Arts Council to learn more.</p>
+        </div>
+        <a href="/contact" class="btn btn-gold">Get in Touch →</a>
+      </div>
+    </section>
+
+  </main>
+
+  <Footer />
+
+  <!-- ── ROTATING PLAYER (fixed bottom) ── -->
+  <div id="la-player" style="display:none" aria-label="Music Player">
+    <div class="lp-track-info">
+      <div id="lp-artist" class="lp-artist"></div>
+      <div id="lp-title" class="lp-title"></div>
+    </div>
+    <div class="lp-controls">
+      <button id="lp-play-pause" class="lp-btn lp-btn-main" aria-label="Play / Pause">▶</button>
+      <button id="lp-skip" class="lp-btn" aria-label="Skip track">⏭</button>
+    </div>
+    <div class="lp-progress-wrap">
+      <span id="lp-current" class="lp-time">0:00</span>
+      <div id="lp-bar-track" class="lp-bar-track" role="slider" aria-label="Seek">
+        <div id="lp-bar-fill" class="lp-bar-fill"></div>
+      </div>
+      <span id="lp-duration" class="lp-time">0:00</span>
+    </div>
+    <audio id="la-audio" preload="none"></audio>
+  </div>
+
+  <script define:vars={{ firebaseConfig }}>
+    window.__FIREBASE_CONFIG__ = firebaseConfig;
+  </script>
+
+  <script type="module">
+    import { initializeApp }    from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collectionGroup, getDocs, orderBy, query }
+      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+    const app = initializeApp(window.__FIREBASE_CONFIG__);
+    const db  = getFirestore(app);
+
+    // ── Fisher-Yates shuffle ──────────────────────────────────────────────
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // ── Format seconds → m:ss ─────────────────────────────────────────────
+    function fmt(s) {
+      if (!isFinite(s)) return '0:00';
+      const m = Math.floor(s / 60);
+      const sec = String(Math.floor(s % 60)).padStart(2, '0');
+      return `${m}:${sec}`;
+    }
+
+    // ── Build artist name map from server-rendered cards ──────────────────
+    const artistNames = {};
+    document.querySelectorAll('.la-card[data-band-id]').forEach(card => {
+      const id   = card.dataset.bandId;
+      const name = card.querySelector('.la-band-name')?.textContent?.trim() || 'Unknown Artist';
+      artistNames[id] = name;
+    });
+
+    // ── Load all tracks via collectionGroup ───────────────────────────────
+    let playlist = [];
+    let idx      = 0;
+
+    try {
+      const tracksSnap = await getDocs(
+        query(collectionGroup(db, 'tracks'), orderBy('uploadedAt', 'desc'))
+      );
+
+      tracksSnap.docs.forEach(d => {
+        const bandId = d.ref.parent.parent?.id;
+        if (!bandId) return;
+        const data = d.data();
+        if (!data.url) return;
+        playlist.push({
+          url:        data.url,
+          title:      data.title || 'Untitled',
+          artistName: artistNames[bandId] || 'Local Artist',
+          bandId,
+        });
+      });
+
+      shuffle(playlist);
+    } catch (err) {
+      console.warn('[local-artists] Could not load tracks:', err);
+    }
+
+    if (playlist.length === 0) return;
+
+    // ── Player elements ───────────────────────────────────────────────────
+    const player       = document.getElementById('la-player');
+    const audio        = document.getElementById('la-audio');
+    const playPauseBtn = document.getElementById('lp-play-pause');
+    const skipBtn      = document.getElementById('lp-skip');
+    const artistEl     = document.getElementById('lp-artist');
+    const titleEl      = document.getElementById('lp-title');
+    const currentEl    = document.getElementById('lp-current');
+    const durationEl   = document.getElementById('lp-duration');
+    const barTrack     = document.getElementById('lp-bar-track');
+    const barFill      = document.getElementById('lp-bar-fill');
+
+    player.style.display = 'flex';
+    document.body.style.paddingBottom = '72px';
+
+    function loadTrack(i) {
+      const t = playlist[i];
+      audio.src             = t.url;
+      audio.load();
+      artistEl.textContent  = t.artistName;
+      titleEl.textContent   = t.title;
+      barFill.style.width   = '0%';
+      currentEl.textContent  = '0:00';
+      durationEl.textContent = '0:00';
+    }
+
+    function playTrack(i) {
+      idx = ((i % playlist.length) + playlist.length) % playlist.length;
+      loadTrack(idx);
+      audio.play().catch(() => {});
+      playPauseBtn.textContent = '⏸';
+    }
+
+    // Load first track (no autoplay — wait for user)
+    loadTrack(0);
+
+    playPauseBtn.addEventListener('click', () => {
+      if (audio.paused) {
+        if (!audio.src || audio.src === window.location.href) loadTrack(idx);
+        audio.play().catch(() => {});
+        playPauseBtn.textContent = '⏸';
+      } else {
+        audio.pause();
+        playPauseBtn.textContent = '▶';
+      }
+    });
+
+    skipBtn.addEventListener('click', () => playTrack(idx + 1));
+
+    audio.addEventListener('ended', () => playTrack(idx + 1));
+
+    audio.addEventListener('timeupdate', () => {
+      if (!isFinite(audio.duration)) return;
+      const pct = (audio.currentTime / audio.duration) * 100;
+      barFill.style.width    = pct + '%';
+      currentEl.textContent  = fmt(audio.currentTime);
+      durationEl.textContent = fmt(audio.duration);
+    });
+
+    barTrack.addEventListener('click', e => {
+      if (!isFinite(audio.duration)) return;
+      const rect = barTrack.getBoundingClientRect();
+      const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      audio.currentTime = pct * audio.duration;
+    });
+
+    // ── Per-card play buttons ─────────────────────────────────────────────
+    document.querySelectorAll('.la-play-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const bandId    = btn.dataset.bandId;
+        const artistIdx = playlist.findIndex(t => t.bandId === bandId);
+        if (artistIdx === -1) return;
+        playTrack(artistIdx);
+      });
+    });
+
+  </script>
+
+</BaseLayout>
+
+<style is:global>
+
+  /* ── Hero ── */
+  .la-hero {
+    background: var(--navy);
+    color: var(--white);
+    padding: 72px 0 56px;
+    text-align: center;
+  }
+  .la-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 14px;
+  }
+  .la-hero-sub {
+    font-size: 18px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.75);
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* ── Section ── */
+  .la-section { background: var(--cream); }
+
+  /* ── Empty ── */
+  .la-empty {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--muted);
+    font-size: 16px;
+  }
+  .la-empty-icon { font-size: 48px; margin-bottom: 16px; }
+
+  /* ── Grid ── */
+  .la-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
+  }
+
+  /* ── Card ── */
+  .la-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: box-shadow 0.22s, transform 0.22s;
+  }
+  .la-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-4px);
+  }
+
+  /* Photo */
+  .la-card-photo {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--cream);
+    flex-shrink: 0;
+  }
+  .la-card-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+  }
+  .la-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 52px;
+    color: var(--border);
+  }
+
+  /* Body */
+  .la-card-body {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+  .la-card-top {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .la-band-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.2;
+    margin: 0;
+  }
+  .la-genre {
+    display: inline-block;
+    background: #dbeafe;
+    color: #1e40af;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 99px;
+    white-space: nowrap;
+  }
+  .la-bio {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin: 0;
+  }
+  .la-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 4px;
+  }
+  .la-link {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--navy);
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .la-link:hover { background: var(--border); }
+
+  /* Per-card play button */
+  .la-play-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(26,36,86,0.82);
+    color: #fff;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.18s, background 0.15s;
+  }
+  .la-card:hover .la-play-btn { opacity: 1; }
+  .la-play-btn:hover { background: var(--navy); }
+
+  /* ── CTA ── */
+  .la-cta { background: var(--navy-dk); color: var(--white); padding: 56px 0; }
+  .la-cta-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+  }
+  .la-cta-inner h2 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .la-cta-inner p {
+    font-size: 15px;
+    color: rgba(255,255,255,0.72);
+    max-width: 480px;
+  }
+
+  /* ── Fixed bottom player ── */
+  #la-player {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #111827;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    height: 64px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-family: 'DM Sans', sans-serif;
+  }
+  .lp-track-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+  }
+  .lp-artist {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lp-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lp-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .lp-btn {
+    background: transparent;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    color: #fff;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .lp-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.5); }
+  .lp-btn-main {
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
+    background: rgba(255,255,255,0.1);
+  }
+  .lp-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 220px;
+    flex-shrink: 0;
+  }
+  .lp-time {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    font-variant-numeric: tabular-nums;
+    width: 30px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .lp-bar-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .lp-bar-fill {
+    height: 100%;
+    background: #e8a020;
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.25s linear;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .la-cta-inner { flex-direction: column; align-items: flex-start; }
+    .lp-progress-wrap { display: none; }
+    #la-player { gap: 12px; padding: 0 14px; }
+  }
+
+</style>

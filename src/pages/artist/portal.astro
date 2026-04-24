@@ -1,0 +1,1158 @@
+---
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Artist Portal — Magna Arts Council</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #f7f5f0;
+      color: #1a2456;
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      background: #1a2456;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 32px;
+      gap: 16px;
+    }
+    .top-bar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .top-bar-brand img { height: 32px; width: auto; filter: brightness(0) invert(1); }
+    .top-bar-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .top-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .user-email-badge { font-size: 13px; color: rgba(255,255,255,0.7); }
+    .btn-signout {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 14px;
+      background: transparent;
+      color: rgba(255,255,255,0.7);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-signout:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    /* ── Page layout ── */
+    .page-wrap {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    /* ── Loading / auth ── */
+    .state { display: none; }
+    .state.active { display: block; }
+    .loading-wrap {
+      text-align: center;
+      padding: 80px 0;
+      color: #5a5a7a;
+      font-size: 15px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #2d3e8e;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Status banner ── */
+    .status-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .status-banner .icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .status-banner strong { display: block; font-weight: 700; margin-bottom: 2px; }
+    .status-banner a { font-weight: 600; text-decoration: underline; }
+    .banner-pending  { background: #fef9c3; border: 1.5px solid #fde68a; color: #78350f; }
+    .banner-rejected { background: #fee2e2; border: 1.5px solid #fca5a5; color: #991b1b; }
+    .banner-track    { background: #dbeafe; border: 1.5px solid #93c5fd; color: #1e40af; }
+    .banner-live     { background: #d1fae5; border: 1.5px solid #6ee7b7; color: #065f46; }
+
+    /* ── Section card ── */
+    .card {
+      background: #fff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a2456;
+    }
+
+    /* ── Profile display ── */
+    .profile-display {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .profile-photo {
+      width: 88px;
+      height: 88px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1.5px solid #e2e8f0;
+      flex-shrink: 0;
+    }
+    .profile-photo-placeholder {
+      width: 88px;
+      height: 88px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      border: 1.5px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+    .profile-info { flex: 1; }
+    .profile-band-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a2456;
+      margin-bottom: 4px;
+    }
+    .profile-genre {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 99px;
+      margin-bottom: 8px;
+    }
+    .profile-bio { font-size: 14px; color: #5a5a7a; line-height: 1.65; margin-bottom: 10px; }
+    .profile-links { display: flex; flex-wrap: wrap; gap: 6px; }
+    .profile-link {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      color: #1a2456;
+      text-decoration: none;
+    }
+    .profile-link:hover { background: #e2e8f0; }
+
+    /* ── Edit form ── */
+    .edit-form { display: none; }
+    .field { margin-bottom: 16px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #1a2456;
+      margin-bottom: 5px;
+    }
+    label .opt { font-weight: 400; text-transform: none; letter-spacing: 0; color: #94a3b8; font-size: 11px; }
+    input[type="text"],
+    input[type="url"],
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 7px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #1a2456;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus { border-color: #2d3e8e; }
+    textarea { resize: vertical; min-height: 80px; }
+    .char-count { font-size: 11px; color: #94a3b8; text-align: right; margin-top: 3px; }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      font-size: 13px;
+      color: #5a5a7a;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #2d3e8e; background: #eff6ff; }
+    .drop-link { color: #2d3e8e; font-weight: 700; cursor: pointer; text-decoration: underline; }
+    .drop-preview {
+      max-width: 120px;
+      max-height: 120px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1.5px solid #e2e8f0;
+      margin: 0 auto 8px;
+      display: block;
+    }
+    .drop-mini-actions { display: flex; gap: 8px; justify-content: center; }
+    .drop-mini-btn {
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1.5px solid #e2e8f0;
+      background: #fff;
+      color: #1a2456;
+      cursor: pointer;
+    }
+    .drop-mini-btn.remove { color: #991b1b; border-color: #fca5a5; }
+
+    .edit-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+    .btn-save {
+      padding: 10px 24px;
+      background: #2d3e8e;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-save:hover { background: #1a2456; }
+    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-ghost {
+      padding: 10px 20px;
+      background: transparent;
+      color: #5a5a7a;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-ghost:hover { background: #f1f5f9; }
+
+    .btn-edit {
+      padding: 8px 18px;
+      background: #f1f5f9;
+      color: #1a2456;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-edit:hover { background: #e2e8f0; }
+
+    /* ── Tracks ── */
+    .tracks-empty {
+      font-size: 14px;
+      color: #94a3b8;
+      text-align: center;
+      padding: 16px 0;
+    }
+    .track-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .track-row:last-child { border-bottom: none; }
+    .track-icon { font-size: 18px; flex-shrink: 0; }
+    .track-info { flex: 1; min-width: 0; }
+    .track-title { font-size: 14px; font-weight: 600; color: #1a2456; }
+    .track-date { font-size: 12px; color: #94a3b8; margin-top: 1px; }
+    .btn-delete-track {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 12px;
+      background: transparent;
+      color: #991b1b;
+      border: 1.5px solid #fca5a5;
+      border-radius: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .btn-delete-track:hover { background: #fee2e2; }
+    .btn-delete-track:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Upload form ── */
+    .aup-reminder {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #166534;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .rights-check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: #1a2456;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+    .rights-check-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #2d3e8e;
+      flex-shrink: 0;
+      margin-top: 2px;
+      cursor: pointer;
+    }
+    .mp3-drop-zone {
+      border: 2px dashed #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 24px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 14px;
+    }
+    .mp3-drop-zone:hover, .mp3-drop-zone.drag-over { border-color: #2d3e8e; background: #eff6ff; }
+    .mp3-drop-zone .drop-icon { font-size: 28px; margin-bottom: 6px; }
+    .mp3-drop-zone .file-name { font-size: 13px; color: #2d3e8e; font-weight: 600; margin-top: 6px; }
+    .mp3-drop-zone .file-hint { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    .btn-upload {
+      padding: 11px 28px;
+      background: #2d3e8e;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-upload:hover { background: #1a2456; }
+    .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Error / toast ── */
+    .inline-error {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      border-radius: 7px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #991b1b;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .inline-error.show { display: block; }
+    .inline-success {
+      background: #d1fae5;
+      border: 1px solid #6ee7b7;
+      border-radius: 7px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #065f46;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .inline-success.show { display: block; }
+
+    .track-count-note { font-size: 13px; color: #5a5a7a; margin-top: 12px; }
+
+    @media (max-width: 560px) {
+      .top-bar { padding: 12px 16px; }
+      .user-email-badge { display: none; }
+      .card { padding: 20px 16px; }
+      .profile-display { flex-direction: column; }
+      .field-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Top bar ── -->
+  <div class="top-bar">
+    <div class="top-bar-brand">
+      <img src="/images/ArtsCouncil_logo.png" alt="Magna Arts Council" />
+      <span class="top-bar-title">Artist Portal</span>
+    </div>
+    <div class="top-bar-right">
+      <span id="user-email-badge" class="user-email-badge"></span>
+      <button id="signout-btn" class="btn-signout">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="page-wrap">
+
+    <!-- ── Loading ── -->
+    <div id="state-loading" class="state active">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div>Loading your artist portal…</div>
+      </div>
+    </div>
+
+    <!-- ── No profile found ── -->
+    <div id="state-no-profile" class="state">
+      <div style="text-align:center;padding:60px 0;">
+        <div style="font-size:48px;margin-bottom:16px;">🎵</div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:22px;color:#1a2456;margin-bottom:12px;">No Artist Profile Found</h2>
+        <p style="font-size:15px;color:#5a5a7a;line-height:1.65;margin-bottom:24px;">We couldn't find an artist profile linked to your account. If you received an invite email, please use the link in that email to register.</p>
+        <a href="/artist/login" style="display:inline-block;padding:12px 28px;background:#2d3e8e;color:#fff;font-weight:700;border-radius:8px;text-decoration:none;">Go to Sign-In →</a>
+      </div>
+    </div>
+
+    <!-- ── Portal ── -->
+    <div id="state-portal" class="state">
+
+      <!-- Status banner (populated by JS) -->
+      <div id="status-banner" style="display:none"></div>
+
+      <!-- ── Profile card ── -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Your Profile</div>
+          <button id="edit-btn" class="btn-edit">✏️ Edit</button>
+        </div>
+
+        <!-- Display view -->
+        <div id="profile-display" class="profile-display"></div>
+
+        <!-- Edit form -->
+        <div id="profile-edit-form" class="edit-form">
+          <div id="edit-error" class="inline-error"></div>
+          <div id="edit-success" class="inline-success"></div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Band Name</label>
+              <input type="text" id="edit-band-name" maxlength="80" />
+            </div>
+            <div class="field">
+              <label>Genre</label>
+              <input type="text" id="edit-genre" maxlength="60" placeholder="e.g. Hard Rock, Folk…" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Bio <span class="opt">(max 300 chars)</span></label>
+            <textarea id="edit-bio" rows="4" maxlength="300"></textarea>
+            <div class="char-count"><span id="edit-bio-count">0</span> / 300</div>
+          </div>
+
+          <div class="field">
+            <label>Profile Photo <span class="opt">(leave empty to keep current)</span></label>
+            <div id="edit-photo-drop" class="drop-zone">
+              <div id="edit-photo-prompt">
+                <span>🖼️ Drag &amp; drop a new photo, or <label for="edit-photo-input" class="drop-link">browse</label></span><br>
+                <small style="color:#94a3b8;">JPG, PNG, WEBP — max 10 MB</small>
+              </div>
+              <div id="edit-photo-preview-wrap" style="display:none">
+                <img id="edit-photo-preview" src="" alt="Preview" class="drop-preview" />
+                <div class="drop-mini-actions">
+                  <button type="button" id="edit-photo-change" class="drop-mini-btn">🔄 Change</button>
+                  <button type="button" id="edit-photo-remove" class="drop-mini-btn remove">✕ Remove</button>
+                </div>
+              </div>
+              <input type="file" id="edit-photo-input" accept="image/*" style="display:none" />
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Website <span class="opt">(optional)</span></label>
+              <input type="url" id="edit-website" placeholder="https://" />
+            </div>
+            <div class="field">
+              <label>Music Link <span class="opt">(optional)</span></label>
+              <input type="url" id="edit-music-link" placeholder="Spotify, Bandcamp…" />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Instagram <span class="opt">(optional)</span></label>
+              <input type="url" id="edit-instagram" placeholder="https://instagram.com/…" />
+            </div>
+            <div class="field">
+              <label>Facebook <span class="opt">(optional)</span></label>
+              <input type="url" id="edit-facebook" placeholder="https://facebook.com/…" />
+            </div>
+          </div>
+
+          <div class="edit-actions">
+            <button type="button" id="edit-cancel-btn" class="btn-ghost">Cancel</button>
+            <button type="button" id="edit-save-btn" class="btn-save">Save Changes</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tracks card ── -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Your Tracks</div>
+          <span id="track-count-label" style="font-size:13px;color:#94a3b8;"></span>
+        </div>
+        <div id="track-list"></div>
+      </div>
+
+      <!-- ── Upload track card ── -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Upload a New Track</div>
+        </div>
+
+        <div class="aup-reminder">
+          🎵 You retain all rights to your music. By uploading, you grant the Magna Arts Council a non-exclusive license to stream these tracks on magnaarts.org. <strong>MP3 / radio edits only — no explicit content.</strong>
+        </div>
+
+        <label class="rights-check-row">
+          <input type="checkbox" id="rights-check" />
+          <span>I confirm I have the rights to share this track and it meets the content guidelines above</span>
+        </label>
+
+        <div class="field">
+          <label>Track Title</label>
+          <input type="text" id="track-title" placeholder="e.g. Midnight Drive" maxlength="80" />
+        </div>
+
+        <div id="mp3-drop-zone" class="mp3-drop-zone">
+          <div class="drop-icon">🎧</div>
+          <div>Drag &amp; drop an MP3 here, or <label for="mp3-input" class="drop-link">browse</label></div>
+          <div id="mp3-file-name" class="file-name" style="display:none"></div>
+          <div class="file-hint">MP3 only — radio edit, no explicit content</div>
+          <input type="file" id="mp3-input" accept=".mp3,audio/mpeg" style="display:none" />
+        </div>
+
+        <div id="upload-error" class="inline-error"></div>
+        <div id="upload-success" class="inline-success"></div>
+
+        <button id="upload-btn" class="btn-upload" disabled>Upload Track →</button>
+        <p class="track-count-note">Maximum 5 tracks. Tracks shuffle randomly on the public page.</p>
+      </div>
+
+    </div><!-- /state-portal -->
+
+  </div><!-- /page-wrap -->
+
+  <script define:vars={{ firebaseConfig }}>
+    window.__FIREBASE_CONFIG__ = firebaseConfig;
+  </script>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+    import {
+      getFirestore,
+      collection,
+      query,
+      where,
+      getDocs,
+      orderBy,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+    import {
+      getStorage,
+      ref as storageRef,
+      uploadBytes,
+      getDownloadURL,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js';
+
+    const app     = initializeApp(window.__FIREBASE_CONFIG__);
+    const auth    = getAuth(app);
+    const db      = getFirestore(app);
+    const storage = getStorage(app);
+
+    // ── State helpers ──────────────────────────────────────────────────
+    function showState(name) {
+      ['loading', 'no-profile', 'portal'].forEach(s => {
+        const el = document.getElementById(`state-${s}`);
+        if (el) el.classList.toggle('active', s === name);
+      });
+    }
+
+    // ── Sign out ───────────────────────────────────────────────────────
+    document.getElementById('signout-btn').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = '/artist/login';
+    });
+
+    // ── App state ──────────────────────────────────────────────────────
+    let currentUser = null;
+    let artistData  = null;
+    let bandId      = null;
+
+    // ── Auth guard ─────────────────────────────────────────────────────
+    onAuthStateChanged(auth, async user => {
+      if (!user) {
+        window.location.href = '/artist/login';
+        return;
+      }
+      currentUser = user;
+      document.getElementById('user-email-badge').textContent = user.email || '';
+      await loadPortal();
+    });
+
+    // ── Load artist doc by uid ─────────────────────────────────────────
+    async function loadPortal() {
+      try {
+        const q    = query(collection(db, 'artists'), where('uid', '==', currentUser.uid));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          showState('no-profile');
+          return;
+        }
+
+        const docSnap = snap.docs[0];
+        bandId     = docSnap.id;
+        artistData = docSnap.data();
+
+        renderStatusBanner();
+        renderProfileDisplay();
+        await loadTracks();
+        showState('portal');
+
+      } catch (err) {
+        console.error('[portal] loadPortal error:', err);
+        showState('no-profile');
+      }
+    }
+
+    // ── Status banner ──────────────────────────────────────────────────
+    function renderStatusBanner() {
+      const banner  = document.getElementById('status-banner');
+      const status  = artistData.status || 'pending_review';
+      const visible = artistData.visible;
+
+      let cls = '';
+      let icon = '';
+      let html = '';
+
+      if (status === 'pending_review') {
+        cls  = 'banner-pending';
+        icon = '⏳';
+        html = '<strong>Profile Under Review</strong>Your profile is being reviewed by the Arts Council. You\'ll receive an email once it\'s approved.';
+      } else if (status === 'rejected') {
+        cls  = 'banner-rejected';
+        icon = '✕';
+        html = '<strong>Profile Not Approved</strong>Your profile wasn\'t approved this time. Check your email for feedback from the Arts Council.';
+      } else if (status === 'approved' && !visible) {
+        cls  = 'banner-track';
+        icon = '🎵';
+        html = '<strong>Upload Your First Track to Go Live</strong>Your profile is approved! Upload at least one track below and your listing will appear on the <a href="/local-artists">Local Artists</a> page.';
+      } else if (status === 'approved' && visible) {
+        cls  = 'banner-live';
+        icon = '✓';
+        html = '<strong>You\'re Live!</strong>Your listing is public on the <a href="/local-artists">Local Artists</a> page. Keep your profile and tracks fresh.';
+      }
+
+      if (!html) { banner.style.display = 'none'; return; }
+      banner.className = `status-banner ${cls}`;
+      banner.innerHTML = `<div class="icon">${icon}</div><div>${html}</div>`;
+      banner.style.display = 'flex';
+    }
+
+    // ── Profile display ────────────────────────────────────────────────
+    function renderProfileDisplay() {
+      const a    = artistData;
+      const wrap = document.getElementById('profile-display');
+
+      const photoHtml = a.photo_url
+        ? `<img src="${a.photo_url}" alt="${esc(a.band_name)}" class="profile-photo" />`
+        : `<div class="profile-photo-placeholder">🎵</div>`;
+
+      const genreHtml = a.genre
+        ? `<div class="profile-genre">${esc(a.genre)}</div>`
+        : '';
+
+      const bioHtml = a.bio
+        ? `<p class="profile-bio">${esc(a.bio)}</p>`
+        : '';
+
+      const links = [];
+      if (a.website)          links.push(`<a href="${a.website}" target="_blank" rel="noopener" class="profile-link">🌐 Website</a>`);
+      if (a.music_link)       links.push(`<a href="${a.music_link}" target="_blank" rel="noopener" class="profile-link">🎵 Music</a>`);
+      if (a.social_instagram) links.push(`<a href="${a.social_instagram}" target="_blank" rel="noopener" class="profile-link">📸 Instagram</a>`);
+      if (a.social_facebook)  links.push(`<a href="${a.social_facebook}" target="_blank" rel="noopener" class="profile-link">👍 Facebook</a>`);
+
+      const linksHtml = links.length
+        ? `<div class="profile-links">${links.join('')}</div>`
+        : '';
+
+      wrap.innerHTML = `
+        ${photoHtml}
+        <div class="profile-info">
+          <div class="profile-band-name">${esc(a.band_name)}</div>
+          ${genreHtml}
+          ${bioHtml}
+          ${linksHtml}
+        </div>
+      `;
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Edit profile ───────────────────────────────────────────────────
+    const editBtn     = document.getElementById('edit-btn');
+    const editForm    = document.getElementById('profile-edit-form');
+    const profileDisp = document.getElementById('profile-display');
+    const cancelBtn   = document.getElementById('edit-cancel-btn');
+    const saveBtn     = document.getElementById('edit-save-btn');
+
+    editBtn.addEventListener('click', () => {
+      // Pre-fill edit form
+      const a = artistData;
+      document.getElementById('edit-band-name').value  = a.band_name || '';
+      document.getElementById('edit-genre').value      = a.genre || '';
+      document.getElementById('edit-bio').value        = a.bio || '';
+      document.getElementById('edit-website').value    = a.website || '';
+      document.getElementById('edit-music-link').value = a.music_link || '';
+      document.getElementById('edit-instagram').value  = a.social_instagram || '';
+      document.getElementById('edit-facebook').value   = a.social_facebook || '';
+
+      const n = (a.bio || '').length;
+      document.getElementById('edit-bio-count').textContent = String(n);
+
+      profileDisp.style.display = 'none';
+      editForm.style.display    = 'block';
+      editBtn.style.display     = 'none';
+      clearEditMessages();
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      profileDisp.style.display = '';
+      editForm.style.display    = 'none';
+      editBtn.style.display     = '';
+      clearEditPhoto();
+      clearEditMessages();
+    });
+
+    function clearEditMessages() {
+      ['edit-error', 'edit-success'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove('show');
+        el.textContent = '';
+      });
+    }
+
+    // Bio counter
+    document.getElementById('edit-bio').addEventListener('input', () => {
+      const n = document.getElementById('edit-bio').value.length;
+      const el = document.getElementById('edit-bio-count');
+      el.textContent = String(n);
+      el.style.color = n >= 280 ? '#b52626' : n >= 240 ? '#e8a020' : '#94a3b8';
+    });
+
+    // Edit photo drop zone
+    const editPhotoDrop     = document.getElementById('edit-photo-drop');
+    const editPhotoInput    = document.getElementById('edit-photo-input');
+    const editPhotoPrompt   = document.getElementById('edit-photo-prompt');
+    const editPhotoPreview  = document.getElementById('edit-photo-preview');
+    const editPhotoWrap     = document.getElementById('edit-photo-preview-wrap');
+    const editPhotoChange   = document.getElementById('edit-photo-change');
+    const editPhotoRemove   = document.getElementById('edit-photo-remove');
+
+    function showEditPhoto(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        editPhotoPreview.src       = e.target.result;
+        editPhotoWrap.style.display  = 'block';
+        editPhotoPrompt.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+    function clearEditPhoto() {
+      editPhotoPreview.src          = '';
+      editPhotoWrap.style.display    = 'none';
+      editPhotoPrompt.style.display  = '';
+      editPhotoInput.value           = '';
+    }
+
+    editPhotoInput.addEventListener('change', () => showEditPhoto(editPhotoInput.files[0]));
+    editPhotoChange.addEventListener('click', () => editPhotoInput.click());
+    editPhotoRemove.addEventListener('click', clearEditPhoto);
+    editPhotoDrop.addEventListener('dragover', e => { e.preventDefault(); editPhotoDrop.classList.add('drag-over'); });
+    editPhotoDrop.addEventListener('dragleave', () => editPhotoDrop.classList.remove('drag-over'));
+    editPhotoDrop.addEventListener('drop', e => {
+      e.preventDefault();
+      editPhotoDrop.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const dt = new DataTransfer(); dt.items.add(file); editPhotoInput.files = dt.files;
+        showEditPhoto(file);
+      }
+    });
+    editPhotoDrop.addEventListener('click', e => {
+      if (e.target === editPhotoPreview || e.target === editPhotoChange || e.target === editPhotoRemove) return;
+      if (!editPhotoInput.files || editPhotoInput.files.length === 0) editPhotoInput.click();
+    });
+
+    // Save profile
+    saveBtn.addEventListener('click', async () => {
+      clearEditMessages();
+      saveBtn.disabled     = true;
+      saveBtn.textContent  = 'Saving…';
+
+      try {
+        let photoUrl = artistData.photo_url || '';
+        const photoFile = editPhotoInput.files?.[0];
+        if (photoFile) {
+          const ext     = photoFile.name.split('.').pop() || 'jpg';
+          const path    = `band-promos/${bandId}/artist-profile.${ext}`;
+          const fileRef = storageRef(storage, path);
+          const snap    = await uploadBytes(fileRef, photoFile);
+          photoUrl      = await getDownloadURL(snap.ref);
+        }
+
+        const idToken = await currentUser.getIdToken();
+        const res = await fetch('/api/artist/update-artist', {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            bandId,
+            band_name:        document.getElementById('edit-band-name').value.trim(),
+            genre:            document.getElementById('edit-genre').value.trim(),
+            bio:              document.getElementById('edit-bio').value.trim(),
+            photo_url:        photoUrl,
+            website:          document.getElementById('edit-website').value.trim(),
+            music_link:       document.getElementById('edit-music-link').value.trim(),
+            social_instagram: document.getElementById('edit-instagram').value.trim(),
+            social_facebook:  document.getElementById('edit-facebook').value.trim(),
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+
+        // Update local artistData and re-render display
+        Object.assign(artistData, {
+          band_name:        document.getElementById('edit-band-name').value.trim(),
+          genre:            document.getElementById('edit-genre').value.trim(),
+          bio:              document.getElementById('edit-bio').value.trim(),
+          photo_url:        photoUrl,
+          website:          document.getElementById('edit-website').value.trim(),
+          music_link:       document.getElementById('edit-music-link').value.trim(),
+          social_instagram: document.getElementById('edit-instagram').value.trim(),
+          social_facebook:  document.getElementById('edit-facebook').value.trim(),
+        });
+        renderProfileDisplay();
+
+        const successEl = document.getElementById('edit-success');
+        successEl.textContent = '✓ Profile updated!';
+        successEl.classList.add('show');
+
+        profileDisp.style.display = '';
+        editForm.style.display    = 'none';
+        editBtn.style.display     = '';
+        clearEditPhoto();
+
+      } catch (err) {
+        console.error('[portal] save profile error:', err);
+        const errEl = document.getElementById('edit-error');
+        errEl.textContent = err.message || 'Save failed. Please try again.';
+        errEl.classList.add('show');
+      } finally {
+        saveBtn.disabled    = false;
+        saveBtn.textContent = 'Save Changes';
+      }
+    });
+
+    // ── Load tracks ─────────────────────────────────────────────────────
+    let tracksData = [];
+
+    async function loadTracks() {
+      try {
+        const tracksSnap = await getDocs(
+          query(
+            collection(db, 'artists', bandId, 'tracks'),
+            orderBy('uploadedAt', 'asc')
+          )
+        );
+        tracksData = tracksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderTrackList();
+      } catch (err) {
+        console.warn('[portal] loadTracks error:', err);
+        tracksData = [];
+        renderTrackList();
+      }
+    }
+
+    function renderTrackList() {
+      const list  = document.getElementById('track-list');
+      const label = document.getElementById('track-count-label');
+      label.textContent = `${tracksData.length} / 5 tracks`;
+
+      if (tracksData.length === 0) {
+        list.innerHTML = '<div class="tracks-empty">No tracks uploaded yet. Add your first track below.</div>';
+        return;
+      }
+
+      list.innerHTML = tracksData.map(t => {
+        const date = t.uploadedAt
+          ? new Date(t.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          : '';
+        return `
+          <div class="track-row" id="track-row-${t.id}">
+            <span class="track-icon">🎵</span>
+            <div class="track-info">
+              <div class="track-title">${esc(t.title)}</div>
+              ${date ? `<div class="track-date">Uploaded ${date}</div>` : ''}
+            </div>
+            <button
+              class="btn-delete-track"
+              data-track-id="${t.id}"
+              data-storage-path="${esc(t.storagePath || '')}"
+              data-track-title="${esc(t.title)}"
+            >Delete</button>
+          </div>
+        `;
+      }).join('');
+
+      // Wire delete buttons
+      list.querySelectorAll('.btn-delete-track').forEach(btn => {
+        btn.addEventListener('click', handleDeleteTrack);
+      });
+    }
+
+    async function handleDeleteTrack(e) {
+      const btn         = e.currentTarget;
+      const trackId     = btn.dataset.trackId;
+      const storagePath = btn.dataset.storagePath;
+      const title       = btn.dataset.trackTitle;
+
+      if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
+      btn.disabled    = true;
+      btn.textContent = 'Deleting…';
+
+      try {
+        const idToken = await currentUser.getIdToken();
+        const res = await fetch('/api/artist/delete-track', {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ bandId, trackId, storagePath }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Delete failed');
+
+        // Remove from local array + re-render
+        tracksData = tracksData.filter(t => t.id !== trackId);
+        renderTrackList();
+
+        // Update visible status locally if API set it to false
+        if (data.visible === false) {
+          artistData.visible = false;
+          renderStatusBanner();
+        }
+
+      } catch (err) {
+        console.error('[portal] delete track error:', err);
+        alert(`Could not delete track: ${err.message}`);
+        btn.disabled    = false;
+        btn.textContent = 'Delete';
+      }
+    }
+
+    // ── Upload track ───────────────────────────────────────────────────
+    const rightsCheck  = document.getElementById('rights-check');
+    const trackTitleEl = document.getElementById('track-title');
+    const mp3DropZone  = document.getElementById('mp3-drop-zone');
+    const mp3Input     = document.getElementById('mp3-input');
+    const mp3FileName  = document.getElementById('mp3-file-name');
+    const uploadBtn    = document.getElementById('upload-btn');
+
+    let selectedMp3 = null;
+
+    function updateUploadBtn() {
+      uploadBtn.disabled = !(rightsCheck.checked && selectedMp3);
+    }
+
+    rightsCheck.addEventListener('change', updateUploadBtn);
+
+    function setMp3File(file) {
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.mp3')) {
+        alert('Please select an MP3 file.');
+        return;
+      }
+      selectedMp3 = file;
+      mp3FileName.textContent = `📄 ${file.name}`;
+      mp3FileName.style.display = 'block';
+      updateUploadBtn();
+    }
+
+    mp3Input.addEventListener('change', () => setMp3File(mp3Input.files[0]));
+    mp3DropZone.addEventListener('dragover', e => { e.preventDefault(); mp3DropZone.classList.add('drag-over'); });
+    mp3DropZone.addEventListener('dragleave', () => mp3DropZone.classList.remove('drag-over'));
+    mp3DropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      mp3DropZone.classList.remove('drag-over');
+      setMp3File(e.dataTransfer.files[0]);
+    });
+    mp3DropZone.addEventListener('click', e => {
+      if (e.target.tagName === 'LABEL') return;
+      mp3Input.click();
+    });
+
+    uploadBtn.addEventListener('click', async () => {
+      const uploadError   = document.getElementById('upload-error');
+      const uploadSuccess = document.getElementById('upload-success');
+      uploadError.classList.remove('show');
+      uploadSuccess.classList.remove('show');
+
+      const title = trackTitleEl.value.trim();
+      if (!title) {
+        uploadError.textContent = 'Please enter a track title.';
+        uploadError.classList.add('show');
+        trackTitleEl.focus();
+        return;
+      }
+      if (!selectedMp3) {
+        uploadError.textContent = 'Please select an MP3 file.';
+        uploadError.classList.add('show');
+        return;
+      }
+      if (tracksData.length >= 5) {
+        uploadError.textContent = 'You\'ve reached the 5-track limit. Delete a track to upload a new one.';
+        uploadError.classList.add('show');
+        return;
+      }
+
+      uploadBtn.disabled    = true;
+      uploadBtn.textContent = 'Uploading…';
+
+      try {
+        const idToken = await currentUser.getIdToken();
+
+        const formData = new FormData();
+        formData.append('bandId', bandId);
+        formData.append('title',  title);
+        formData.append('order',  String(tracksData.length + 1));
+        formData.append('file',   selectedMp3);
+
+        const res = await fetch('/api/artist/upload-track', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${idToken}` },
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+
+        // Reset form
+        trackTitleEl.value        = '';
+        selectedMp3               = null;
+        mp3Input.value            = '';
+        mp3FileName.style.display = 'none';
+        rightsCheck.checked       = false;
+        updateUploadBtn();
+
+        uploadSuccess.textContent = `✓ "${title}" uploaded successfully!`;
+        uploadSuccess.classList.add('show');
+
+        // Reload tracks and re-render banner (visible may have changed)
+        if (data.visible !== undefined) {
+          artistData.visible = data.visible;
+          renderStatusBanner();
+        }
+        await loadTracks();
+
+      } catch (err) {
+        console.error('[portal] upload track error:', err);
+        uploadError.textContent = err.message || 'Upload failed. Please try again.';
+        uploadError.classList.add('show');
+      } finally {
+        uploadBtn.disabled    = false;
+        uploadBtn.textContent = 'Upload Track →';
+      }
+    });
+
+  </script>
+
+</body>
+</html>

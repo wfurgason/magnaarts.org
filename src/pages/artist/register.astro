@@ -1,0 +1,693 @@
+---
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Artist Profile — Magna Arts Council</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #f7f5f0;
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+      color: #1a2456;
+    }
+    .page-wrap {
+      max-width: 660px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .page-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .page-header img { height: 48px; width: auto; margin-bottom: 16px; }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 900;
+      color: #1a2456;
+      margin-bottom: 8px;
+    }
+    .subtitle { font-size: 15px; color: #5a5a7a; line-height: 1.6; }
+
+    /* States */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* Loading */
+    .loading-wrap {
+      text-align: center;
+      padding: 60px 0;
+      color: #5a5a7a;
+      font-size: 15px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #2d3e8e;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Auth required */
+    .auth-card {
+      background: #fff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+    }
+    .auth-card h2 { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #1a2456; margin-bottom: 12px; }
+    .auth-card p { font-size: 14px; color: #5a5a7a; line-height: 1.65; margin-bottom: 24px; }
+    .btn-primary {
+      display: inline-block;
+      padding: 12px 28px;
+      background: #2d3e8e;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #1a2456; }
+
+    /* Form card */
+    .form-card {
+      background: #fff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+    }
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a2456;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1.5px solid #f1f5f9;
+    }
+
+    /* AUP */
+    .aup-scroll {
+      height: 180px;
+      overflow-y: auto;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px 18px;
+      background: #f8fafc;
+      font-size: 13px;
+      color: #5a5a7a;
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+    .aup-scroll h4 { color: #1a2456; font-size: 13px; margin-bottom: 4px; }
+    .aup-scroll p { margin-bottom: 10px; }
+    .aup-check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: #1a2456;
+      cursor: pointer;
+    }
+    .aup-check-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #2d3e8e;
+      flex-shrink: 0;
+      margin-top: 2px;
+      cursor: pointer;
+    }
+
+    /* Field */
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #1a2456;
+      margin-bottom: 6px;
+    }
+    label .opt { font-weight: 400; text-transform: none; letter-spacing: 0; color: #94a3b8; font-size: 11px; }
+    input[type="text"],
+    input[type="url"],
+    input[type="email"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #1a2456;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: #2d3e8e; }
+    textarea { resize: vertical; min-height: 90px; }
+    .char-count { font-size: 12px; color: #94a3b8; text-align: right; margin-top: 4px; }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #2d3e8e; background: #eff6ff; }
+    .drop-prompt { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .drop-icon { font-size: 30px; }
+    .drop-zone span { font-size: 13px; color: #5a5a7a; line-height: 1.5; }
+    .drop-link { color: #2d3e8e; font-weight: 700; cursor: pointer; text-decoration: underline; }
+    .drop-hint { font-size: 11px !important; color: #aaa !important; }
+    .drop-preview { max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: contain; margin: 0 auto; display: block; }
+    .drop-actions { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+    .drop-btn {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1.5px solid #e2e8f0;
+      background: #fff;
+      color: #1a2456;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .drop-btn:hover { background: #f1f5f9; }
+    .drop-btn.remove { color: #991b1b; border-color: #fca5a5; }
+    .drop-btn.remove:hover { background: #fee2e2; }
+
+    /* Submit */
+    .submit-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-top: 8px;
+    }
+    .btn-submit {
+      padding: 14px 36px;
+      background: #2d3e8e;
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-submit:hover { background: #1a2456; }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    .submit-note { font-size: 13px; color: #5a5a7a; line-height: 1.5; }
+
+    /* Error / Success */
+    .error-box {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #991b1b;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .error-box.show { display: block; }
+
+    /* Success state */
+    .success-card {
+      background: #fff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+    }
+    .success-card .icon { font-size: 48px; margin-bottom: 16px; }
+    .success-card h2 { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #1a2456; margin-bottom: 12px; }
+    .success-card p { font-size: 15px; color: #5a5a7a; line-height: 1.65; }
+
+    @media (max-width: 600px) {
+      .form-card { padding: 24px 20px; }
+      .field-row { grid-template-columns: 1fr; }
+      .auth-card { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+
+    <div class="page-header">
+      <img src="/images/ArtsCouncil_logo.png" alt="Magna Arts Council" />
+      <h1>Create Your Artist Profile</h1>
+      <p class="subtitle">Join the Magna Arts Council Local Artists directory — share your music with the community.</p>
+    </div>
+
+    <!-- ── Loading ── -->
+    <div id="state-loading" class="state active">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div>Verifying your sign-in link…</div>
+      </div>
+    </div>
+
+    <!-- ── Auth required ── -->
+    <div id="state-auth-required" class="state">
+      <div class="auth-card">
+        <h2>Sign In Required</h2>
+        <p>Your sign-in link appears to be expired or invalid. Request a new one and use the link in the email to complete registration.</p>
+        <a href="/artist/login" class="btn-primary">Get a New Sign-In Link →</a>
+      </div>
+    </div>
+
+    <!-- ── Registration form ── -->
+    <div id="state-form" class="state">
+
+      <!-- AUP -->
+      <div class="form-card">
+        <div class="card-title">Acceptable Use Policy</div>
+        <div class="aup-scroll">
+          <h4>What's Included</h4>
+          <p>Your artist profile includes a public bio, profile photo, genre tag, website and social links, and up to 5 MP3 tracks that will appear in a rotating audio player on the Local Artists page. You manage your own profile and can update it anytime through your Artist Portal.</p>
+
+          <h4>Music Rights & Content</h4>
+          <p>You retain full ownership of all music and content you upload. By submitting, you grant the Magna Arts Council a non-exclusive, royalty-free license to stream your tracks and display your profile image on magnaarts.org and associated promotional materials. This license ends if you remove your tracks or request removal of your profile.</p>
+
+          <h4>Content Standards</h4>
+          <p>All tracks must be radio-edit versions free of explicit language, graphic content, or material that promotes violence, discrimination, or illegal activity. Uploaded content must be your original work or content you have the rights to distribute. The Arts Council reserves the right to remove content that violates these standards at any time without notice.</p>
+
+          <h4>Review Process</h4>
+          <p>All profiles are reviewed by the Arts Council before going live. Approval is not guaranteed. If your profile is not approved, you will receive an email from the Arts Council with feedback.</p>
+
+          <h4>Account Responsibility</h4>
+          <p>Your sign-in link is personal and single-use. Do not share it. You are responsible for all content submitted through your Artist Portal account.</p>
+        </div>
+        <label class="aup-check-row">
+          <input type="checkbox" id="aup-agree" />
+          <span>I have read and agree to the Acceptable Use Policy above</span>
+        </label>
+      </div>
+
+      <!-- Profile fields -->
+      <div id="error-box" class="error-box"></div>
+
+      <div class="form-card">
+        <div class="card-title">Band Profile</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="band-name">Band Name</label>
+            <input type="text" id="band-name" placeholder="Your band name" maxlength="80" />
+          </div>
+          <div class="field">
+            <label for="genre">Genre</label>
+            <input type="text" id="genre" placeholder="e.g. Hard Rock, Folk, Jazz" maxlength="60" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="bio">Bio <span class="opt">(max 300 characters)</span></label>
+          <textarea id="bio" rows="4" maxlength="300" placeholder="A short description of your band that will appear on your public profile…"></textarea>
+          <div class="char-count"><span id="bio-count">0</span> / 300</div>
+        </div>
+
+        <div class="field">
+          <label>Profile Photo <span class="opt">(optional — square or portrait crop works best)</span></label>
+          <div id="photo-drop-zone" class="drop-zone">
+            <div id="photo-prompt" class="drop-prompt">
+              <span class="drop-icon">🖼️</span>
+              <span>Drag &amp; drop a photo here, or <label for="photo-input" class="drop-link">browse</label></span>
+              <span class="drop-hint">JPG, PNG, WEBP — max 10 MB</span>
+            </div>
+            <img id="photo-preview" src="" alt="Photo preview" class="drop-preview" style="display:none" />
+            <div id="photo-actions" class="drop-actions" style="display:none">
+              <button type="button" id="photo-change-btn" class="drop-btn">🔄 Change</button>
+              <button type="button" id="photo-remove-btn" class="drop-btn remove">✕ Remove</button>
+            </div>
+            <input type="file" id="photo-input" accept="image/*" style="display:none" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="card-title">Links <span style="font-weight:400;font-size:14px;color:#5a5a7a;">(all optional)</span></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="website">Website</label>
+            <input type="url" id="website" placeholder="https://yourband.com" />
+          </div>
+          <div class="field">
+            <label for="music-link">Music Link</label>
+            <input type="url" id="music-link" placeholder="Spotify, Bandcamp, SoundCloud…" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="instagram">Instagram</label>
+            <input type="url" id="instagram" placeholder="https://instagram.com/yourband" />
+          </div>
+          <div class="field">
+            <label for="facebook">Facebook</label>
+            <input type="url" id="facebook" placeholder="https://facebook.com/yourband" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="submit-row">
+          <button id="submit-btn" class="btn-submit" disabled>Submit Profile for Review →</button>
+          <p class="submit-note">Your profile will be reviewed before it goes live.<br>You'll get an email when it's approved.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Success ── -->
+    <div id="state-success" class="state">
+      <div class="success-card">
+        <div class="icon">🎶</div>
+        <h2>Profile Submitted!</h2>
+        <p>Thanks! Your artist profile is now under review. You'll receive an email from the Magna Arts Council once it's approved. After approval, you can log back in to upload your tracks and manage your listing.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script define:vars={{ firebaseConfig }}>
+    window.__FIREBASE_CONFIG__ = firebaseConfig;
+  </script>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import {
+      getAuth,
+      isSignInWithEmailLink,
+      signInWithEmailLink,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+    import {
+      getStorage,
+      ref as storageRef,
+      uploadBytes,
+      getDownloadURL,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-storage.js';
+
+    const app     = initializeApp(window.__FIREBASE_CONFIG__);
+    const auth    = getAuth(app);
+    const db      = getFirestore(app);
+    const storage = getStorage(app);
+
+    // ── State helpers ──────────────────────────────────────────────────
+    const states = ['loading', 'auth-required', 'form', 'success'];
+    function showState(name) {
+      states.forEach(s => {
+        const el = document.getElementById(`state-${s}`);
+        if (el) el.classList.toggle('active', s === name);
+      });
+    }
+
+    function showError(msg) {
+      const box = document.getElementById('error-box');
+      box.textContent = msg;
+      box.classList.add('show');
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function clearError() {
+      document.getElementById('error-box').classList.remove('show');
+    }
+
+    // ── Get bandId from query param ────────────────────────────────────
+    const params = new URLSearchParams(window.location.search);
+    const bandId = params.get('bandId') || '';
+
+    // ── Submit button enable/disable tied to AUP checkbox ─────────────
+    const aupCheck  = document.getElementById('aup-agree');
+    const submitBtn = document.getElementById('submit-btn');
+    aupCheck.addEventListener('change', () => {
+      submitBtn.disabled = !aupCheck.checked;
+    });
+
+    // ── Bio char counter ──────────────────────────────────────────────
+    const bioEl    = document.getElementById('bio');
+    const bioCount = document.getElementById('bio-count');
+    bioEl.addEventListener('input', () => {
+      const n = bioEl.value.length;
+      bioCount.textContent = String(n);
+      bioCount.style.color = n >= 280 ? '#b52626' : n >= 240 ? '#e8a020' : '#94a3b8';
+    });
+
+    // ── Photo drop zone ───────────────────────────────────────────────
+    const photoDropZone   = document.getElementById('photo-drop-zone');
+    const photoInput      = document.getElementById('photo-input');
+    const photoPreview    = document.getElementById('photo-preview');
+    const photoPrompt     = document.getElementById('photo-prompt');
+    const photoActions    = document.getElementById('photo-actions');
+    const photoChangeBtn  = document.getElementById('photo-change-btn');
+    const photoRemoveBtn  = document.getElementById('photo-remove-btn');
+
+    function showPhotoPreview(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        photoPreview.src             = e.target.result;
+        photoPreview.style.display   = 'block';
+        photoPrompt.style.display    = 'none';
+        photoActions.style.display   = 'flex';
+      };
+      reader.readAsDataURL(file);
+    }
+    function clearPhoto() {
+      photoPreview.src             = '';
+      photoPreview.style.display   = 'none';
+      photoPrompt.style.display    = 'flex';
+      photoActions.style.display   = 'none';
+      photoInput.value             = '';
+    }
+
+    photoInput.addEventListener('change', () => showPhotoPreview(photoInput.files[0]));
+    photoChangeBtn.addEventListener('click', () => photoInput.click());
+    photoRemoveBtn.addEventListener('click', clearPhoto);
+    photoDropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      photoDropZone.classList.add('drag-over');
+    });
+    photoDropZone.addEventListener('dragleave', () => photoDropZone.classList.remove('drag-over'));
+    photoDropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      photoDropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        photoInput.files = dt.files;
+        showPhotoPreview(file);
+      }
+    });
+    photoDropZone.addEventListener('click', e => {
+      if (
+        e.target === photoPreview ||
+        e.target === photoChangeBtn ||
+        e.target === photoRemoveBtn
+      ) return;
+      if (!photoInput.files || photoInput.files.length === 0) photoInput.click();
+    });
+
+    // ── Auth: complete magic-link sign-in ─────────────────────────────
+    let currentUser = null;
+
+    async function initAuth() {
+      if (!isSignInWithEmailLink(auth, window.location.href)) {
+        // Not a magic link — check if already signed in
+        await new Promise(resolve => {
+          const { onAuthStateChanged } = window.__FB_AUTH_EXPORTS__;
+          onAuthStateChanged(auth, user => {
+            currentUser = user;
+            resolve();
+          });
+        });
+        if (!currentUser) {
+          showState('auth-required');
+          return;
+        }
+        await loadBandName();
+        showState('form');
+        return;
+      }
+
+      // Complete magic link sign-in
+      let email = window.localStorage.getItem('artistSignInEmail');
+      if (!email) {
+        email = window.prompt('Please enter the email address you used to request the sign-in link:');
+      }
+      if (!email) {
+        showState('auth-required');
+        return;
+      }
+
+      try {
+        const result = await signInWithEmailLink(auth, email, window.location.href);
+        currentUser = result.user;
+        window.localStorage.removeItem('artistSignInEmail');
+        // Clean magic link params from URL without reload
+        window.history.replaceState({}, '', `/artist/register${bandId ? `?bandId=${bandId}` : ''}`);
+        await loadBandName();
+        showState('form');
+      } catch (err) {
+        console.error('[register] signInWithEmailLink error:', err);
+        showState('auth-required');
+      }
+    }
+
+    // Need onAuthStateChanged for the already-signed-in path — expose it via a small shim
+    import('https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js').then(m => {
+      window.__FB_AUTH_EXPORTS__ = m;
+      initAuth();
+    });
+
+    // ── Pre-fill band name from Firestore ─────────────────────────────
+    async function loadBandName() {
+      if (!bandId) return;
+      try {
+        const bandSnap = await getDoc(doc(db, 'band_applications', bandId));
+        if (bandSnap.exists()) {
+          const data = bandSnap.data();
+          const nameInput = document.getElementById('band-name');
+          if (nameInput && data.band_name) {
+            nameInput.value = data.band_name;
+          }
+        }
+      } catch (err) {
+        console.warn('[register] Could not load band name:', err);
+      }
+    }
+
+    // ── Form submit ───────────────────────────────────────────────────
+    submitBtn.addEventListener('click', async () => {
+      clearError();
+
+      if (!bandId) {
+        showError('Missing band ID. Please use the original link from your invite email.');
+        return;
+      }
+      if (!currentUser) {
+        showError('You are not signed in. Please refresh the page and try again.');
+        return;
+      }
+
+      const bandName = document.getElementById('band-name').value.trim();
+      const genre    = document.getElementById('genre').value.trim();
+      const bio      = document.getElementById('bio').value.trim();
+      const website  = document.getElementById('website').value.trim();
+      const musicLink = document.getElementById('music-link').value.trim();
+      const instagram = document.getElementById('instagram').value.trim();
+      const facebook  = document.getElementById('facebook').value.trim();
+
+      if (!bandName) {
+        showError('Band name is required.');
+        document.getElementById('band-name').focus();
+        return;
+      }
+
+      submitBtn.disabled   = true;
+      submitBtn.textContent = 'Submitting…';
+
+      try {
+        // 1. Upload photo if selected
+        let photoUrl = '';
+        const photoFile = photoInput.files?.[0];
+        if (photoFile) {
+          const ext     = photoFile.name.split('.').pop() || 'jpg';
+          const path    = `band-promos/${bandId}/artist-profile.${ext}`;
+          const fileRef = storageRef(storage, path);
+          const snap    = await uploadBytes(fileRef, photoFile);
+          photoUrl      = await getDownloadURL(snap.ref);
+        }
+
+        // 2. Get ID token
+        const idToken = await currentUser.getIdToken();
+
+        // 3. POST to register-artist
+        const res = await fetch('/api/artist/register-artist', {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            bandId,
+            band_name:        bandName,
+            genre,
+            bio,
+            photo_url:        photoUrl,
+            website,
+            music_link:       musicLink,
+            social_instagram: instagram,
+            social_facebook:  facebook,
+            email:            currentUser.email || '',
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || `Server error ${res.status}`);
+        }
+
+        showState('success');
+
+      } catch (err) {
+        console.error('[register] submit error:', err);
+        showError(err.message || 'Something went wrong. Please try again.');
+        submitBtn.disabled   = false;
+        submitBtn.textContent = 'Submit Profile for Review →';
+      }
+    });
+
+  </script>
+
+</body>
+</html>

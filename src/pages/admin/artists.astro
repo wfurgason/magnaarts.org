@@ -1,0 +1,443 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+const filterParam = Astro.url.searchParams.get('filter') || 'pending_review';
+
+// Fetch all artist profiles
+const snap = await adminDb.collection('artists').orderBy('registeredAt', 'desc').get();
+
+type ArtistDoc = {
+  id: string;
+  band_name: string;
+  genre?: string;
+  bio?: string;
+  photo_url?: string;
+  email: string;
+  website?: string;
+  music_link?: string;
+  status: string;
+  visible: boolean;
+  registeredAt?: any;
+  trackCount?: number;
+};
+
+// Convert docs; fetch track counts in parallel
+const rawArtists = snap.docs.map(d => ({ ...d.data(), id: d.id } as ArtistDoc));
+
+const artistsWithCounts = await Promise.all(
+  rawArtists.map(async (a) => {
+    const trackSnap = await adminDb.collection('artists').doc(a.id).collection('tracks').get();
+    return { ...a, trackCount: trackSnap.size };
+  })
+);
+
+const filters: { key: string; label: string }[] = [
+  { key: 'pending_review', label: 'Pending Review' },
+  { key: 'approved',       label: 'Approved' },
+  { key: 'rejected',       label: 'Rejected' },
+];
+
+const filtered = filterParam === 'all'
+  ? artistsWithCounts
+  : artistsWithCounts.filter(a => (a.status || 'pending_review') === filterParam);
+
+function fmt(ts: any) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function excerpt(text: string | undefined, max = 120) {
+  if (!text) return '';
+  return text.length <= max ? text : text.slice(0, max).trimEnd() + '…';
+}
+
+// Pass data to client script (timestamps → ISO strings)
+const artistsForClient = artistsWithCounts.map(a => ({
+  id: a.id,
+  band_name: a.band_name,
+  email: a.email,
+  status: a.status,
+}));
+---
+
+<AdminLayout title="Local Artists" user={user}>
+
+  <div class="page-header">
+    <h1>Local Artists</h1>
+    <p class="page-sub">{snap.size} total registration{snap.size !== 1 ? 's' : ''}</p>
+    <div class="filter-tabs">
+      {filters.map(f => (
+        <a
+          href={`/admin/artists?filter=${f.key}`}
+          class:list={['filter-tab', { active: filterParam === f.key }]}
+        >
+          {f.label}
+          <span class="tab-count">
+            {artistsWithCounts.filter(a => (a.status || 'pending_review') === f.key).length}
+          </span>
+        </a>
+      ))}
+    </div>
+  </div>
+
+  {filtered.length === 0 ? (
+    <div class="empty-state">
+      <p>No artists in this category.</p>
+    </div>
+  ) : (
+    <div class="artist-grid">
+      {filtered.map(artist => (
+        <div class="artist-card" id={`card-${artist.id}`}>
+
+          <!-- Photo + header row -->
+          <div class="card-header">
+            <div class="artist-photo-wrap">
+              {artist.photo_url
+                ? <img src={artist.photo_url} alt={artist.band_name} class="artist-photo" />
+                : <div class="artist-photo-placeholder">🎵</div>
+              }
+            </div>
+            <div class="card-meta">
+              <div class="band-name">{artist.band_name}</div>
+              {artist.genre && <div class="genre-tag">{artist.genre}</div>}
+              <div class="meta-row">
+                <span class={`badge badge-${artist.status || 'pending_review'}`}>
+                  {(artist.status || 'pending_review').replace('_', ' ')}
+                </span>
+                {artist.visible && <span class="badge badge-live">● Live</span>}
+              </div>
+              <div class="meta-details">
+                <span>{artist.trackCount} track{artist.trackCount !== 1 ? 's' : ''}</span>
+                {artist.registeredAt && <span>Registered {fmt(artist.registeredAt)}</span>}
+              </div>
+            </div>
+          </div>
+
+          <!-- Bio -->
+          {artist.bio && (
+            <p class="bio-excerpt">{excerpt(artist.bio)}</p>
+          )}
+
+          <!-- Contact + links -->
+          <div class="link-row">
+            <a href={`mailto:${artist.email}`} class="link-chip">✉ {artist.email}</a>
+            {artist.website && (
+              <a href={artist.website} target="_blank" rel="noopener" class="link-chip">🌐 Website</a>
+            )}
+            {artist.music_link && (
+              <a href={artist.music_link} target="_blank" rel="noopener" class="link-chip">🎵 Music</a>
+            )}
+            <a href="/artist/portal" target="_blank" class="link-chip muted">View Portal ↗</a>
+          </div>
+
+          <!-- Actions -->
+          <div class="card-actions">
+            {(artist.status === 'pending_review' || !artist.status) && (
+              <>
+                <button
+                  class="btn-action btn-approve"
+                  data-id={artist.id}
+                  data-action="approve"
+                  data-name={artist.band_name}
+                >
+                  ✓ Approve
+                </button>
+                <button
+                  class="btn-action btn-reject"
+                  data-id={artist.id}
+                  data-action="reject"
+                  data-name={artist.band_name}
+                >
+                  ✕ Reject
+                </button>
+                <button
+                  class="btn-action btn-invite"
+                  data-id={artist.id}
+                  data-email={artist.email}
+                  data-name={artist.band_name}
+                >
+                  ✉ Resend Invite
+                </button>
+              </>
+            )}
+            {artist.status === 'approved' && (
+              <>
+                <button
+                  class="btn-action btn-reject"
+                  data-id={artist.id}
+                  data-action="reject"
+                  data-name={artist.band_name}
+                >
+                  ✕ Revoke Approval
+                </button>
+                <button
+                  class="btn-action btn-invite"
+                  data-id={artist.id}
+                  data-email={artist.email}
+                  data-name={artist.band_name}
+                >
+                  ✉ Resend Invite
+                </button>
+              </>
+            )}
+            {artist.status === 'rejected' && (
+              <>
+                <button
+                  class="btn-action btn-approve"
+                  data-id={artist.id}
+                  data-action="approve"
+                  data-name={artist.band_name}
+                >
+                  ✓ Approve
+                </button>
+                <button
+                  class="btn-action btn-invite"
+                  data-id={artist.id}
+                  data-email={artist.email}
+                  data-name={artist.band_name}
+                >
+                  ✉ Resend Invite
+                </button>
+              </>
+            )}
+          </div>
+
+        </div>
+      ))}
+    </div>
+  )}
+
+  <!-- Toast -->
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <style>
+    .page-sub { color: var(--muted, #5a5a7a); font-size: 14px; margin: 4px 0 16px; }
+
+    .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+    .filter-tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy, #1a2456);
+      background: #f1f5f9;
+      text-decoration: none;
+      border: 1.5px solid transparent;
+      transition: background .15s, border-color .15s;
+    }
+    .filter-tab:hover { background: #e2e8f0; }
+    .filter-tab.active { background: var(--navy, #1a2456); color: #fff; border-color: var(--navy, #1a2456); }
+    .tab-count {
+      background: rgba(0,0,0,0.12);
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 7px;
+    }
+    .filter-tab.active .tab-count { background: rgba(255,255,255,0.25); }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 15px; }
+
+    /* ── Artist Grid ─────────────────────────────────────────── */
+    .artist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+    }
+
+    .artist-card {
+      background: #fff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: box-shadow .15s;
+    }
+    .artist-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+    /* Photo + meta */
+    .card-header { display: flex; gap: 14px; align-items: flex-start; }
+
+    .artist-photo-wrap { flex-shrink: 0; }
+    .artist-photo {
+      width: 72px;
+      height: 72px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1.5px solid #e2e8f0;
+    }
+    .artist-photo-placeholder {
+      width: 72px;
+      height: 72px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      border: 1.5px solid #e2e8f0;
+    }
+
+    .card-meta { flex: 1; min-width: 0; }
+    .band-name { font-size: 16px; font-weight: 700; color: var(--navy, #1a2456); margin-bottom: 4px; }
+    .genre-tag {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+      margin-bottom: 6px;
+    }
+    .meta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+    .meta-details { font-size: 12px; color: #94a3b8; display: flex; gap: 12px; flex-wrap: wrap; }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 99px;
+      text-transform: capitalize;
+    }
+    .badge-pending_review { background: #fef9c3; color: #854d0e; }
+    .badge-approved       { background: #d1fae5; color: #065f46; }
+    .badge-rejected       { background: #fee2e2; color: #991b1b; }
+    .badge-live           { background: #d1fae5; color: #065f46; font-size: 10px; }
+
+    /* Bio */
+    .bio-excerpt { font-size: 13px; color: #5a5a7a; line-height: 1.6; margin: 0; }
+
+    /* Links */
+    .link-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .link-chip {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: var(--navy, #1a2456);
+      text-decoration: none;
+      border: 1px solid #e2e8f0;
+    }
+    .link-chip:hover { background: #e2e8f0; }
+    .link-chip.muted { color: #94a3b8; }
+
+    /* Action buttons */
+    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid #f1f5f9; }
+    .btn-action {
+      flex: 1;
+      min-width: 110px;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      letter-spacing: .02em;
+      transition: opacity .15s;
+    }
+    .btn-action:hover { opacity: .85; }
+    .btn-action:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-approve { background: #2d7a3a; color: #fff; }
+    .btn-reject  { background: #b52626; color: #fff; }
+    .btn-invite  { background: #f1f5f9; color: var(--navy, #1a2456); border: 1.5px solid #cbd5e1; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: #1a2456;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 22px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+      z-index: 9999;
+    }
+    .toast.show { opacity: 1; pointer-events: auto; }
+    .toast.error { background: #b52626; }
+  </style>
+
+  <script>
+    function showToast(msg: string, isError = false) {
+      const t = document.getElementById('toast')!;
+      t.textContent = msg;
+      t.classList.toggle('error', isError);
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    // Approve / Reject
+    document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id     = btn.dataset.id!;
+        const action = btn.dataset.action!;
+        const name   = btn.dataset.name!;
+        if (action === 'reject' && !confirm(`Reject artist profile for "${name}"? This removes them from the directory.`)) return;
+
+        btn.disabled = true;
+        const res = await fetch('/api/artist/approve-artist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bandId: id, action }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (data.emailError) {
+            showToast(`Done — but invite email failed: ${data.emailError}`, true);
+          } else {
+            showToast(action === 'approve' ? `${name} approved!` : `${name} rejected.`);
+          }
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          showToast(`Error: ${data.error || 'Action failed'}`, true);
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Resend Invite
+    document.querySelectorAll<HTMLButtonElement>('.btn-invite').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id    = btn.dataset.id!;
+        const email = btn.dataset.email!;
+        const name  = btn.dataset.name!;
+        if (!confirm(`Resend invite email to "${email}" for ${name}?`)) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        const res = await fetch('/api/artist/send-artist-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bandId: id, email, bandName: name }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Invite sent to ${email}`);
+        } else {
+          showToast(`Email failed: ${data.error || 'Unknown error'}`, true);
+        }
+        btn.disabled = false;
+        btn.textContent = '✉ Resend Invite';
+      });
+    });
+  </script>
+
+</AdminLayout>

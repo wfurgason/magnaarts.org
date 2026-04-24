@@ -17,13 +17,6 @@
       ]
     },
     {
-      "collectionGroup": "tracks",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "optinTokens",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

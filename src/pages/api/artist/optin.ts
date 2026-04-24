@@ -46,12 +46,17 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { bandId, email, isReturning } = data;
 
-    // Fetch band name
+    // Fetch band name — check band_applications since artist doc may not exist yet
+    let bandName = 'Your Band';
     const artistSnap = await adminDb.collection('artists').doc(bandId).get();
-    if (!artistSnap.exists) {
-      return new Response(JSON.stringify({ error: 'Artist record not found' }), { status: 404 });
+    if (artistSnap.exists) {
+      bandName = artistSnap.data()?.band_name || bandName;
+    } else {
+      const bandSnap = await adminDb.collection('band_applications').doc(bandId).get();
+      if (bandSnap.exists) {
+        bandName = bandSnap.data()?.band_name || bandName;
+      }
     }
-    const bandName = artistSnap.data()?.band_name || 'Your Band';
 
     // Burn the token before sending email (prevents race condition double-use)
     await tokenDoc.ref.update({ usedAt: Date.now() });

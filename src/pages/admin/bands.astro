@@ -337,6 +337,16 @@ const approvedArtistIds = new Set<string>(approvedArtistsSnap.docs.map(d => d.id
                 >
                   Assign to Date →
                 </button>
+                {!approvedArtistIds.has(band.id) && (
+                  <button
+                    class="btn btn-gold send-invite-btn"
+                    data-band-id={band.id}
+                    data-band-name={band.band_name}
+                    data-email={band.contact_email}
+                  >
+                    ✉ Send Artist Invite
+                  </button>
+                )}
               </>
             )}
 
@@ -455,6 +465,37 @@ const approvedArtistIds = new Set<string>(approvedArtistsSnap.docs.map(d => d.id
   <script src="/admin-bands.js" defer></script>
 
   <script>
+    // Send Artist Invite buttons
+    document.querySelectorAll<HTMLButtonElement>('.send-invite-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id    = btn.dataset.bandId!;
+        const name  = btn.dataset.bandName!;
+        const email = btn.dataset.email!;
+        if (!confirm(`Send a Local Artists invitation to ${name} at ${email}?`)) return;
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        try {
+          const res = await fetch('/api/artist/send-artist-invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bandId: id, email, bandName: name }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            btn.textContent = '✓ Invite Sent';
+          } else {
+            alert(`Failed: ${data.error || 'Unknown error'}`);
+            btn.textContent = '✉ Send Artist Invite';
+            btn.disabled = false;
+          }
+        } catch {
+          alert('Request failed — check the console.');
+          btn.textContent = '✉ Send Artist Invite';
+          btn.disabled = false;
+        }
+      });
+    });
+
     // Sync Artist Profile buttons
     document.querySelectorAll<HTMLButtonElement>('.sync-artist-btn').forEach(btn => {
       btn.addEventListener('click', async () => {

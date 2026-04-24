@@ -24,7 +24,7 @@ async function sendEmail(opts: {
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY || (import.meta as any).env?.RESEND_API_KEY;
   const from   = process.env.RESEND_FROM   || (import.meta as any).env?.RESEND_FROM
-                 || 'Magna Arts Council <noreply@magnaarts.org>';
+                 || 'Magna Arts Council <wfurgason@magnaarts.org>';
 
   if (!apiKey || apiKey === 're_your_key_here') {
     console.warn('[artistInvite] RESEND_API_KEY not configured — email skipped');
@@ -149,7 +149,7 @@ function buildInvitationEmail(opts: {
         <tr><td style="background:#1a2456;padding:24px 40px;text-align:center;">
           <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.6);line-height:1.6;">
             Magna Arts Council · Magna, Utah<br>
-            <a href="${siteUrl}" style="color:rgba(255,255,255,0.5);">${siteUrl}</a>
+            <a href="${siteUrl}" style="color:rgba(255,255,255,0.85);text-decoration:underline;">${siteUrl}</a>
           </p>
         </td></tr>
       </table>
@@ -222,7 +222,7 @@ function buildAuthLinkEmail(opts: {
         <tr><td style="background:#1a2456;padding:24px 40px;text-align:center;">
           <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.6);line-height:1.6;">
             Magna Arts Council · Magna, Utah<br>
-            <a href="${siteUrl}" style="color:rgba(255,255,255,0.5);">${siteUrl}</a>
+            <a href="${siteUrl}" style="color:rgba(255,255,255,0.85);text-decoration:underline;">${siteUrl}</a>
           </p>
         </td></tr>
       </table>

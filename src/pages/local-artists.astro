@@ -3,14 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-
-const serviceAccount = JSON.parse(import.meta.env.FIREBASE_SERVICE_ACCOUNT);
-if (!getApps().length) {
-  initializeApp({ credential: cert(serviceAccount) });
-}
-const adminDb = getFirestore();
+import { adminDb } from '../lib/firebase-admin';
 
 const snapshot = await adminDb
   .collection('artists')

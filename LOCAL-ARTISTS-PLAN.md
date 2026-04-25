@@ -21,11 +21,22 @@ Artists write to `artists/` only. They never touch `band_applications/`. An admi
 **Sync** button copies profile fields from `artists/{bandId}` back into `band_applications/{bandId}`
 on demand — keeping you in control of what flows into event publishing.
 
-### Auth approach — Firebase magic link (passwordless)
+### Auth approach — Two-step opt-in + Firebase magic link (passwordless)
 
-No passwords. Artist receives a one-click sign-in link via email (Firebase
-`sendSignInLinkToEmail`). The Good Standing invite email links directly to
-`/artist/register?bandId={id}`. Returning artists use `/artist/login`.
+No passwords. The invite flow has two steps:
+
+1. **Invitation email** — `sendArtistInvite` stores a one-time UUID token in the top-level
+   `optinTokens/{token}` Firestore collection (30-day expiry) and sends an email with an
+   "Opt In" button pointing to `/artist/optin?token={token}`.
+2. **Opt-in page** — `/artist/optin` displays a confirmation screen. When the artist clicks
+   "Opt In — Send My Access Link", it POSTs to `/api/artist/optin`, which validates and burns
+   the token, then calls `sendArtistAuthLink` to generate a Firebase magic link (server-side,
+   via Admin SDK `generateSignInWithEmailLink`) and email it. The magic link is good for 6 hours.
+
+This two-step design prevents accidental sign-in link generation (e.g. email prefetch bots
+clicking links) and gives bands control over when to start the 6-hour auth window.
+
+Returning artists use `/artist/login` (sends a fresh auth link directly, no opt-in token needed).
 
 Artist pages use **client-side Firebase auth** (`onAuthStateChanged`). No server-side session
 cookie is needed — artists only access their own data, and all Firestore writes are secured
@@ -96,13 +107,26 @@ All routes live in `src/pages/api/artist/`. Mirror the pattern from existing adm
 
 ### 2a. `send-artist-invite.ts`
 
-- **Trigger:** Called from `bands.astro` when a band is marked Good Standing
+- **Trigger:** Called from `bands.astro` when a band is marked Good Standing, or manually by admin
 - **Input:** `{ bandId, email, bandName }`
 - **Logic:**
-  1. Check `artists/{bandId}` — if doc exists and `status` is `approved`, set `actionCodeSettings.url` to `/artist/portal`; otherwise set it to `/artist/register?bandId={bandId}`
-  2. **Important:** Firebase magic links always redirect to `actionCodeSettings.url` after auth completes — the `bandId` must be in that URL for registration to work correctly
-  3. Send Resend email with the correct link, AUP summary, and a plain-text explanation of the directory
+  1. Check `artists/{bandId}` — if doc exists and `status` is `approved`, set `isReturning: true`
+  2. Generate a UUID token; store it in `optinTokens/{token}` with `{ email, bandId, isReturning, expiresAt (30 days), usedAt: null }`
+  3. Send Resend invitation email with an "Opt In" button linking to `/artist/optin?token={token}`, AUP summary, and a plain-text explanation of the directory
+  4. Does **not** generate a Firebase auth link — that happens in step 2 after the artist clicks Opt In
 - **Auth:** Verified via admin session cookie (admin-only trigger)
+
+### 2a-optin. `optin.ts` *(not in original plan — added during implementation)*
+
+- **Trigger:** POST from `/artist/optin` page when artist clicks "Opt In — Send My Access Link"
+- **Input:** `{ token }`
+- **Logic:**
+  1. Look up `optinTokens/{token}` — return 404 if missing, 410 if expired
+  2. Burn the token (`usedAt: Date.now()`) before sending email to prevent race-condition double-use
+  3. Fetch band name from `artists/{bandId}` (falls back to `band_applications/{bandId}`)
+  4. Call `sendArtistAuthLink({ bandId, email, bandName, isReturning })` to generate the Firebase magic link and send the auth email
+  5. If `sendArtistAuthLink` fails, un-burn the token so the artist can retry
+- **Auth:** Public endpoint — token is the credential; no session cookie required
 
 ### 2b. `register-artist.ts`
 
@@ -265,26 +289,42 @@ Mirror the pattern from `admin/volunteers.astro` (filter tabs, status badges, ac
 
 ## Shared Utility — `src/lib/sendArtistInvite.ts`
 
-Extract the invite logic into a shared utility rather than calling `send-artist-invite.ts` via an internal `fetch()`. An internal HTTP round-trip adds latency and fails silently if `SITE_URL` is misconfigured.
+Shared utility imported by `send-artist-invite.ts`, `optin.ts`, and `update-submission.ts`. Exports two functions:
 
 ```typescript
 // src/lib/sendArtistInvite.ts
-export async function sendArtistInvite({ bandId, email, bandName, existingStatus }: {
+
+/**
+ * Step 1 — Send the invitation email with an opt-in button.
+ * Stores a one-time UUID token in optinTokens/{token} (30-day expiry).
+ * Does NOT generate a Firebase auth link.
+ */
+export async function sendArtistInvite(opts: {
   bandId: string;
   email: string;
   bandName: string;
-  existingStatus?: string;
-}) {
-  const continueUrl = existingStatus === 'approved'
-    ? `https://magnaarts.org/artist/portal`
-    : `https://magnaarts.org/artist/register?bandId=${bandId}`;
-  // sendSignInLinkToEmail logic + Resend email here
-}
+  existingStatus?: string; // skips Firestore read if already known
+}): Promise<{ ok: boolean; isReturning: boolean; error?: string }>
+
+/**
+ * Step 2 — Called by /api/artist/optin after token validation.
+ * Generates Firebase magic link via Admin SDK generateSignInWithEmailLink
+ * and emails it via Resend.
+ */
+export async function sendArtistAuthLink(opts: {
+  bandId: string;
+  email: string;
+  bandName: string;
+  isReturning: boolean;
+}): Promise<{ ok: boolean; error?: string }>
 ```
 
-Import and call directly from both `update-submission.ts` and the `send-artist-invite.ts` API route (which becomes a thin wrapper for manual admin use). Errors propagate naturally — no silent HTTP failures.
+- `sendArtistInvite` sends an invitation-only email (no auth link). The `isReturning` flag is derived from whether `artists/{bandId}.status === 'approved'` and is stored in the opt-in token for use in step 2.
+- `sendArtistAuthLink` uses the Admin SDK (`generateSignInWithEmailLink`) server-side — **not** the client-side `sendSignInLinkToEmail`. The `continueUrl` is `/artist/portal` for returning artists or `/artist/register?bandId={bandId}` for new ones.
+- Both functions share a private `sendEmail` helper that calls the Resend API.
+- Token storage: top-level `optinTokens/{token}` collection (not a subcollection under `artists/`).
 
-**Add to Session 3 reads:** `src/lib/sendArtistInvite.ts` (new shared util, written first in that session before the routes that import it)
+Import and call directly from both `update-submission.ts` and the `send-artist-invite.ts` API route (which becomes a thin wrapper for manual admin use). Errors propagate naturally — no silent HTTP failures.
 
 ---
 
@@ -375,7 +415,10 @@ Deploy: `firebase deploy --only firestore:indexes`
 ## Editing Checklist (files touched across all phases)
 
 ### New files
+- [ ] `src/lib/sendArtistInvite.ts` — shared utility; exports `sendArtistInvite` and `sendArtistAuthLink`
 - [ ] `src/pages/api/artist/send-artist-invite.ts`
+- [ ] `src/pages/api/artist/optin.ts` — validates opt-in token, burns it, calls `sendArtistAuthLink`
+- [ ] `src/pages/api/artist/me.ts` — returns artist doc + tracks for the authenticated artist
 - [ ] `src/pages/api/artist/register-artist.ts`
 - [ ] `src/pages/api/artist/update-artist.ts`
 - [ ] `src/pages/api/artist/upload-track.ts`
@@ -383,6 +426,7 @@ Deploy: `firebase deploy --only firestore:indexes`
 - [ ] `src/pages/api/artist/approve-artist.ts`
 - [ ] `src/pages/api/artist/sync-artist.ts`
 - [ ] `src/pages/artist/login.astro`
+- [ ] `src/pages/artist/optin.astro` — opt-in landing page with confirmation UI and token in query param
 - [ ] `src/pages/artist/register.astro`
 - [ ] `src/pages/artist/portal.astro`
 - [ ] `src/pages/admin/artists.astro`
@@ -570,4 +614,16 @@ or the player's fetch will fail silently.
 
 ---
 
-*Created April 2026. Update this file as phases complete — check off items in the Editing Checklist above.*
+---
+
+## Firestore Collections Added
+
+| Collection | Purpose |
+|---|---|
+| `optinTokens/{token}` | One-time opt-in tokens (top-level, for direct lookup without index). Fields: `email`, `bandId`, `isReturning`, `expiresAt` (ms), `usedAt` (ms\|null), `createdAt` |
+| `artists/{bandId}` | Artist profiles (see Phase 1) |
+| `artists/{bandId}/tracks/{trackId}` | MP3 track metadata (see Phase 1) |
+
+---
+
+*Created April 2026. Updated April 2026 to reflect actual two-step opt-in implementation, new files (`optin.ts`, `optin.astro`, `me.ts`), and `sendArtistInvite.ts` dual-export shape. Update this file as phases complete — check off items in the Editing Checklist above.*

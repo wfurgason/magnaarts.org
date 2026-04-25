@@ -25,3 +25,5 @@ pnpm-debug.log*
 
 # Firebase service account key — NEVER commit this
 scripts/service-account.json
+.vercel
+.env*.local

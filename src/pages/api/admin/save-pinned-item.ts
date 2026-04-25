@@ -52,6 +52,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (expiresDate !== undefined && expiresDate) {
       const d = new Date(expiresDate);
       if (!isNaN(d.getTime())) {
+        // Store as noon UTC of the day AFTER the entered date.
+        // This ensures the item is visible for the full entered day in Mountain
+        // Time and expires early the following morning (≈ 6 AM MDT).
+        d.setUTCDate(d.getUTCDate() + 1);
+        d.setUTCHours(12, 0, 0, 0);
         data.expiresDate = Timestamp.fromDate(d);
       }
     }

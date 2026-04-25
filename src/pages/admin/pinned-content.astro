@@ -34,6 +34,8 @@ const now = new Date();
 function formatDate(ts: any): string {
   if (!ts) return '—';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
+  // Stored date is next-day noon UTC — subtract 1 day to display the original entered date.
+  d.setUTCDate(d.getUTCDate() - 1);
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
@@ -50,7 +52,7 @@ function getStatus(item: PinnedItem): 'active' | 'inactive' | 'expired' {
 const itemsJson = JSON.stringify(items.map(item => ({
   ...item,
   expiresDate: item.expiresDate
-    ? (item.expiresDate.toDate ? item.expiresDate.toDate() : new Date(item.expiresDate)).toISOString().slice(0, 10)
+    ? (() => { const d = item.expiresDate.toDate ? item.expiresDate.toDate() : new Date(item.expiresDate); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); })()
     : '',
 })));
 ---
@@ -154,7 +156,7 @@ const itemsJson = JSON.stringify(items.map(item => ({
             <div class="field">
               <label for="field-expiresDate">Auto-hide After</label>
               <input type="date" id="field-expiresDate" name="expiresDate" />
-              <span class="field-hint">The item disappears at the start of this day</span>
+              <span class="field-hint">The item disappears the day after this date</span>
             </div>
           </div>
           <div class="field toggle-field">

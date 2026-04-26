@@ -192,22 +192,11 @@ const siteUrl = import.meta.env.SITE_URL || 'https://magnaarts.org';
 
   </div>
 
-  <script define:vars={{ firebaseConfig, siteUrl }}>
-    window.__FIREBASE_CONFIG__ = firebaseConfig;
-    window.__SITE_URL__ = siteUrl;
-  </script>
-
   <script type="module">
-    import { initializeApp }         from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-    import { getAuth, sendSignInLinkToEmail } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
-
-    const app  = initializeApp(window.__FIREBASE_CONFIG__);
-    const auth = getAuth(app);
-
-    const emailInput  = document.getElementById('email-input');
-    const sendBtn     = document.getElementById('send-btn');
-    const errorBox    = document.getElementById('error-box');
-    const stateForm   = document.getElementById('state-form');
+    const emailInput   = document.getElementById('email-input');
+    const sendBtn      = document.getElementById('send-btn');
+    const errorBox     = document.getElementById('error-box');
+    const stateForm    = document.getElementById('state-form');
     const stateConfirm = document.getElementById('state-confirm');
     const confirmEmail = document.getElementById('confirm-email');
 
@@ -217,7 +206,7 @@ const siteUrl = import.meta.env.SITE_URL || 'https://magnaarts.org';
     }
     function clearError() { errorBox.classList.remove('show'); }
 
-    sendBtn.addEventListener('click', async () => {
+    async function submit() {
       clearError();
       const email = emailInput.value.trim();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -226,32 +215,31 @@ const siteUrl = import.meta.env.SITE_URL || 'https://magnaarts.org';
         return;
       }
 
-      sendBtn.disabled = true;
+      sendBtn.disabled    = true;
       sendBtn.textContent = 'Sending…';
 
-      const actionCodeSettings = {
-        url:             `${window.__SITE_URL__}/artist/portal`,
-        handleCodeInApp: true,
-      };
-
       try {
-        await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-        // Save email so we can complete sign-in after redirect
-        window.localStorage.setItem('artistSignInEmail', email);
+        const res  = await fetch('/api/artist/request-login', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
 
         confirmEmail.textContent = email;
         stateForm.classList.remove('active');
         stateConfirm.classList.add('active');
       } catch (err) {
-        console.error('[artist/login] sendSignInLinkToEmail error:', err);
+        console.error('[artist/login]', err);
         showError(err.message || 'Could not send sign-in link. Please try again.');
-        sendBtn.disabled   = false;
+        sendBtn.disabled    = false;
         sendBtn.textContent = 'Send Sign-In Link →';
       }
-    });
+    }
 
-    // Allow Enter key to submit
-    emailInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendBtn.click(); });
+    sendBtn.addEventListener('click', submit);
+    emailInput.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
   </script>
 
 </body>

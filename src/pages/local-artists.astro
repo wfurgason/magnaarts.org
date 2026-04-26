@@ -112,6 +112,7 @@ const firebaseConfig = {
     </div>
     <div class="lp-controls">
       <button id="lp-play-pause" class="lp-btn lp-btn-main" aria-label="Play / Pause">▶</button>
+      <button id="lp-stop" class="lp-btn" aria-label="Stop">⏹</button>
       <button id="lp-skip" class="lp-btn" aria-label="Skip track">⏭</button>
     </div>
     <div class="lp-progress-wrap">
@@ -129,14 +130,13 @@ const firebaseConfig = {
   </script>
 
   <script type="module">
-    import { initializeApp }    from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-    import { getFirestore, collectionGroup, getDocs, orderBy, query }
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import { getFirestore, collectionGroup, collection, getDocs, orderBy, query }
       from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
     const app = initializeApp(window.__FIREBASE_CONFIG__);
     const db  = getFirestore(app);
 
-    // ── Fisher-Yates shuffle ──────────────────────────────────────────────
     function shuffle(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -145,7 +145,6 @@ const firebaseConfig = {
       return arr;
     }
 
-    // ── Format seconds → m:ss ─────────────────────────────────────────────
     function fmt(s) {
       if (!isFinite(s)) return '0:00';
       const m = Math.floor(s / 60);
@@ -153,119 +152,135 @@ const firebaseConfig = {
       return `${m}:${sec}`;
     }
 
-    // ── Build artist name map from server-rendered cards ──────────────────
-    const artistNames = {};
-    document.querySelectorAll('.la-card[data-band-id]').forEach(card => {
-      const id   = card.dataset.bandId;
-      const name = card.querySelector('.la-band-name')?.textContent?.trim() || 'Unknown Artist';
-      artistNames[id] = name;
-    });
-
-    // ── Load all tracks via collectionGroup ───────────────────────────────
-    let playlist = [];
-    let idx      = 0;
-
-    try {
-      const tracksSnap = await getDocs(
-        query(collectionGroup(db, 'tracks'), orderBy('uploadedAt', 'desc'))
-      );
-
-      tracksSnap.docs.forEach(d => {
-        const bandId = d.ref.parent.parent?.id;
-        if (!bandId) return;
-        const data = d.data();
-        if (!data.url) return;
-        playlist.push({
-          url:        data.url,
-          title:      data.title || 'Untitled',
-          artistName: artistNames[bandId] || 'Local Artist',
-          bandId,
-        });
+    async function init() {
+      // Build artist name map from server-rendered cards
+      const artistNames = {};
+      document.querySelectorAll('.la-card[data-band-id]').forEach(card => {
+        const id   = card.dataset.bandId;
+        const name = card.querySelector('.la-band-name')?.textContent?.trim() || 'Unknown Artist';
+        artistNames[id] = name;
       });
+
+      const bandIds = Object.keys(artistNames);
+      let playlist  = [];
+      let idx       = 0;
+
+      // Try collectionGroup first; fall back to per-artist fetches
+      try {
+        const tracksSnap = await getDocs(
+          query(collectionGroup(db, 'tracks'), orderBy('uploadedAt', 'desc'))
+        );
+        tracksSnap.docs.forEach(d => {
+          const bandId = d.ref.parent.parent?.id;
+          if (!bandId) return;
+          const data = d.data();
+          if (!data.url) return;
+          playlist.push({ url: data.url, title: data.title || 'Untitled', artistName: artistNames[bandId] || 'Local Artist', bandId });
+        });
+      } catch (err) {
+        console.warn('[local-artists] collectionGroup failed, falling back:', err);
+        for (const bandId of bandIds) {
+          try {
+            const snap = await getDocs(collection(db, 'artists', bandId, 'tracks'));
+            snap.docs.forEach(d => {
+              const data = d.data();
+              if (!data.url) return;
+              playlist.push({ url: data.url, title: data.title || 'Untitled', artistName: artistNames[bandId] || 'Local Artist', bandId });
+            });
+          } catch (e) {
+            console.warn('[local-artists] Could not fetch tracks for', bandId, e);
+          }
+        }
+      }
 
       shuffle(playlist);
-    } catch (err) {
-      console.warn('[local-artists] Could not load tracks:', err);
-    }
+      if (playlist.length === 0) return;
 
-    if (playlist.length === 0) return;
+      const player       = document.getElementById('la-player');
+      const audio        = document.getElementById('la-audio');
+      const playPauseBtn = document.getElementById('lp-play-pause');
+      const stopBtn      = document.getElementById('lp-stop');
+      const skipBtn      = document.getElementById('lp-skip');
+      const artistEl     = document.getElementById('lp-artist');
+      const titleEl      = document.getElementById('lp-title');
+      const currentEl    = document.getElementById('lp-current');
+      const durationEl   = document.getElementById('lp-duration');
+      const barTrack     = document.getElementById('lp-bar-track');
+      const barFill      = document.getElementById('lp-bar-fill');
 
-    // ── Player elements ───────────────────────────────────────────────────
-    const player       = document.getElementById('la-player');
-    const audio        = document.getElementById('la-audio');
-    const playPauseBtn = document.getElementById('lp-play-pause');
-    const skipBtn      = document.getElementById('lp-skip');
-    const artistEl     = document.getElementById('lp-artist');
-    const titleEl      = document.getElementById('lp-title');
-    const currentEl    = document.getElementById('lp-current');
-    const durationEl   = document.getElementById('lp-duration');
-    const barTrack     = document.getElementById('lp-bar-track');
-    const barFill      = document.getElementById('lp-bar-fill');
+      player.style.display = 'flex';
+      document.body.style.paddingBottom = '72px';
 
-    player.style.display = 'flex';
-    document.body.style.paddingBottom = '72px';
+      function loadTrack(i) {
+        const t = playlist[i];
+        audio.src              = t.url;
+        audio.load();
+        artistEl.textContent   = t.artistName;
+        titleEl.textContent    = t.title;
+        barFill.style.width    = '0%';
+        currentEl.textContent  = '0:00';
+        durationEl.textContent = '0:00';
+      }
 
-    function loadTrack(i) {
-      const t = playlist[i];
-      audio.src             = t.url;
-      audio.load();
-      artistEl.textContent  = t.artistName;
-      titleEl.textContent   = t.title;
-      barFill.style.width   = '0%';
-      currentEl.textContent  = '0:00';
-      durationEl.textContent = '0:00';
-    }
-
-    function playTrack(i) {
-      idx = ((i % playlist.length) + playlist.length) % playlist.length;
-      loadTrack(idx);
-      audio.play().catch(() => {});
-      playPauseBtn.textContent = '⏸';
-    }
-
-    // Load first track (no autoplay — wait for user)
-    loadTrack(0);
-
-    playPauseBtn.addEventListener('click', () => {
-      if (audio.paused) {
-        if (!audio.src || audio.src === window.location.href) loadTrack(idx);
+      function playTrack(i) {
+        idx = ((i % playlist.length) + playlist.length) % playlist.length;
+        loadTrack(idx);
         audio.play().catch(() => {});
         playPauseBtn.textContent = '⏸';
-      } else {
-        audio.pause();
-        playPauseBtn.textContent = '▶';
       }
-    });
 
-    skipBtn.addEventListener('click', () => playTrack(idx + 1));
+      // Load first track (no autoplay — wait for user)
+      loadTrack(0);
 
-    audio.addEventListener('ended', () => playTrack(idx + 1));
-
-    audio.addEventListener('timeupdate', () => {
-      if (!isFinite(audio.duration)) return;
-      const pct = (audio.currentTime / audio.duration) * 100;
-      barFill.style.width    = pct + '%';
-      currentEl.textContent  = fmt(audio.currentTime);
-      durationEl.textContent = fmt(audio.duration);
-    });
-
-    barTrack.addEventListener('click', e => {
-      if (!isFinite(audio.duration)) return;
-      const rect = barTrack.getBoundingClientRect();
-      const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      audio.currentTime = pct * audio.duration;
-    });
-
-    // ── Per-card play buttons ─────────────────────────────────────────────
-    document.querySelectorAll('.la-play-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const bandId    = btn.dataset.bandId;
-        const artistIdx = playlist.findIndex(t => t.bandId === bandId);
-        if (artistIdx === -1) return;
-        playTrack(artistIdx);
+      playPauseBtn.addEventListener('click', () => {
+        if (audio.paused) {
+          if (!audio.src || audio.src === window.location.href) loadTrack(idx);
+          audio.play().catch(() => {});
+          playPauseBtn.textContent = '⏸';
+        } else {
+          audio.pause();
+          playPauseBtn.textContent = '▶';
+        }
       });
-    });
 
+      stopBtn.addEventListener('click', () => {
+        audio.pause();
+        audio.currentTime = 0;
+        playPauseBtn.textContent = '▶';
+        barFill.style.width = '0%';
+        currentEl.textContent = '0:00';
+      });
+
+      skipBtn.addEventListener('click', () => playTrack(idx + 1));
+
+      audio.addEventListener('ended', () => playTrack(idx + 1));
+
+      audio.addEventListener('timeupdate', () => {
+        if (!isFinite(audio.duration)) return;
+        const pct = (audio.currentTime / audio.duration) * 100;
+        barFill.style.width    = pct + '%';
+        currentEl.textContent  = fmt(audio.currentTime);
+        durationEl.textContent = fmt(audio.duration);
+      });
+
+      barTrack.addEventListener('click', e => {
+        if (!isFinite(audio.duration)) return;
+        const rect = barTrack.getBoundingClientRect();
+        const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        audio.currentTime = pct * audio.duration;
+      });
+
+      document.querySelectorAll('.la-play-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const bandId    = btn.dataset.bandId;
+          const artistIdx = playlist.findIndex(t => t.bandId === bandId);
+          if (artistIdx === -1) return;
+          playTrack(artistIdx);
+        });
+      });
+    }
+
+    init();
   </script>
 
 </BaseLayout>

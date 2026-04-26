@@ -69,8 +69,9 @@ function approvedWithTracksEmail(opts: { bandName: string; siteUrl: string }): s
             <a href="${siteUrl}/local-artists" style="display:inline-block;background:#2d3e8e;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;">View Your Listing →</a>
           </div>
           <p style="margin:0 0 16px;font-size:15px;color:#5a5a7a;line-height:1.65;">
-            You can update your bio, photo, and tracks anytime by visiting your
-            <a href="${siteUrl}/artist/portal" style="color:#2d3e8e;">Artist Portal</a>.
+            You can update your bio, photo, and tracks anytime. Just sign in to your
+            <a href="${siteUrl}/artist/login" style="color:#2d3e8e;font-weight:600;">Artist Portal</a>
+            using the email address you registered with — we'll send you a one-click sign-in link.
           </p>
           <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
             <div style="font-size:14px;color:#166534;line-height:1.6;">

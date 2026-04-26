@@ -66,8 +66,9 @@ const firebaseConfig = {
                     {a.genre && <span class="la-genre">{a.genre}</span>}
                   </div>
                   {a.bio && (
-                    <p class="la-bio">
+                    <p class="la-bio" data-full-bio={a.bio.length > 120 ? a.bio : ''}>
                       {a.bio.length > 120 ? a.bio.slice(0, 120).trimEnd() + '…' : a.bio}
+                      {a.bio.length > 120 && <span class="la-bio-popout">{a.bio}</span>}
                     </p>
                   )}
                   <div class="la-links">
@@ -408,7 +409,34 @@ const firebaseConfig = {
     color: var(--muted);
     line-height: 1.6;
     margin: 0;
+    position: relative;
   }
+  .la-bio-popout {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: #1a2456;
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.65;
+    padding: 12px 14px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    z-index: 10;
+    white-space: normal;
+    pointer-events: none;
+  }
+  .la-bio-popout::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 20px;
+    border: 6px solid transparent;
+    border-top-color: #1a2456;
+  }
+  .la-bio:hover .la-bio-popout { display: block; }
   .la-links {
     display: flex;
     flex-wrap: wrap;

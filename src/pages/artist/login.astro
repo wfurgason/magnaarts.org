@@ -227,6 +227,9 @@ const siteUrl = import.meta.env.SITE_URL || 'https://magnaarts.org';
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
 
+        // Store email so portal can complete signInWithEmailLink without prompting
+        window.localStorage.setItem('artistSignInEmail', email);
+
         confirmEmail.textContent = email;
         stateForm.classList.remove('active');
         stateConfirm.classList.add('active');

@@ -679,7 +679,12 @@ const firebaseConfig = {
 
     onAuthStateChanged(auth, async user => {
       if (!user) {
-        window.location.href = '/artist/login';
+        // Wait briefly for Firebase to restore session from redirect before giving up
+        setTimeout(() => {
+          if (!auth.currentUser) {
+            window.location.href = '/artist/login';
+          }
+        }, 2000);
         return;
       }
       currentUser = user;

@@ -22,6 +22,7 @@ export const POST: APIRoute = async ({ request }) => {
     const {
       bandId, band_name, genre, bio, photo_url,
       website, music_link, social_instagram, social_facebook, email,
+      artistType = 'music',
     } = body;
 
     if (!bandId || typeof bandId !== 'string') {
@@ -31,6 +32,7 @@ export const POST: APIRoute = async ({ request }) => {
     const artistDoc: Record<string, any> = {
       uid,
       band_name:        band_name        ?? '',
+      artistType,
       genre:            genre            ?? '',
       bio:              bio              ?? '',
       photo_url:        photo_url        ?? '',
@@ -51,11 +53,12 @@ export const POST: APIRoute = async ({ request }) => {
     const resend = new Resend(import.meta.env.RESEND_API_KEY);
     const adminEmail = import.meta.env.ADMIN_EMAIL ?? 'admin@magnaarts.org';
 
+    const typeLabel = artistType === 'visual' ? 'visual artist' : 'music artist';
     await resend.emails.send({
       from:    'Magna Arts <noreply@magnaarts.org>',
       to:      adminEmail,
-      subject: `New artist profile pending review — ${band_name}`,
-      text:    `${band_name} has submitted an artist profile for review.\n\nReview at: https://magnaarts.org/admin/artists`,
+      subject: `New ${typeLabel} profile pending review — ${band_name}`,
+      text:    `${band_name} has submitted a ${typeLabel} profile for review.\n\nReview at: https://magnaarts.org/admin/artists`,
     });
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });

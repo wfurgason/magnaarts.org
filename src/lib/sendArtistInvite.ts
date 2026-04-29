@@ -60,11 +60,44 @@ function minifyHtml(html: string): string {
 // ── Invitation email (no auth link) ───────────────────────────────────────
 
 function buildInvitationEmail(opts: {
-  bandName: string;
-  optinUrl: string;
-  siteUrl:  string;
+  bandName:    string;
+  optinUrl:    string;
+  siteUrl:     string;
+  artistType?: 'music' | 'visual';
 }): string {
-  const { bandName, optinUrl, siteUrl } = opts;
+  const { bandName, optinUrl, siteUrl, artistType = 'music' } = opts;
+  const isVisual = artistType === 'visual';
+
+  const headerIcon = isVisual ? '🎨' : '🎶';
+  const listingNoun = isVisual ? 'artwork' : 'band';
+
+  const introBody = isVisual
+    ? `The Magna Arts Council would like to feature <strong>${bandName}</strong> in the <strong>Local Artists</strong> directory on magnaarts.org — a public page where community members can discover local visual artists and explore your work.`
+    : `The Magna Arts Council would like to feature <strong>${bandName}</strong> in the <strong>Local Artists</strong> directory on magnaarts.org — a public page where community members can discover local bands and stream your music.`;
+
+  const whatsIncluded = isVisual
+    ? `<li>A public artist profile (photo, bio, website &amp; social links)</li>
+              <li>An image gallery — upload up to 10 images of your artwork</li>
+              <li>Managed entirely by you — update your profile and gallery anytime via your Artist Portal</li>`
+    : `<li>A public band profile (photo, bio, genre, website &amp; social links)</li>
+              <li>Up to 5 MP3 tracks in the rotating audio player on the Local Artists page</li>
+              <li>Managed entirely by you — update your profile anytime via your Artist Portal</li>`;
+
+  const contentBlock = isVisual
+    ? `<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:16px 20px;margin:0 0 28px;">
+            <div style="font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Content Standards</div>
+            <p style="margin:0;font-size:13px;color:#78350f;line-height:1.7;">
+              Images must be your original work or content you have the rights to display. All content should be appropriate for a general community audience. You retain full rights to your artwork. By uploading, you grant the Magna Arts Council a non-exclusive, royalty-free license to display your images on magnaarts.org. The Arts Council reserves the right to remove content that violates this policy.
+            </p>
+          </div>`
+    : `<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:16px 20px;margin:0 0 28px;">
+            <div style="font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Acceptable Use</div>
+            <p style="margin:0;font-size:13px;color:#78350f;line-height:1.7;">
+              Tracks must be radio-edit versions and free of explicit content. You retain full rights to your music.
+              By uploading, you grant the Magna Arts Council a non-exclusive, royalty-free license to stream your
+              tracks on magnaarts.org. The Arts Council reserves the right to remove content that violates this policy.
+            </p>
+          </div>`;
 
   return minifyHtml(`<!DOCTYPE html>
 <html lang="en">
@@ -77,38 +110,27 @@ function buildInvitationEmail(opts: {
         <!-- Header -->
         <tr><td style="background:linear-gradient(135deg,#1a2456,#2d3e8e,#4a5fa8);padding:40px 40px 32px;text-align:center;">
           <div style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.8);margin-bottom:12px;">Magna Arts Council</div>
-          <h1 style="margin:0;font-size:26px;font-weight:900;color:#ffffff;line-height:1.2;">🎶 You're Invited to Join Local Artists</h1>
-          <p style="margin:12px 0 0;font-size:15px;color:#ffffff;">A free listing for your band on our website</p>
+          <h1 style="margin:0;font-size:26px;font-weight:900;color:#ffffff;line-height:1.2;">${headerIcon} You're Invited to Join Local Artists</h1>
+          <p style="margin:12px 0 0;font-size:15px;color:#ffffff;">A free listing for your ${listingNoun} on our website</p>
         </td></tr>
 
         <!-- Body -->
         <tr><td style="padding:40px;">
           <p style="margin:0 0 20px;font-size:16px;color:#1a2456;line-height:1.6;">Hi <strong>${bandName}</strong>,</p>
           <p style="margin:0 0 24px;font-size:15px;color:#5a5a7a;line-height:1.65;">
-            The Magna Arts Council would like to feature <strong>${bandName}</strong> in the
-            <strong>Local Artists</strong> directory on magnaarts.org — a public page where
-            community members can discover local bands and stream your music.
+            ${introBody}
           </p>
 
           <!-- What's included -->
           <div style="background:#f0f4ff;border:1.5px solid #c7d2fe;border-radius:8px;padding:20px 24px;margin:0 0 28px;">
             <div style="font-size:13px;font-weight:700;color:#3730a3;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;">What's Included</div>
             <ul style="margin:0;padding-left:18px;font-size:14px;color:#4338ca;line-height:1.9;">
-              <li>A public band profile (photo, bio, genre, website &amp; social links)</li>
-              <li>Up to 5 MP3 tracks in the rotating audio player on the Local Artists page</li>
-              <li>Managed entirely by you — update your profile anytime via your Artist Portal</li>
+              ${whatsIncluded}
             </ul>
           </div>
 
-          <!-- Acceptable use -->
-          <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:16px 20px;margin:0 0 28px;">
-            <div style="font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Acceptable Use</div>
-            <p style="margin:0;font-size:13px;color:#78350f;line-height:1.7;">
-              Tracks must be radio-edit versions and free of explicit content. You retain full rights to your music.
-              By uploading, you grant the Magna Arts Council a non-exclusive, royalty-free license to stream your
-              tracks on magnaarts.org. The Arts Council reserves the right to remove content that violates this policy.
-            </p>
-          </div>
+          <!-- Content standards / acceptable use -->
+          ${contentBlock}
 
           <!-- How it works -->
           <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:0 0 28px;">
@@ -234,9 +256,10 @@ function buildAuthLinkEmail(opts: {
 // ── Public API ─────────────────────────────────────────────────────────────
 
 export interface SendArtistInviteOptions {
-  bandId: string;
-  email:  string;
-  bandName: string;
+  bandId:       string;
+  email:        string;
+  bandName:     string;
+  artistType?:  'music' | 'visual';
   /** Pass existing artist status if you already have it — skips the Firestore read */
   existingStatus?: string;
 }
@@ -253,7 +276,7 @@ export interface SendArtistInviteResult {
  * Does NOT generate a Firebase auth link.
  */
 export async function sendArtistInvite(opts: SendArtistInviteOptions): Promise<SendArtistInviteResult> {
-  const { bandId, email, bandName, existingStatus } = opts;
+  const { bandId, email, bandName, existingStatus, artistType = 'music' } = opts;
   const siteUrl = process.env.SITE_URL || (import.meta as any).env?.SITE_URL || 'https://magnaarts.org';
 
   let status = existingStatus;
@@ -269,12 +292,14 @@ export async function sendArtistInvite(opts: SendArtistInviteOptions): Promise<S
 
   await adminDb
     .collection('optinTokens').doc(token)
-    .set({ email, bandId, isReturning, expiresAt, usedAt: null, createdAt: FieldValue.serverTimestamp() });
+    .set({ email, bandId, artistType, isReturning, expiresAt, usedAt: null, createdAt: FieldValue.serverTimestamp() });
 
   const optinUrl = `${siteUrl}/artist/optin?token=${token}`;
 
-  const subject = `🎶 You're invited to join the Magna Local Artists directory`;
-  const html    = buildInvitationEmail({ bandName, optinUrl, siteUrl });
+  const subject = artistType === 'visual'
+    ? `🎨 You're invited to join the Magna Local Artists directory`
+    : `🎶 You're invited to join the Magna Local Artists directory`;
+  const html = buildInvitationEmail({ bandName, optinUrl, siteUrl, artistType });
 
   const result = await sendEmail({ to: email, subject, html });
   return { ok: result.ok, isReturning, error: result.error };
@@ -289,13 +314,18 @@ export async function sendArtistAuthLink(opts: {
   email:       string;
   bandName:    string;
   isReturning: boolean;
+  artistType?: 'music' | 'visual';
 }): Promise<{ ok: boolean; error?: string }> {
-  const { bandId, email, bandName, isReturning } = opts;
+  const { bandId, email, bandName, isReturning, artistType = 'music' } = opts;
   const siteUrl = process.env.SITE_URL || (import.meta as any).env?.SITE_URL || 'https://magnaarts.org';
 
   const continueUrl = isReturning
-    ? `${siteUrl}/artist/portal`
-    : `${siteUrl}/artist/register?bandId=${bandId}`;
+    ? artistType === 'visual'
+      ? `${siteUrl}/artist/portal-visual`
+      : `${siteUrl}/artist/portal`
+    : artistType === 'visual'
+      ? `${siteUrl}/artist/register-visual?bandId=${bandId}`
+      : `${siteUrl}/artist/register?bandId=${bandId}`;
 
   let magicLink: string;
   try {

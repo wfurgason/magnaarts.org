@@ -35,6 +35,25 @@ export const GET: APIRoute = async ({ request }) => {
 
     const doc = snapshot.docs[0];
     const data = doc.data();
+    const artistType = data.artistType ?? 'music';
+
+    if (artistType === 'visual') {
+      // Fetch images subcollection
+      const imagesSnap = await adminDb
+        .collection('artists').doc(doc.id)
+        .collection('images')
+        .orderBy('uploadedAt', 'asc')
+        .get();
+
+      const images = imagesSnap.docs.map(i => ({ id: i.id, ...i.data() }));
+
+      return new Response(JSON.stringify({
+        bandId: doc.id,
+        artist: data,
+        artistType,
+        images,
+      }), { status: 200 });
+    }
 
     // Fetch tracks subcollection
     const tracksSnap = await adminDb
@@ -48,6 +67,7 @@ export const GET: APIRoute = async ({ request }) => {
     return new Response(JSON.stringify({
       bandId: doc.id,
       artist: data,
+      artistType,
       tracks,
     }), { status: 200 });
 

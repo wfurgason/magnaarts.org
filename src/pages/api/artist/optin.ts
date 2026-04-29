@@ -40,7 +40,7 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    const { bandId, email, isReturning } = data;
+    const { bandId, email, isReturning, artistType = 'music' } = data;
 
     // Fetch band name — check band_applications since artist doc may not exist yet
     let bandName = 'Your Band';
@@ -58,7 +58,7 @@ export const POST: APIRoute = async ({ request }) => {
     await tokenDocRef.update({ usedAt: Date.now() });
 
     // Send the Firebase auth link email
-    const result = await sendArtistAuthLink({ bandId, email, bandName, isReturning });
+    const result = await sendArtistAuthLink({ bandId, email, bandName, isReturning, artistType });
 
     if (!result.ok) {
       // Un-burn on failure so they can try again

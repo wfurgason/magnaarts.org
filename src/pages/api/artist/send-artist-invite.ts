@@ -17,20 +17,40 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   try {
-    const { bandId, email, bandName } = await request.json();
+    const { bandId: reqBandId, email, bandName, artistType = 'music' } = await request.json();
 
-    if (!bandId || !email || !bandName) {
+    if (!email || !bandName) {
       return new Response(
-        JSON.stringify({ error: 'bandId, email, and bandName are required' }),
+        JSON.stringify({ error: 'email and bandName are required' }),
         { status: 400 }
       );
     }
 
-    // Pass existing status so sendArtistInvite skips its own Firestore read
-    const artistSnap = await adminDb.collection('artists').doc(bandId).get();
-    const existingStatus = artistSnap.exists ? artistSnap.data()?.status : undefined;
+    let bandId: string = reqBandId;
+    let existingStatus: string | undefined;
 
-    const result = await sendArtistInvite({ bandId, email, bandName, existingStatus });
+    if (!bandId) {
+      // New invite — create a placeholder artist doc
+      const newRef = adminDb.collection('artists').doc();
+      bandId = newRef.id;
+      await newRef.set({
+        band_name: bandName,
+        email,
+        artistType,
+        status: 'pending_review',
+        visible: false,
+        uid: null,
+        invitedAt: new Date(),
+        registeredAt: null,
+      });
+      existingStatus = 'pending_review';
+    } else {
+      // Pass existing status so sendArtistInvite skips its own Firestore read
+      const artistSnap = await adminDb.collection('artists').doc(bandId).get();
+      existingStatus = artistSnap.exists ? artistSnap.data()?.status : undefined;
+    }
+
+    const result = await sendArtistInvite({ bandId, email, bandName, artistType, existingStatus });
 
     if (!result.ok) {
       return new Response(JSON.stringify({ success: false, error: result.error }), { status: 500 });

@@ -15,6 +15,21 @@ const artists = snapshot.docs
   .map(doc => ({ id: doc.id, ...doc.data() }))
   .sort((a, b) => (a.band_name || '').localeCompare(b.band_name || ''));
 
+// Fetch gallery images for visual artists server-side
+const imagesByArtist: Record<string, { id: string; url: string; title: string }[]> = {};
+await Promise.all(
+  artists
+    .filter((a: any) => a.artistType === 'visual')
+    .map(async (a: any) => {
+      const snap = await adminDb.collection('artists').doc(a.id).collection('images').get();
+      imagesByArtist[a.id] = snap.docs.map(d => ({
+        id:    d.id,
+        url:   d.data().url || '',
+        title: d.data().title || '',
+      }));
+    })
+);
+
 const firebaseConfig = {
   apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
   authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -27,7 +42,7 @@ const firebaseConfig = {
 
 <BaseLayout
   title="Local Artists — Magna Arts Council"
-  description="Discover local musicians from the Magna community. Stream tracks and explore the artists that make Magna's music scene."
+  description="Discover local musicians and visual artists from the Magna community."
 >
   <Header />
 
@@ -37,7 +52,7 @@ const firebaseConfig = {
     <section class="la-hero">
       <div class="container">
         <h1>Local Artists</h1>
-        <p class="la-hero-sub">Discover the musicians of Magna. Stream tracks from community artists right here.</p>
+        <p class="la-hero-sub">Discover the musicians and visual artists of Magna. Stream music, explore artwork, and connect with your community's creative voices.</p>
       </div>
     </section>
 
@@ -52,38 +67,65 @@ const firebaseConfig = {
           </div>
         ) : (
           <div class="la-grid" id="la-grid">
-            {artists.map(a => (
-              <article class="la-card" data-band-id={a.id}>
-                <div class="la-card-photo">
-                  {a.photo_url
-                    ? <img src={a.photo_url} alt={a.band_name} loading="lazy" />
-                    : <div class="la-photo-placeholder">🎵</div>
-                  }
-                </div>
-                <div class="la-card-body">
-                  <div class="la-card-top">
-                    <h2 class="la-band-name">{a.band_name}</h2>
-                    {a.genre && <span class="la-genre">{a.genre}</span>}
+            {artists.map((a: any) => {
+              const isVisual  = a.artistType === 'visual';
+              const images    = isVisual ? (imagesByArtist[a.id] || []) : [];
+              const firstImg  = images[0];
+              const cardPhoto = firstImg?.url || a.photo_url || '';
+              const placeholder = isVisual ? '🎨' : '🎵';
+
+              return (
+                <article
+                  class={`la-card${isVisual ? ' la-card--visual' : ''}`}
+                  data-band-id={a.id}
+                  data-type={isVisual ? 'visual' : 'music'}
+                  data-images={isVisual ? JSON.stringify(images) : ''}
+                >
+                  <div class="la-card-photo">
+                    {cardPhoto
+                      ? <img src={cardPhoto} alt={a.band_name} loading="lazy" />
+                      : <div class="la-photo-placeholder">{placeholder}</div>
+                    }
+                    {isVisual && images.length > 1 && (
+                      <div class="la-image-badge">{images.length} images</div>
+                    )}
                   </div>
-                  {a.bio && (
-                    <p class="la-bio" data-full-bio={a.bio.length > 120 ? a.bio : ''}>
-                      {a.bio.length > 120 ? a.bio.slice(0, 120).trimEnd() + '…' : a.bio}
-                      {a.bio.length > 120 && <span class="la-bio-popout">{a.bio}</span>}
-                    </p>
+
+                  <div class="la-card-body">
+                    <div class="la-card-top">
+                      <h2 class="la-band-name">{a.band_name}</h2>
+                      {a.genre && !isVisual && <span class="la-genre">{a.genre}</span>}
+                      {isVisual && <span class="la-genre la-genre--visual">Visual Artist</span>}
+                    </div>
+                    {a.bio && (
+                      <p class="la-bio" data-full-bio={a.bio.length > 120 ? a.bio : ''}>
+                        {a.bio.length > 120 ? a.bio.slice(0, 120).trimEnd() + '…' : a.bio}
+                        {a.bio.length > 120 && <span class="la-bio-popout">{a.bio}</span>}
+                      </p>
+                    )}
+                    <div class="la-links">
+                      {a.website          && <a href={a.website}          target="_blank" rel="noopener" class="la-link">🌐 Website</a>}
+                      {a.music_link       && !isVisual && <a href={a.music_link} target="_blank" rel="noopener" class="la-link">🎵 Music</a>}
+                      {a.music_link       && isVisual  && <a href={a.music_link} target="_blank" rel="noopener" class="la-link">🎨 Portfolio</a>}
+                      {a.social_instagram && <a href={a.social_instagram} target="_blank" rel="noopener" class="la-link">📸 Instagram</a>}
+                      {a.social_facebook  && <a href={a.social_facebook}  target="_blank" rel="noopener" class="la-link">👍 Facebook</a>}
+                    </div>
+                  </div>
+
+                  {/* Music: per-card play button */}
+                  {!isVisual && (
+                    <button class="la-play-btn" data-band-id={a.id} aria-label={`Play tracks from ${a.band_name}`}>
+                      ▶
+                    </button>
                   )}
-                  <div class="la-links">
-                    {a.website          && <a href={a.website}          target="_blank" rel="noopener" class="la-link">🌐 Website</a>}
-                    {a.music_link       && <a href={a.music_link}       target="_blank" rel="noopener" class="la-link">🎵 Music</a>}
-                    {a.social_instagram && <a href={a.social_instagram} target="_blank" rel="noopener" class="la-link">📸 Instagram</a>}
-                    {a.social_facebook  && <a href={a.social_facebook}  target="_blank" rel="noopener" class="la-link">👍 Facebook</a>}
-                  </div>
-                </div>
-                <!-- Play button overlay -->
-                <button class="la-play-btn" data-band-id={a.id} aria-label={`Play tracks from ${a.band_name}`}>
-                  ▶
-                </button>
-              </article>
-            ))}
+
+                  {/* Visual: gallery open hint */}
+                  {isVisual && images.length > 0 && (
+                    <div class="la-gallery-hint">View Gallery →</div>
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
 
@@ -94,8 +136,8 @@ const firebaseConfig = {
     <section class="la-cta">
       <div class="container la-cta-inner">
         <div>
-          <h2>Are You a Local Musician?</h2>
-          <p>Bands with Good Standing status can apply for a free listing on this page. Contact the Arts Council to learn more.</p>
+          <h2>Are You a Local Artist?</h2>
+          <p>Magna community musicians and visual artists can apply for a free listing on this page. Contact the Arts Council to learn more.</p>
         </div>
         <a href="/contact" class="btn btn-gold">Get in Touch →</a>
       </div>
@@ -105,20 +147,40 @@ const firebaseConfig = {
 
   <Footer />
 
-  <!-- ── ROTATING PLAYER (fixed bottom) ── -->
+  <!-- ── LIGHTBOX (visual artists) ── -->
+  <div id="la-lightbox" aria-modal="true" role="dialog" aria-label="Image gallery" style="display:none">
+    <div id="lb-backdrop" class="lb-backdrop"></div>
+    <div class="lb-dialog">
+      <div class="lb-top">
+        <div id="lb-artist-name" class="lb-artist-name"></div>
+        <button id="lb-close" class="lb-close" aria-label="Close gallery">✕</button>
+      </div>
+      <div class="lb-img-wrap">
+        <button id="lb-prev" class="lb-nav lb-prev" aria-label="Previous image">‹</button>
+        <img id="lb-img" src="" alt="" class="lb-img" />
+        <button id="lb-next" class="lb-nav lb-next" aria-label="Next image">›</button>
+      </div>
+      <div class="lb-footer">
+        <div id="lb-title" class="lb-title"></div>
+        <div id="lb-counter" class="lb-counter"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ROTATING PLAYER (fixed bottom, music only) ── -->
   <div id="la-player" style="display:none" aria-label="Music Player">
     <div class="lp-track-info">
       <div id="lp-artist" class="lp-artist"></div>
-      <div id="lp-title" class="lp-title"></div>
+      <div id="lp-title"  class="lp-title"></div>
     </div>
     <div class="lp-controls">
       <button id="lp-play-pause" class="lp-btn lp-btn-main" aria-label="Play / Pause">▶</button>
-      <button id="lp-stop" class="lp-btn" aria-label="Stop">⏹</button>
-      <button id="lp-skip" class="lp-btn" aria-label="Skip track">⏭</button>
+      <button id="lp-stop"       class="lp-btn"             aria-label="Stop">⏹</button>
+      <button id="lp-skip"       class="lp-btn"             aria-label="Skip track">⏭</button>
     </div>
     <div class="lp-progress-wrap">
-      <span id="lp-current" class="lp-time">0:00</span>
-      <div id="lp-bar-track" class="lp-bar-track" role="slider" aria-label="Seek">
+      <span id="lp-current"  class="lp-time">0:00</span>
+      <div  id="lp-bar-track" class="lp-bar-track" role="slider" aria-label="Seek">
         <div id="lp-bar-fill" class="lp-bar-fill"></div>
       </div>
       <span id="lp-duration" class="lp-time">0:00</span>
@@ -138,6 +200,79 @@ const firebaseConfig = {
     const app = initializeApp(window.__FIREBASE_CONFIG__);
     const db  = getFirestore(app);
 
+    // ─────────────────────────────────────────────
+    // LIGHTBOX
+    // ─────────────────────────────────────────────
+    const lightbox   = document.getElementById('la-lightbox');
+    const lbBackdrop = document.getElementById('lb-backdrop');
+    const lbClose    = document.getElementById('lb-close');
+    const lbPrev     = document.getElementById('lb-prev');
+    const lbNext     = document.getElementById('lb-next');
+    const lbImg      = document.getElementById('lb-img');
+    const lbTitle    = document.getElementById('lb-title');
+    const lbCounter  = document.getElementById('lb-counter');
+    const lbArtist   = document.getElementById('lb-artist-name');
+
+    let lbImages = [];
+    let lbIdx    = 0;
+
+    function openLightbox(artistName, images, startIdx = 0) {
+      lbImages = images;
+      lbIdx    = startIdx;
+      lbArtist.textContent = artistName;
+      lbPrev.style.display = images.length > 1 ? '' : 'none';
+      lbNext.style.display = images.length > 1 ? '' : 'none';
+      showLbImage(lbIdx);
+      lightbox.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      lightbox.style.display    = 'none';
+      document.body.style.overflow = '';
+      lbImg.src = '';
+    }
+
+    function showLbImage(i) {
+      lbIdx = ((i % lbImages.length) + lbImages.length) % lbImages.length;
+      const item       = lbImages[lbIdx];
+      lbImg.src        = item.url;
+      lbImg.alt        = item.title || '';
+      lbTitle.textContent   = item.title || '';
+      lbCounter.textContent = lbImages.length > 1 ? `${lbIdx + 1} / ${lbImages.length}` : '';
+    }
+
+    lbClose.addEventListener('click', closeLightbox);
+    lbBackdrop.addEventListener('click', closeLightbox);
+    lbPrev.addEventListener('click', () => showLbImage(lbIdx - 1));
+    lbNext.addEventListener('click', () => showLbImage(lbIdx + 1));
+
+    document.addEventListener('keydown', e => {
+      if (lightbox.style.display === 'none') return;
+      if (e.key === 'Escape')      closeLightbox();
+      if (e.key === 'ArrowLeft')   showLbImage(lbIdx - 1);
+      if (e.key === 'ArrowRight')  showLbImage(lbIdx + 1);
+    });
+
+    // Wire up visual artist card clicks
+    document.querySelectorAll('.la-card--visual').forEach(card => {
+      const rawImages = card.dataset.images || '[]';
+      let images = [];
+      try { images = JSON.parse(rawImages); } catch {}
+      if (images.length === 0) return;
+
+      const artistName = card.querySelector('.la-band-name')?.textContent?.trim() || '';
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', e => {
+        // Don't intercept link clicks
+        if (e.target.closest('a')) return;
+        openLightbox(artistName, images, 0);
+      });
+    });
+
+    // ─────────────────────────────────────────────
+    // MUSIC PLAYER
+    // ─────────────────────────────────────────────
     function shuffle(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -153,30 +288,31 @@ const firebaseConfig = {
       return `${m}:${sec}`;
     }
 
-    async function init() {
-      // Build artist name map from server-rendered cards
+    async function initPlayer() {
+      // Only music artist cards contribute to the playlist
       const artistNames = {};
-      document.querySelectorAll('.la-card[data-band-id]').forEach(card => {
+      document.querySelectorAll('.la-card[data-type="music"]').forEach(card => {
         const id   = card.dataset.bandId;
         const name = card.querySelector('.la-band-name')?.textContent?.trim() || 'Unknown Artist';
         artistNames[id] = name;
       });
 
       const bandIds = Object.keys(artistNames);
-      let playlist  = [];
-      let idx       = 0;
+      if (bandIds.length === 0) return;
 
-      // Try collectionGroup first; fall back to per-artist fetches
+      let playlist = [];
+      let idx      = 0;
+
       try {
         const tracksSnap = await getDocs(
           query(collectionGroup(db, 'tracks'), orderBy('uploadedAt', 'desc'))
         );
         tracksSnap.docs.forEach(d => {
           const bandId = d.ref.parent.parent?.id;
-          if (!bandId) return;
+          if (!bandId || !artistNames[bandId]) return;
           const data = d.data();
           if (!data.url) return;
-          playlist.push({ url: data.url, title: data.title || 'Untitled', artistName: artistNames[bandId] || 'Local Artist', bandId });
+          playlist.push({ url: data.url, title: data.title || 'Untitled', artistName: artistNames[bandId], bandId });
         });
       } catch (err) {
         console.warn('[local-artists] collectionGroup failed, falling back:', err);
@@ -186,7 +322,7 @@ const firebaseConfig = {
             snap.docs.forEach(d => {
               const data = d.data();
               if (!data.url) return;
-              playlist.push({ url: data.url, title: data.title || 'Untitled', artistName: artistNames[bandId] || 'Local Artist', bandId });
+              playlist.push({ url: data.url, title: data.title || 'Untitled', artistName: artistNames[bandId], bandId });
             });
           } catch (e) {
             console.warn('[local-artists] Could not fetch tracks for', bandId, e);
@@ -209,7 +345,7 @@ const firebaseConfig = {
       const barTrack     = document.getElementById('lp-bar-track');
       const barFill      = document.getElementById('lp-bar-fill');
 
-      player.style.display = 'flex';
+      player.style.display     = 'flex';
       document.body.style.paddingBottom = '72px';
 
       function loadTrack(i) {
@@ -230,7 +366,6 @@ const firebaseConfig = {
         playPauseBtn.textContent = '⏸';
       }
 
-      // Load first track (no autoplay — wait for user)
       loadTrack(0);
 
       playPauseBtn.addEventListener('click', () => {
@@ -246,14 +381,13 @@ const firebaseConfig = {
 
       stopBtn.addEventListener('click', () => {
         audio.pause();
-        audio.currentTime = 0;
+        audio.currentTime      = 0;
         playPauseBtn.textContent = '▶';
-        barFill.style.width = '0%';
-        currentEl.textContent = '0:00';
+        barFill.style.width    = '0%';
+        currentEl.textContent  = '0:00';
       });
 
       skipBtn.addEventListener('click', () => playTrack(idx + 1));
-
       audio.addEventListener('ended', () => playTrack(idx + 1));
 
       audio.addEventListener('timeupdate', () => {
@@ -281,7 +415,7 @@ const firebaseConfig = {
       });
     }
 
-    init();
+    initPlayer();
   </script>
 
 </BaseLayout>
@@ -306,7 +440,7 @@ const firebaseConfig = {
     font-size: 18px;
     font-weight: 300;
     color: rgba(255,255,255,0.75);
-    max-width: 520px;
+    max-width: 560px;
     margin: 0 auto;
     line-height: 1.65;
   }
@@ -346,6 +480,7 @@ const firebaseConfig = {
     box-shadow: var(--shadow-hover);
     transform: translateY(-4px);
   }
+  .la-card--visual { cursor: pointer; }
 
   /* Photo */
   .la-card-photo {
@@ -354,6 +489,7 @@ const firebaseConfig = {
     overflow: hidden;
     background: var(--cream);
     flex-shrink: 0;
+    position: relative;
   }
   .la-card-photo img {
     display: block;
@@ -370,6 +506,20 @@ const firebaseConfig = {
     justify-content: center;
     font-size: 52px;
     color: var(--border);
+  }
+
+  /* Image count badge */
+  .la-image-badge {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(26,36,86,0.75);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 99px;
+    pointer-events: none;
   }
 
   /* Body */
@@ -403,6 +553,10 @@ const firebaseConfig = {
     padding: 2px 9px;
     border-radius: 99px;
     white-space: nowrap;
+  }
+  .la-genre--visual {
+    background: #ede9fe;
+    color: #5b21b6;
   }
   .la-bio {
     font-size: 13px;
@@ -457,7 +611,7 @@ const firebaseConfig = {
   }
   .la-link:hover { background: var(--border); }
 
-  /* Per-card play button */
+  /* Per-card play button (music only) */
   .la-play-btn {
     position: absolute;
     top: 10px;
@@ -479,6 +633,23 @@ const firebaseConfig = {
   .la-card:hover .la-play-btn { opacity: 1; }
   .la-play-btn:hover { background: var(--navy); }
 
+  /* Gallery hint (visual) */
+  .la-gallery-hint {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(26,36,86,0.75);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 99px;
+    opacity: 0;
+    transition: opacity 0.18s;
+    pointer-events: none;
+  }
+  .la-card--visual:hover .la-gallery-hint { opacity: 1; }
+
   /* ── CTA ── */
   .la-cta { background: var(--navy-dk); color: var(--white); padding: 56px 0; }
   .la-cta-inner {
@@ -497,6 +668,123 @@ const firebaseConfig = {
     font-size: 15px;
     color: rgba(255,255,255,0.72);
     max-width: 480px;
+  }
+
+  /* ── LIGHTBOX ── */
+  #la-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lb-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.82);
+    cursor: pointer;
+  }
+  .lb-dialog {
+    position: relative;
+    z-index: 1;
+    background: #111827;
+    border-radius: 14px;
+    padding: 20px;
+    max-width: min(90vw, 700px);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  }
+  .lb-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .lb-artist-name {
+    font-family: 'Playfair Display', 'Georgia', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lb-close {
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .lb-close:hover { background: rgba(255,255,255,0.22); }
+  .lb-img-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lb-img {
+    max-width: 100%;
+    max-height: 60vh;
+    border-radius: 8px;
+    object-fit: contain;
+    display: block;
+  }
+  .lb-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .lb-nav:hover { background: rgba(255,255,255,0.25); }
+  .lb-prev { left: 8px; }
+  .lb-next { right: 8px; }
+  .lb-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 20px;
+  }
+  .lb-title {
+    font-size: 14px;
+    color: rgba(255,255,255,0.75);
+    font-style: italic;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lb-counter {
+    font-size: 13px;
+    color: rgba(255,255,255,0.45);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
   }
 
   /* ── Fixed bottom player ── */
@@ -602,6 +890,9 @@ const firebaseConfig = {
     .la-cta-inner { flex-direction: column; align-items: flex-start; }
     .lp-progress-wrap { display: none; }
     #la-player { gap: 12px; padding: 0 14px; }
+    .lb-nav { width: 36px; height: 36px; font-size: 22px; }
+    .lb-prev { left: 2px; }
+    .lb-next { right: 2px; }
   }
 
 </style>

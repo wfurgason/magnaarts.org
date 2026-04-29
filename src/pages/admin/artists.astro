@@ -11,6 +11,7 @@ const snap = await adminDb.collection('artists').orderBy('registeredAt', 'desc')
 type ArtistDoc = {
   id: string;
   band_name: string;
+  artistType?: 'music' | 'visual';
   genre?: string;
   bio?: string;
   photo_url?: string;
@@ -28,8 +29,9 @@ const rawArtists = snap.docs.map(d => ({ ...d.data(), id: d.id } as ArtistDoc));
 
 const artistsWithCounts = await Promise.all(
   rawArtists.map(async (a) => {
-    const trackSnap = await adminDb.collection('artists').doc(a.id).collection('tracks').get();
-    return { ...a, trackCount: trackSnap.size };
+    const subCol = (a.artistType ?? 'music') === 'visual' ? 'images' : 'tracks';
+    const subSnap = await adminDb.collection('artists').doc(a.id).collection(subCol).get();
+    return { ...a, trackCount: subSnap.size };
   })
 );
 
@@ -68,6 +70,22 @@ const artistsForClient = artistsWithCounts.map(a => ({
   <div class="page-header">
     <h1>Local Artists</h1>
     <p class="page-sub">{snap.size} total registration{snap.size !== 1 ? 's' : ''}</p>
+
+    <!-- Inline Invite Form -->
+    <div class="invite-form" id="invite-form">
+      <div class="invite-form-title">Send Artist Invite</div>
+      <div class="invite-fields">
+        <input type="text" id="invite-name" placeholder="Artist / Group Name" class="invite-input" />
+        <input type="email" id="invite-email" placeholder="Email Address" class="invite-input" />
+        <div class="type-toggle" id="type-toggle">
+          <button class="type-btn active" data-type="music">🎵 Music</button>
+          <button class="type-btn" data-type="visual">🎨 Visual</button>
+        </div>
+        <button id="invite-send-btn" class="btn-send-invite">Send Invite</button>
+      </div>
+      <div id="invite-feedback" class="invite-feedback" style="display:none"></div>
+    </div>
+
     <div class="filter-tabs">
       {filters.map(f => (
         <a
@@ -102,7 +120,12 @@ const artistsForClient = artistsWithCounts.map(a => ({
             </div>
             <div class="card-meta">
               <div class="band-name">{artist.band_name}</div>
-              {artist.genre && <div class="genre-tag">{artist.genre}</div>}
+              <div class="meta-row">
+                <span class={`type-badge type-badge-${artist.artistType ?? 'music'}`}>
+                  {(artist.artistType ?? 'music') === 'visual' ? '🎨 Visual' : '🎵 Music'}
+                </span>
+                {artist.genre && <span class="genre-tag">{artist.genre}</span>}
+              </div>
               <div class="meta-row">
                 <span class={`badge badge-${artist.status || 'pending_review'}`}>
                   {(artist.status || 'pending_review').replace('_', ' ')}
@@ -110,7 +133,7 @@ const artistsForClient = artistsWithCounts.map(a => ({
                 {artist.visible && <span class="badge badge-live">● Live</span>}
               </div>
               <div class="meta-details">
-                <span>{artist.trackCount} track{artist.trackCount !== 1 ? 's' : ''}</span>
+                <span>{artist.trackCount} {(artist.artistType ?? 'music') === 'visual' ? `image${artist.trackCount !== 1 ? 's' : ''}` : `track${artist.trackCount !== 1 ? 's' : ''}`}</span>
                 {artist.registeredAt && <span>Registered {fmt(artist.registeredAt)}</span>}
               </div>
             </div>
@@ -215,6 +238,98 @@ const artistsForClient = artistsWithCounts.map(a => ({
 
   <style>
     .page-sub { color: var(--muted, #5a5a7a); font-size: 14px; margin: 4px 0 16px; }
+
+    /* ── Invite Form ─────────────────────────────────────────── */
+    .invite-form {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .invite-form-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+    .invite-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .invite-input {
+      flex: 1;
+      min-width: 160px;
+      padding: 8px 12px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--navy, #1a2456);
+      background: #fff;
+    }
+    .invite-input:focus { outline: none; border-color: var(--navy, #1a2456); }
+    .type-toggle {
+      display: flex;
+      background: #e2e8f0;
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .type-btn {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      background: transparent;
+      color: #64748b;
+      transition: background .15s, color .15s;
+    }
+    .type-btn.active {
+      background: #fff;
+      color: var(--navy, #1a2456);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .btn-send-invite {
+      padding: 8px 20px;
+      background: var(--navy, #1a2456);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity .15s;
+    }
+    .btn-send-invite:hover { opacity: .85; }
+    .btn-send-invite:disabled { opacity: .5; cursor: not-allowed; }
+    .invite-feedback {
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+    .invite-feedback.success { background: #d1fae5; color: #065f46; }
+    .invite-feedback.error   { background: #fee2e2; color: #991b1b; }
+
+    /* ── Type badge ───────────────────────────────────────────── */
+    .type-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+    .type-badge-music  { background: #dbeafe; color: #1e40af; }
+    .type-badge-visual { background: #ede9fe; color: #5b21b6; }
 
     .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
     .filter-tab {
@@ -384,7 +499,63 @@ const artistsForClient = artistsWithCounts.map(a => ({
       setTimeout(() => t.classList.remove('show'), 3500);
     }
 
-    // Approve / Reject
+    // ── Type toggle ────────────────────────────────────────────────────────
+    document.querySelectorAll<HTMLButtonElement>('.type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll<HTMLButtonElement>('.type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // ── Send new invite ────────────────────────────────────────────────────
+    document.getElementById('invite-send-btn')?.addEventListener('click', async () => {
+      const nameEl     = document.getElementById('invite-name') as HTMLInputElement;
+      const emailEl    = document.getElementById('invite-email') as HTMLInputElement;
+      const activeType = document.querySelector<HTMLButtonElement>('.type-btn.active');
+      const feedback   = document.getElementById('invite-feedback')!;
+      const btn        = document.getElementById('invite-send-btn') as HTMLButtonElement;
+
+      const name       = nameEl.value.trim();
+      const email      = emailEl.value.trim();
+      const artistType = activeType?.dataset.type || 'music';
+
+      if (!name || !email) {
+        feedback.textContent    = 'Please fill in both name and email.';
+        feedback.className      = 'invite-feedback error';
+        feedback.style.display  = 'block';
+        return;
+      }
+
+      btn.disabled    = true;
+      btn.textContent = 'Sending…';
+      feedback.style.display = 'none';
+
+      const res = await fetch('/api/artist/send-artist-invite', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ bandName: name, email, artistType }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        feedback.textContent   = `✓ Invite sent to ${email}`;
+        feedback.className     = 'invite-feedback success';
+        feedback.style.display = 'block';
+        nameEl.value  = '';
+        emailEl.value = '';
+        document.querySelectorAll<HTMLButtonElement>('.type-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector<HTMLButtonElement>('.type-btn[data-type="music"]')?.classList.add('active');
+      } else {
+        feedback.textContent   = `Error: ${data.error || 'Send failed'}`;
+        feedback.className     = 'invite-feedback error';
+        feedback.style.display = 'block';
+      }
+
+      btn.disabled    = false;
+      btn.textContent = 'Send Invite';
+    });
+
+    // ── Approve / Reject ───────────────────────────────────────────────────
     document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id     = btn.dataset.id!;

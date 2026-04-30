@@ -34,6 +34,7 @@ type Vendor = {
   reviewedBy?: string;
   paidAt?: any;
   profile_image_url?: string;
+  admin_notes?: string;
 };
 
 let vendors = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Vendor[];
@@ -196,6 +197,18 @@ function calcTotal(v: Vendor): number {
                   </span>
                 </div>
               )}
+              <div class="admin-notes-box">
+                <label class="detail-label" for={`notes-${v.id}`}>🔒 Admin Notes</label>
+                <textarea
+                  id={`notes-${v.id}`}
+                  class="admin-notes-textarea"
+                  data-id={v.id}
+                  placeholder="Internal notes — not visible to vendors…"
+                  rows="2"
+                >{v.admin_notes || ''}</textarea>
+                <div class="admin-notes-status" id={`notes-status-${v.id}`}></div>
+              </div>
+
             </div>
 
             <div class="submission-actions">
@@ -360,6 +373,36 @@ function calcTotal(v: Vendor): number {
   </div>
 
   <script>
+    // ── Admin notes auto-save on blur ─────────────────────────────────────
+    document.querySelectorAll('.admin-notes-textarea').forEach(el => {
+      const textarea = el as HTMLTextAreaElement;
+      let original = textarea.value;
+
+      textarea.addEventListener('blur', async () => {
+        const current = textarea.value;
+        if (current === original) return;
+        const id = textarea.dataset.id!;
+        const statusEl = document.getElementById(`notes-status-${id}`);
+        if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.className = 'admin-notes-status saving'; }
+        try {
+          const res = await fetch('/api/admin/vendor-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'note', id, notes: current }),
+          });
+          if (res.ok) {
+            original = current;
+            if (statusEl) { statusEl.textContent = 'Saved'; statusEl.className = 'admin-notes-status saved'; }
+            setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
+          } else {
+            if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'admin-notes-status error'; }
+          }
+        } catch {
+          if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'admin-notes-status error'; }
+        }
+      });
+    });
+
     let pendingPaidId: string | null = null;
     let pendingTotal: number = 0;
     let pendingDeleteId: string | null = null;
@@ -928,6 +971,50 @@ function calcTotal(v: Vendor): number {
       border: 1.5px solid var(--border);
       border-radius: var(--radius);
     }
+
+    .admin-notes-box {
+      margin-top: 14px;
+      background: #fefce8;
+      border: 1.5px solid #fde047;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .admin-notes-box .detail-label {
+      color: #854d0e;
+      margin-bottom: 6px;
+    }
+
+    .admin-notes-textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 13px;
+      color: #1a1a2e;
+      background: #fff;
+      border: 1.5px solid #fde047;
+      border-radius: 6px;
+      padding: 8px 10px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .admin-notes-textarea:focus {
+      border-color: #ca8a04;
+      box-shadow: 0 0 0 3px rgba(202,138,4,0.15);
+    }
+
+    .admin-notes-status {
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 4px;
+      min-height: 16px;
+    }
+
+    .admin-notes-status.saving { color: #92400e; }
+    .admin-notes-status.saved  { color: #166534; }
+    .admin-notes-status.error  { color: #991b1b; }
   </style>
 
 </AdminLayout>

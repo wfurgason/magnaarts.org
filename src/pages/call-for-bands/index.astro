@@ -442,6 +442,16 @@ const firebaseConfig = {
       }
       dateError.hidden = true;
 
+      // Phone normalization (optional field)
+      const phoneInputEl = document.getElementById('contact_phone');
+      if (phoneInputEl && phoneInputEl.value.trim()) {
+        const rawDigits = phoneInputEl.value.replace(/\D/g, '');
+        const digits = rawDigits.startsWith('1') && rawDigits.length === 11 ? rawDigits.slice(1) : rawDigits;
+        if (digits.length === 10) {
+          phoneInputEl.value = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+        }
+      }
+
       submitBtn.disabled    = true;
       submitBtn.textContent = 'Uploading…';
       successEl.style.display = 'none';

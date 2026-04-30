@@ -16,7 +16,11 @@ if (Astro.request.method === 'POST') {
     const honeypot  = form.get('full_name_hp')?.toString() || '';
     const fullName  = form.get('fullName')?.toString().trim()  || '';
     const email     = form.get('email')?.toString().trim()     || '';
-    const phone     = form.get('phone')?.toString().trim()     || '';
+    const phoneRaw  = form.get('phone')?.toString().replace(/\D/g, '') || '';
+    const phoneDigits = phoneRaw.startsWith('1') && phoneRaw.length === 11 ? phoneRaw.slice(1) : phoneRaw;
+    const phone = phoneDigits.length === 10
+      ? `(${phoneDigits.slice(0,3)}) ${phoneDigits.slice(3,6)}-${phoneDigits.slice(6)}`
+      : form.get('phone')?.toString().trim() || '';
     const canLift   = form.get('canLift')?.toString()          || '';
     const interests = form.getAll('interests').map(v => v.toString());
 

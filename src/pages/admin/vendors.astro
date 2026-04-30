@@ -373,13 +373,14 @@ function calcTotal(v: Vendor): number {
   </div>
 
   <script>
-    // ── Admin notes auto-save on blur ─────────────────────────────────────
+    // ── Admin notes auto-save (debounced on input + blur) ─────────────────
     document.querySelectorAll('.admin-notes-textarea').forEach(el => {
       const textarea = el as HTMLTextAreaElement;
-      let original = textarea.value;
+      let original = textarea.value.trim();
+      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-      textarea.addEventListener('blur', async () => {
-        const current = textarea.value;
+      async function saveNote() {
+        const current = textarea.value.trim();
         if (current === original) return;
         const id = textarea.dataset.id!;
         const statusEl = document.getElementById(`notes-status-${id}`);
@@ -392,14 +393,25 @@ function calcTotal(v: Vendor): number {
           });
           if (res.ok) {
             original = current;
-            if (statusEl) { statusEl.textContent = 'Saved'; statusEl.className = 'admin-notes-status saved'; }
-            setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
+            if (statusEl) { statusEl.textContent = 'Saved ✓'; statusEl.className = 'admin-notes-status saved'; }
+            setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2500);
           } else {
-            if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'admin-notes-status error'; }
+            const json = await res.json().catch(() => ({}));
+            if (statusEl) { statusEl.textContent = `Error: ${json.error || res.status}`; statusEl.className = 'admin-notes-status error'; }
           }
-        } catch {
-          if (statusEl) { statusEl.textContent = 'Error saving'; statusEl.className = 'admin-notes-status error'; }
+        } catch (err) {
+          if (statusEl) { statusEl.textContent = 'Network error — note not saved'; statusEl.className = 'admin-notes-status error'; }
         }
+      }
+
+      textarea.addEventListener('input', () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(saveNote, 1200);
+      });
+
+      textarea.addEventListener('blur', () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        saveNote();
       });
     });
 

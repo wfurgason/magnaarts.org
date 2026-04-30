@@ -33,6 +33,7 @@ export const POST: APIRoute = async ({ request }) => {
       email: artist.email,
       bandName,
       isReturning: status === 'approved',
+      artistType: artist.artistType === 'visual' ? 'visual' : 'music',
     });
 
     if (!result.ok) {

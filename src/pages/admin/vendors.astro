@@ -6,7 +6,7 @@ const user = Astro.locals.user;
 const filterParam = Astro.url.searchParams.get('filter') || 'all';
 
 const snap = await adminDb.collection('vendor_applications')
-  .orderBy('submitted_at', 'desc')
+  .orderBy('submitted_at', 'asc')
   .get();
 
 type Vendor = {

@@ -151,7 +151,9 @@ const artistsForClient = artistsWithCounts.map(a => ({
               <a href={artist.website} target="_blank" rel="noopener" class="link-chip">🌐 Website</a>
             )}
             {artist.music_link && (
-              <a href={artist.music_link} target="_blank" rel="noopener" class="link-chip">🎵 Music</a>
+              <a href={artist.music_link} target="_blank" rel="noopener" class="link-chip">
+                {(artist.artistType ?? 'music') === 'visual' ? '🛍 Shop' : '🎵 Music'}
+              </a>
             )}
             <a href="/artist/portal" target="_blank" class="link-chip muted">View Portal ↗</a>
           </div>

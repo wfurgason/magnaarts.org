@@ -174,5 +174,22 @@ Music cards get a `🎵 Music` badge; visual cards get `🎨 Visual`.
 
 - Firebase Storage rules for `artist_images/` need a separate `firebase deploy --only storage`
   after adding the new path (same pattern as the existing `artist_tracks/` and `band-promos/` rules).
-- The admin approve/reject flow in `artists.astro` works unchanged for both types.
 - Treat a missing `artistType` field on existing docs as `'music'` — no Firestore migration needed.
+
+---
+
+## Completed Work
+
+### ✅ Approval email branching (`src/pages/api/artist/approve-artist.ts`)
+
+The approval route previously used music-only email templates for all artist types. Fixed:
+
+- Added `approvedWithImagesEmail()` — sent to visual artists who already have images uploaded;
+  references artwork, not tracks or streaming.
+- Added `approvedNoImagesEmail()` — sent to visual artists with no images yet; prompts them to
+  upload images (not MP3s); includes image rights/license reminder instead of music AUP language.
+- Approval logic now reads `artist.artist_type` and branches accordingly:
+  - Visual artists: checks `images` subcollection for upload count
+  - Music artists: checks `tracks` subcollection (unchanged)
+- API response now returns `artistType` and `uploadCount` (renamed from `trackCount`) for both types.
+- Existing music artist templates and subjects are unchanged.

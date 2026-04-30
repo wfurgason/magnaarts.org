@@ -15,6 +15,12 @@ const artists = snapshot.docs
   .map(doc => ({ id: doc.id, ...doc.data() }))
   .sort((a, b) => (a.band_name || '').localeCompare(b.band_name || ''));
 
+function ensureUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `https://${url}`;
+}
+
 // Fetch gallery images for visual artists server-side
 const imagesByArtist: Record<string, { id: string; url: string; title: string }[]> = {};
 await Promise.all(
@@ -104,11 +110,11 @@ const firebaseConfig = {
                       </p>
                     )}
                     <div class="la-links">
-                      {a.website          && <a href={a.website}          target="_blank" rel="noopener" class="la-link">🌐 Website</a>}
-                      {a.music_link       && !isVisual && <a href={a.music_link} target="_blank" rel="noopener" class="la-link">🎵 Music</a>}
-                      {a.music_link       && isVisual  && <a href={a.music_link} target="_blank" rel="noopener" class="la-link">🎨 Portfolio</a>}
-                      {a.social_instagram && <a href={a.social_instagram} target="_blank" rel="noopener" class="la-link">📸 Instagram</a>}
-                      {a.social_facebook  && <a href={a.social_facebook}  target="_blank" rel="noopener" class="la-link">👍 Facebook</a>}
+                      {a.website          && <a href={ensureUrl(a.website)}          target="_blank" rel="noopener" class="la-link">🌐 Website</a>}
+                      {a.music_link       && !isVisual && <a href={ensureUrl(a.music_link)} target="_blank" rel="noopener" class="la-link">🎵 Music</a>}
+                      {a.music_link       && isVisual  && <a href={ensureUrl(a.music_link)} target="_blank" rel="noopener" class="la-link">🎨 Portfolio</a>}
+                      {a.social_instagram && <a href={ensureUrl(a.social_instagram)} target="_blank" rel="noopener" class="la-link">📸 Instagram</a>}
+                      {a.social_facebook  && <a href={ensureUrl(a.social_facebook)}  target="_blank" rel="noopener" class="la-link">👍 Facebook</a>}
                     </div>
                   </div>
 

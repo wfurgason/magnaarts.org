@@ -145,7 +145,7 @@ function calcTotal(v: Vendor): number {
                   <div class="detail-label">Utilities + Links</div>
                   <div>⚡ {v.needs_electricity === 'yes' ? 'Electric: Yes' : 'No electric'}</div>
                   <div>💧 {v.needs_water === 'yes' ? 'Water: Yes' : 'No water'}</div>
-                  {v.website && <div style="margin-top:4px;"><a href={v.website} target="_blank" rel="noopener">Website ↗</a></div>}
+                  {v.website && <div style="margin-top:4px;"><a href={/^https?:\/\//i.test(v.website) ? v.website : `https://${v.website}`} target="_blank" rel="noopener">Website ↗</a></div>}
                 </div>
               </div>
 

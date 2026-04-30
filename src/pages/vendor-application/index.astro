@@ -416,7 +416,7 @@ const firebaseConfig = {
           city_zip:            fd.get('city_zip'),
           phone:               fd.get('phone'),
           email:               fd.get('email'),
-          website:             fd.get('website') || null,
+          website:             (() => { const w = fd.get('website')?.trim(); if (!w) return null; return /^https?:\/\//i.test(w) ? w : `https://${w}`; })(),
           vendor_type:         fd.get('vendor_type'),
           selling:             fd.get('selling'),
           description:         fd.get('description') || null,

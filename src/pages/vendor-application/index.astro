@@ -382,6 +382,21 @@ const firebaseConfig = {
       // Honeypot check — bots fill this, humans don't
       if (form.querySelector('#company_website')?.value) return;
 
+      // Phone normalization
+      const phoneInput = document.getElementById('phone');
+      const phoneRaw = phoneInput.value.replace(/\D/g, '');
+      const phoneDigits = phoneRaw.startsWith('1') && phoneRaw.length === 11 ? phoneRaw.slice(1) : phoneRaw;
+      if (phoneDigits.length !== 10) {
+        phoneInput.setCustomValidity('Please enter a valid 10-digit phone number.');
+        phoneInput.reportValidity();
+        phoneInput.setCustomValidity('');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Application →';
+        return;
+      }
+      const phoneFormatted = `(${phoneDigits.slice(0,3)}) ${phoneDigits.slice(3,6)}-${phoneDigits.slice(6)}`;
+      phoneInput.value = phoneFormatted;
+
       const waiverCheck = document.getElementById('waiver_agreed');
       const waiverError = document.getElementById('waiver-error');
       if (!waiverCheck.checked) {

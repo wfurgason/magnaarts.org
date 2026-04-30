@@ -155,7 +155,7 @@ const artistsForClient = artistsWithCounts.map(a => ({
                 {(artist.artistType ?? 'music') === 'visual' ? '🛍 Shop' : '🎵 Music'}
               </a>
             )}
-            <a href="/artist/portal" target="_blank" class="link-chip muted">View Portal ↗</a>
+            <a href={`/admin/artist-preview?bandId=${artist.id}`} target="_blank" class="link-chip muted">View Portal ↗</a>
           </div>
 
           <!-- Actions -->

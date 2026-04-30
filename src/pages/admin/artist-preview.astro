@@ -1,0 +1,137 @@
+---
+// No server-side work needed — everything happens client-side
+const firebaseConfig = {
+  apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loading Artist Portal… — Magna Arts Council</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #f7f5f0;
+      color: #1a2456;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wrap {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #2d3e8e;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .msg { font-size: 15px; color: #5a5a7a; }
+    .error-msg {
+      font-size: 14px;
+      color: #991b1b;
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      padding: 12px 20px;
+      margin-top: 16px;
+      display: none;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #2d3e8e;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="spinner"></div>
+    <div class="msg" id="msg">Loading artist portal…</div>
+    <div class="error-msg" id="error-msg"></div>
+    <a href="/admin/artists" class="back-link" id="back-link" style="display:none">← Back to Admin</a>
+  </div>
+
+  <script define:vars={{ firebaseConfig }}>
+    window.__FIREBASE_CONFIG__ = firebaseConfig;
+  </script>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import {
+      getAuth,
+      signInWithCustomToken,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+
+    const app  = initializeApp(window.__FIREBASE_CONFIG__);
+    const auth = getAuth(app);
+
+    const msgEl   = document.getElementById('msg');
+    const errEl   = document.getElementById('error-msg');
+    const backLink = document.getElementById('back-link');
+
+    function showError(msg) {
+      msgEl.style.display  = 'none';
+      errEl.textContent    = msg;
+      errEl.style.display  = 'block';
+      backLink.style.display = 'inline-block';
+      document.querySelector('.spinner').style.display = 'none';
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const bandId = params.get('bandId');
+
+    if (!bandId) {
+      showError('Missing bandId parameter.');
+    } else {
+      (async () => {
+        try {
+          // 1. Fetch custom token from admin API
+          const res  = await fetch(`/api/admin/artist-preview-token?bandId=${encodeURIComponent(bandId)}`);
+          const data = await res.json();
+
+          if (!res.ok) {
+            showError(data.error || `Server error ${res.status}`);
+            return;
+          }
+
+          const { customToken, artistType } = data;
+
+          // 2. Sign in to Firebase with the custom token
+          msgEl.textContent = 'Authenticating…';
+          await signInWithCustomToken(auth, customToken);
+
+          // 3. Redirect to the correct portal
+          const dest = artistType === 'visual' ? '/artist/portal-visual' : '/artist/portal';
+          window.location.href = dest;
+
+        } catch (err) {
+          console.error('[artist-preview] error:', err);
+          showError(err.message || 'Failed to load artist portal.');
+        }
+      })();
+    }
+  </script>
+</body>
+</html>

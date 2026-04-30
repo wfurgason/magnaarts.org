@@ -185,6 +185,13 @@ const artistsForClient = artistsWithCounts.map(a => ({
                 >
                   ✉ Resend Invite
                 </button>
+                <button
+                  class="btn-action btn-delete-artist"
+                  data-id={artist.id}
+                  data-name={artist.band_name}
+                >
+                  🗑 Delete
+                </button>
               </>
             )}
             {artist.status === 'approved' && (
@@ -206,6 +213,13 @@ const artistsForClient = artistsWithCounts.map(a => ({
                 >
                   ✉ Resend Invite
                 </button>
+                <button
+                  class="btn-action btn-delete-artist"
+                  data-id={artist.id}
+                  data-name={artist.band_name}
+                >
+                  🗑 Delete
+                </button>
               </>
             )}
             {artist.status === 'rejected' && (
@@ -226,6 +240,13 @@ const artistsForClient = artistsWithCounts.map(a => ({
                   data-artist-type={artist.artistType ?? 'music'}
                 >
                   ✉ Resend Invite
+                </button>
+                <button
+                  class="btn-action btn-delete-artist"
+                  data-id={artist.id}
+                  data-name={artist.band_name}
+                >
+                  🗑 Delete
                 </button>
               </>
             )}

@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
-import { adminAuth, adminDb } from '../../../lib/firebase-admin';
-import { getStorage } from 'firebase-admin/storage';
+import { adminAuth, adminDb, adminStorage } from '../../../lib/firebase-admin';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
@@ -77,7 +76,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // ── 3. Delete Firebase Storage files ──────────────────────────────
-    const bucket = getStorage().bucket();
+    const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET;
+    const bucket = adminStorage.bucket(bucketName);
     const storagePrefixes = [
       `artist_tracks/${bandId}/`,
       `artist_images/${bandId}/`,

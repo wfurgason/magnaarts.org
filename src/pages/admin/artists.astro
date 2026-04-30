@@ -492,6 +492,8 @@ const artistsForClient = artistsWithCounts.map(a => ({
     .btn-approve { background: #2d7a3a; color: #fff; }
     .btn-reject  { background: #b52626; color: #fff; }
     .btn-invite  { background: #f1f5f9; color: var(--navy, #1a2456); border: 1.5px solid #cbd5e1; }
+    .btn-delete-artist { background: #fff; color: #b52626; border: 1.5px solid #fca5a5; }
+    .btn-delete-artist:hover { background: #fee2e2; }
 
     /* Toast */
     .toast {
@@ -604,6 +606,34 @@ const artistsForClient = artistsWithCounts.map(a => ({
         } else {
           showToast(`Error: ${data.error || 'Action failed'}`, true);
           btn.disabled = false;
+        }
+      });
+    });
+
+    // ── Delete Artist ──────────────────────────────────────────────────────
+    document.querySelectorAll<HTMLButtonElement>('.btn-delete-artist').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id   = btn.dataset.id!;
+        const name = btn.dataset.name!;
+        if (!confirm(`Permanently delete "${name}"? This cannot be undone and will remove all tracks, images, and data.`)) return;
+
+        btn.disabled    = true;
+        btn.textContent = 'Deleting…';
+
+        const res = await fetch('/api/artist/delete-artist', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ bandId: id }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast(`"${name}" deleted.`);
+          document.getElementById(`card-${id}`)?.remove();
+        } else {
+          showToast(`Error: ${data.error || 'Delete failed'}`, true);
+          btn.disabled    = false;
+          btn.textContent = '🗑 Delete';
         }
       });
     });

@@ -181,6 +181,7 @@ const artistsForClient = artistsWithCounts.map(a => ({
                   data-id={artist.id}
                   data-email={artist.email}
                   data-name={artist.band_name}
+                  data-artist-type={artist.artistType ?? 'music'}
                 >
                   ✉ Resend Invite
                 </button>
@@ -201,6 +202,7 @@ const artistsForClient = artistsWithCounts.map(a => ({
                   data-id={artist.id}
                   data-email={artist.email}
                   data-name={artist.band_name}
+                  data-artist-type={artist.artistType ?? 'music'}
                 >
                   ✉ Resend Invite
                 </button>
@@ -221,6 +223,7 @@ const artistsForClient = artistsWithCounts.map(a => ({
                   data-id={artist.id}
                   data-email={artist.email}
                   data-name={artist.band_name}
+                  data-artist-type={artist.artistType ?? 'music'}
                 >
                   ✉ Resend Invite
                 </button>
@@ -597,7 +600,7 @@ const artistsForClient = artistsWithCounts.map(a => ({
         const res = await fetch('/api/artist/send-artist-invite', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bandId: id, email, bandName: name }),
+          body: JSON.stringify({ bandId: id, email, bandName: name, artistType: btn.dataset.artistType || 'music' }),
         });
         const data = await res.json();
         if (res.ok) {

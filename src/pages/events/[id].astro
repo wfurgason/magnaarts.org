@@ -337,6 +337,27 @@ const venueAddress= event.venueAddress|| event.address   || '';
       </section>
     )}
 
+    {event.movieTitle && (
+      <section class="section movie-section reveal">
+        <div class="container">
+          <h2>🎬 Tonight’s Movie</h2>
+          <p class="movie-title-display">{event.movieTitle}</p>
+          {event.moviePreviewEmbed && (
+            <div class="movie-embed-wrapper">
+              <iframe
+                src={event.moviePreviewEmbed.includes('embed') ? event.moviePreviewEmbed : event.moviePreviewEmbed.replace('watch?v=', 'embed/')}
+                title={`${event.movieTitle} trailer`}
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                loading="lazy"
+              ></iframe>
+            </div>
+          )}
+        </div>
+      </section>
+    )}
+
   </main>
 
   <Footer />
@@ -593,6 +614,24 @@ const venueAddress= event.venueAddress|| event.address   || '';
   .park-icon { font-size: 28px; flex-shrink: 0; }
   .park-inner strong { display: block; font-size: 14px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
   .park-inner p { font-size: 14px; color: #065f46; line-height: 1.6; }
+
+  /* ── MOVIE SECTION ── */
+  .movie-section { padding: 48px 0; }
+  .movie-title-display { font-size: 22px; font-weight: 700; color: var(--navy); margin: 4px 0 24px; }
+  .movie-embed-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 720px;
+    aspect-ratio: 16 / 9;
+  }
+  .movie-embed-wrapper iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    border: none;
+  }
 
   /* ── RESPONSIVE ── */
   @media (max-width: 860px) {

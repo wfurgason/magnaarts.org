@@ -365,6 +365,7 @@ const programs = [
         const day = d.toLocaleDateString('en-US', { day: 'numeric' });
         return `
           <li class="glance-item">
+            <a href="/events/${e.id}" class="ticket-stub-link">
             <div class="ticket-stub">
               <div class="ticket-left">
                 <span class="ticket-mon">${mon}</span>
@@ -378,6 +379,7 @@ const programs = [
                 <span class="ticket-free">FREE</span>
               </div>
             </div>
+            </a>
           </li>`;
       }).join('');
       listEl.style.display = 'block';
@@ -784,6 +786,17 @@ const programs = [
   .glance-item { display: block; }
 
   /* ── TICKET STUB ── */
+  .ticket-stub-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .ticket-stub-link:hover .ticket-stub {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(26,36,86,0.13);
+  }
+
   .ticket-stub {
     display: flex;
     align-items: center;

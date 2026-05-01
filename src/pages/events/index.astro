@@ -317,10 +317,12 @@ const hasFeatured = featuredEvents.length > 0;
               ${e.musicLink ? `<a href="${e.musicLink}" target="_blank" rel="noopener" class="listen-btn">🎵 Listen</a>` : ''}
             </div>
             <div class="published-poster">
+              <a href="/events/${e.id}">
               ${e.posterUrl
                 ? `<img src="${e.posterUrl}" alt="${e.bandName || e.title}" />`
                 : `<div class="published-poster-placeholder">🎵</div>`
               }
+              </a>
             </div>
             <div class="published-body">
               <div class="published-date">${e.date}${e.time ? ' · ' + e.time : ''}</div>
@@ -359,6 +361,9 @@ const hasFeatured = featuredEvents.length > 0;
                 ${e.ticketUrl ? `<a href="${e.ticketUrl}" target="_blank" rel="noopener" class="btn btn-gold">Get Tickets</a>` : ''}
                 ${e.rsvpUrl   ? `<a href="${e.rsvpUrl}"   target="_blank" rel="noopener" class="btn btn-outline-navy">RSVP</a>` : ''}
               </div>` : ''}
+              <div class="published-links">
+                <a href="/events/${e.id}" class="event-details-link">View Details →</a>
+              </div>
             </div>
           </article>`;
         }).join('');
@@ -589,6 +594,16 @@ const hasFeatured = featuredEvents.length > 0;
     box-shadow: var(--shadow-hover);
     transform: translateY(-4px);
   }
+
+  .event-details-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+    text-decoration: none;
+    letter-spacing: 0.03em;
+  }
+
+  .event-details-link:hover { text-decoration: underline; }
 
   .published-card-header {
     display: flex;

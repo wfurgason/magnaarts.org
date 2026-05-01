@@ -42,6 +42,13 @@ const displayDate = isoDate
 
 const isFestival  = event.eventType === 'arts_festival';
 
+function extractEmbedSrc(val: string | null): string | null {
+  if (!val) return null;
+  if (val.trim().startsWith('http')) return val.trim();
+  const m = val.match(/src=["']([^"']+)["']/);
+  return m ? m[1] : null;
+}
+
 const vendorTypeIcon: Record<string, string> = {
   'Individual Artist': '🎨',
   'Food Vendor': '🌮',
@@ -163,6 +170,7 @@ const venueAddress= event.venueAddress|| event.address   || '';
                   <div class="band-hero-info">
                     <h2 class="band-hero-name">{event.bandName}</h2>
                     {band?.genre && <div class="band-hero-genre">{band.genre}</div>}
+                    {band?.bio && <p class="band-hero-bio">{band.bio}</p>}
                     <div class="band-hero-links">
                       {band?.website && (
                         <a href={band.website} target="_blank" rel="noopener" class="band-hero-link">🌐 Website</a>
@@ -177,15 +185,11 @@ const venueAddress= event.venueAddress|| event.address   || '';
                         <a href={band.facebook} target="_blank" rel="noopener" class="band-hero-link">📘 Facebook</a>
                       )}
                     </div>
-                    {band?.bio && <p class="band-hero-bio">{band.bio}</p>}
                   </div>
                 </div>
               )}
               {event.description && (
-                <>
-                  <h2>About This Event</h2>
-                  <p>{event.description}</p>
-                </>
+                <p>{event.description}</p>
               )}
             </div>
           <div class="desc-sidebar">
@@ -374,7 +378,7 @@ const venueAddress= event.venueAddress|| event.address   || '';
           <span class="park-icon">🌳</span>
           <div>
             <strong>Tips for Attending</strong>
-            <p>Bring a blanket or lawn chairs. Parking is free on surrounding streets. Food vendors are on site most nights. All events are free and open to the public.</p>
+            <p>Bring a blanket or lawn chairs. Parking is free on surrounding streets. All events are free and open to the public.</p>
           </div>
         </div>
       </section>
@@ -385,10 +389,10 @@ const venueAddress= event.venueAddress|| event.address   || '';
         <div class="container">
           <h2>🎬 Tonight’s Movie</h2>
           <p class="movie-title-display">{event.movieTitle}</p>
-          {event.moviePreviewEmbed && (
+          {event.moviePreviewEmbed && extractEmbedSrc(event.moviePreviewEmbed) && (
             <div class="movie-embed-wrapper">
               <iframe
-                src={event.moviePreviewEmbed.includes('embed') ? event.moviePreviewEmbed : event.moviePreviewEmbed.replace('watch?v=', 'embed/')}
+                src={extractEmbedSrc(event.moviePreviewEmbed)!}
                 title={`${event.movieTitle} trailer`}
                 frameborder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

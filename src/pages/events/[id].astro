@@ -169,8 +169,8 @@ const venueAddress= event.venueAddress|| event.address   || '';
                   )}
                   <div class="band-hero-info">
                     <h2 class="band-hero-name">{event.bandName}</h2>
-                    {band?.genre && <div class="band-hero-genre">{band.genre}</div>}
                     {band?.bio && <p class="band-hero-bio">{band.bio}</p>}
+                    {band?.genre && <div class="band-hero-genre">{band.genre}</div>}
                     <div class="band-hero-links">
                       {band?.website && (
                         <a href={band.website} target="_blank" rel="noopener" class="band-hero-link">🌐 Website</a>
@@ -208,9 +208,15 @@ const venueAddress= event.venueAddress|| event.address   || '';
             </div>
             {!isFestival && (
               <div class="sidebar-card attend-card">
-                <h3>Planning to Attend?</h3>
-                <p>Let the community know — it helps us secure sponsorship and plan for the season.</p>
-                <a href="/contact" class="btn btn-gold" style="width:100%;justify-content:center;">RSVP / Contact Us</a>
+                <h3>Attending</h3>
+                <div class="attend-count-wrap">
+                  <span class="attend-count" id="attend-count">{event.attendingCount || 0}</span>
+                  <span class="attend-label">people are going</span>
+                </div>
+                <button class="btn btn-gold attend-btn" id="attend-btn" style="width:100%;justify-content:center;" data-event-id={Astro.params.id}>
+                  I’m Attending
+                </button>
+                <p class="attend-hint" id="attend-hint"></p>
               </div>
             )}
           </div>
@@ -371,19 +377,7 @@ const venueAddress= event.venueAddress|| event.address   || '';
       </section>
     )}
 
-    <!-- ── PARK TIPS (non-festival concerts/films) ── -->
-    {!isFestival && (event.eventType === 'music_movie_in_park') && (
-      <section class="park-info reveal">
-        <div class="container park-inner">
-          <span class="park-icon">🌳</span>
-          <div>
-            <strong>Tips for Attending</strong>
-            <p>Bring a blanket or lawn chairs. Parking is free on surrounding streets. All events are free and open to the public.</p>
-          </div>
-        </div>
-      </section>
-    )}
-
+    <!-- ── MOVIE PREVIEW ── -->
     {event.movieTitle && (
       <section class="section movie-section reveal">
         <div class="container">
@@ -401,6 +395,19 @@ const venueAddress= event.venueAddress|| event.address   || '';
               ></iframe>
             </div>
           )}
+        </div>
+      </section>
+    )}
+
+    <!-- ── PARK TIPS (non-festival concerts/films) ── -->
+    {!isFestival && (event.eventType === 'music_movie_in_park') && (
+      <section class="park-info reveal">
+        <div class="container park-inner">
+          <span class="park-icon">🌳</span>
+          <div>
+            <strong>Tips for Attending</strong>
+            <p>Bring a blanket or lawn chairs. Parking is free on surrounding streets. All events are free and open to the public.</p>
+          </div>
         </div>
       </section>
     )}
@@ -479,7 +486,6 @@ const venueAddress= event.venueAddress|| event.address   || '';
     align-items: flex-start;
     margin-bottom: 40px;
     padding-bottom: 36px;
-    border-bottom: 1.5px solid var(--border);
   }
 
   .band-hero-photo-wrap {
@@ -739,6 +745,22 @@ const venueAddress= event.venueAddress|| event.address   || '';
     .contest-grid { grid-template-columns: 1fr; }
   }
 
+  .attend-count-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .attend-count {
+    font-family: var(--font-display);
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--navy);
+    line-height: 1;
+  }
+  .attend-label { font-size: 14px; color: var(--muted); }
+  .attend-hint { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 16px; text-align: center; }
+
   /* ── PARK TIPS ── */
   .park-info { background: #ecfdf5; border-top: 1px solid #a7f3d0; border-bottom: 1px solid #a7f3d0; padding: 20px 0; }
   .park-inner { display: flex; align-items: center; gap: 16px; }
@@ -782,3 +804,49 @@ const venueAddress= event.venueAddress|| event.address   || '';
     .vendor-info { padding: 20px; }
   }
 </style>
+
+<script>
+  const btn = document.getElementById('attend-btn') as HTMLButtonElement | null;
+  const countEl = document.getElementById('attend-count');
+  const hintEl  = document.getElementById('attend-hint');
+  if (btn && countEl) {
+    const eventId = btn.dataset.eventId!;
+    const storageKey = `attended_${eventId}`;
+    if (localStorage.getItem(storageKey)) {
+      btn.textContent = '✓ You\'re Going!';
+      btn.disabled = true;
+      if (hintEl) hintEl.textContent = 'Thanks for letting us know!';
+    }
+    btn.addEventListener('click', async () => {
+      if (localStorage.getItem(storageKey)) return;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        const res = await fetch('/api/events/attend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          countEl.textContent = String(data.count);
+          btn.textContent = '✓ You\'re Going!';
+          if (hintEl) hintEl.textContent = 'Thanks for letting us know!';
+          localStorage.setItem(storageKey, '1');
+        } else if (res.status === 409) {
+          btn.textContent = '✓ Already Counted';
+          if (hintEl) hintEl.textContent = 'Your attendance was already recorded.';
+          localStorage.setItem(storageKey, '1');
+        } else {
+          btn.textContent = 'I\'m Attending';
+          btn.disabled = false;
+          if (hintEl) hintEl.textContent = 'Something went wrong — try again.';
+        }
+      } catch {
+        btn.textContent = 'I\'m Attending';
+        btn.disabled = false;
+        if (hintEl) hintEl.textContent = 'Network error — try again.';
+      }
+    });
+  }
+</script>

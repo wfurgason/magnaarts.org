@@ -90,9 +90,6 @@ const venueAddress= event.venueAddress|| event.address   || '';
             {isFestival ? 'Arts Festival' : (event.category || 'Event')}
           </div>
           <h1>{event.title}</h1>
-          {event.bandName && !isFestival && (
-            <div class="hero-subtitle">🎵 {event.bandName}</div>
-          )}
           <div class="hero-meta">
             <div class="meta-item">
               <span class="meta-icon">🗓</span>
@@ -150,13 +147,47 @@ const venueAddress= event.venueAddress|| event.address   || '';
     </section>
 
     <!-- ── DESCRIPTION ── -->
-    {event.description && (
-      <section class="section desc-section reveal">
-        <div class="container desc-inner">
-          <div class="desc-body">
-            <h2>About This Event</h2>
-            <p>{event.description}</p>
-          </div>
+    {(!isFestival && (event.bandName || event.description)) && (() => {
+      const band = (event.bands || []).find((b: any) => b.bandId) as any;
+      return (
+        <section class="section desc-section reveal">
+          <div class="container desc-inner">
+            <div class="desc-body">
+              {event.bandName && (
+                <div class="band-hero">
+                  {band?.photoUrl && (
+                    <div class="band-hero-photo-wrap">
+                      <img src={band.photoUrl} alt={event.bandName} class="band-hero-photo" />
+                    </div>
+                  )}
+                  <div class="band-hero-info">
+                    <h2 class="band-hero-name">{event.bandName}</h2>
+                    {band?.genre && <div class="band-hero-genre">{band.genre}</div>}
+                    <div class="band-hero-links">
+                      {band?.website && (
+                        <a href={band.website} target="_blank" rel="noopener" class="band-hero-link">🌐 Website</a>
+                      )}
+                      {band?.musicLink && (
+                        <a href={band.musicLink} target="_blank" rel="noopener" class="band-hero-link band-hero-link-music">🎵 Listen</a>
+                      )}
+                      {band?.instagram && (
+                        <a href={band.instagram} target="_blank" rel="noopener" class="band-hero-link">📸 Instagram</a>
+                      )}
+                      {band?.facebook && (
+                        <a href={band.facebook} target="_blank" rel="noopener" class="band-hero-link">📘 Facebook</a>
+                      )}
+                    </div>
+                    {band?.bio && <p class="band-hero-bio">{band.bio}</p>}
+                  </div>
+                </div>
+              )}
+              {event.description && (
+                <>
+                  <h2>About This Event</h2>
+                  <p>{event.description}</p>
+                </>
+              )}
+            </div>
           <div class="desc-sidebar">
             <div class="sidebar-card">
               <h3>Event Details</h3>
@@ -178,6 +209,18 @@ const venueAddress= event.venueAddress|| event.address   || '';
                 <a href="/contact" class="btn btn-gold" style="width:100%;justify-content:center;">RSVP / Contact Us</a>
               </div>
             )}
+          </div>
+        </div>
+      </section>
+      );
+    })()}
+
+    {isFestival && event.description && (
+      <section class="section desc-section reveal">
+        <div class="container desc-inner">
+          <div class="desc-body">
+            <h2>About This Event</h2>
+            <p>{event.description}</p>
           </div>
         </div>
       </section>
@@ -424,6 +467,90 @@ const venueAddress= event.venueAddress|| event.address   || '';
     color: var(--navy); margin-bottom: 16px;
   }
   .desc-body p { font-size: 16px; color: var(--muted); line-height: 1.75; }
+
+  /* ── BAND HERO ── */
+  .band-hero {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    margin-bottom: 40px;
+    padding-bottom: 36px;
+    border-bottom: 1.5px solid var(--border);
+  }
+
+  .band-hero-photo-wrap {
+    flex-shrink: 0;
+    width: 160px;
+    height: 160px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(26,36,86,0.15);
+  }
+
+  .band-hero-photo { width: 100%; height: 100%; object-fit: cover; }
+
+  .band-hero-info { flex: 1; min-width: 0; }
+
+  .band-hero-name {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--navy);
+    margin: 0 0 6px;
+    line-height: 1.1;
+  }
+
+  .band-hero-genre {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    background: rgba(212,163,38,0.12);
+    border-radius: 20px;
+    padding: 3px 12px;
+    margin-bottom: 14px;
+  }
+
+  .band-hero-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .band-hero-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    text-decoration: none;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .band-hero-link:hover { background: var(--navy); color: var(--white); border-color: var(--navy); }
+  .band-hero-link-music { background: #fdf6e3; border-color: var(--gold); color: #7a4f00; }
+  .band-hero-link-music:hover { background: var(--gold); color: var(--white); border-color: var(--gold); }
+
+  .band-hero-bio {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.75;
+    margin: 0;
+  }
+
+  @media (max-width: 600px) {
+    .band-hero { flex-direction: column; }
+    .band-hero-photo-wrap { width: 120px; height: 120px; }
+    .band-hero-name { font-size: 28px; }
+  }
 
   .sidebar-card {
     background: var(--cream); border-radius: var(--radius);

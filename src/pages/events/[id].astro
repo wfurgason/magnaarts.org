@@ -191,6 +191,35 @@ const venueAddress= event.venueAddress|| event.address   || '';
               {event.description && !event.bandName && (
                 <p>{event.description}</p>
               )}
+
+              {event.movieTitle && (
+                <div class="inline-movie">
+                  <h3 class="inline-movie-heading">🎬 Tonight’s Movie</h3>
+                  <p class="movie-title-display">{event.movieTitle}</p>
+                  {event.moviePreviewEmbed && extractEmbedSrc(event.moviePreviewEmbed) && (
+                    <div class="movie-embed-wrapper">
+                      <iframe
+                        src={extractEmbedSrc(event.moviePreviewEmbed)!}
+                        title={`${event.movieTitle} trailer`}
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                        loading="lazy"
+                      ></iframe>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!isFestival && event.eventType === 'music_movie_in_park' && (
+                <div class="inline-park-tips">
+                  <span class="park-icon">🌳</span>
+                  <div>
+                    <strong>Tips for Attending</strong>
+                    <p>Bring a blanket or lawn chairs. Parking is free on surrounding streets. All events are free and open to the public.</p>
+                  </div>
+                </div>
+              )}
             </div>
           <div class="desc-sidebar">
             <div class="sidebar-card">
@@ -377,40 +406,7 @@ const venueAddress= event.venueAddress|| event.address   || '';
       </section>
     )}
 
-    <!-- ── MOVIE PREVIEW ── -->
-    {event.movieTitle && (
-      <section class="section movie-section reveal">
-        <div class="container">
-          <h2>🎬 Tonight’s Movie</h2>
-          <p class="movie-title-display">{event.movieTitle}</p>
-          {event.moviePreviewEmbed && extractEmbedSrc(event.moviePreviewEmbed) && (
-            <div class="movie-embed-wrapper">
-              <iframe
-                src={extractEmbedSrc(event.moviePreviewEmbed)!}
-                title={`${event.movieTitle} trailer`}
-                frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-                loading="lazy"
-              ></iframe>
-            </div>
-          )}
-        </div>
-      </section>
-    )}
-
-    <!-- ── PARK TIPS (non-festival concerts/films) ── -->
-    {!isFestival && (event.eventType === 'music_movie_in_park') && (
-      <section class="park-info reveal">
-        <div class="container park-inner">
-          <span class="park-icon">🌳</span>
-          <div>
-            <strong>Tips for Attending</strong>
-            <p>Bring a blanket or lawn chairs. Parking is free on surrounding streets. All events are free and open to the public.</p>
-          </div>
-        </div>
-      </section>
-    )}
+    <!-- movie and park tips now rendered inside desc-body above -->
 
   </main>
 
@@ -763,6 +759,23 @@ const venueAddress= event.venueAddress|| event.address   || '';
   }
   .attend-label { font-size: 14px; color: var(--muted); }
   .attend-hint { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 16px; text-align: center; }
+
+  .inline-movie { margin-top: 28px; }
+  .inline-movie-heading { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--navy); margin: 0 0 4px; }
+
+  .inline-park-tips {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+  .inline-park-tips strong { display: block; font-weight: 700; color: #065f46; margin-bottom: 2px; }
+  .inline-park-tips p { margin: 0; color: #065f46; line-height: 1.5; }
 
   /* ── PARK TIPS ── */
   .park-info { background: #ecfdf5; border-top: 1px solid #a7f3d0; border-bottom: 1px solid #a7f3d0; padding: 20px 0; }

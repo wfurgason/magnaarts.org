@@ -169,26 +169,26 @@ const venueAddress= event.venueAddress|| event.address   || '';
                   )}
                   <div class="band-hero-info">
                     <h2 class="band-hero-name">{event.bandName}</h2>
-                    {band?.bio && <p class="band-hero-bio">{band.bio}</p>}
-                    {band?.genre && <div class="band-hero-genre">{band.genre}</div>}
+                    {(band?.bio || event.description) && <p class="band-hero-bio">{band?.bio || event.description}</p>}
+                    {(band?.genre || event.genre) && <div class="band-hero-genre">{band?.genre || event.genre}</div>}
                     <div class="band-hero-links">
-                      {band?.website && (
-                        <a href={band.website} target="_blank" rel="noopener" class="band-hero-link">🌐 Website</a>
+                      {(band?.website || event.website) && (
+                        <a href={band?.website || event.website} target="_blank" rel="noopener" class="band-hero-link">🌐 Website</a>
                       )}
-                      {band?.musicLink && (
-                        <a href={band.musicLink} target="_blank" rel="noopener" class="band-hero-link band-hero-link-music">🎵 Listen</a>
+                      {(band?.musicLink || event.musicLink) && (
+                        <a href={band?.musicLink || event.musicLink} target="_blank" rel="noopener" class="band-hero-link band-hero-link-music">🎵 Listen</a>
                       )}
-                      {band?.instagram && (
-                        <a href={band.instagram} target="_blank" rel="noopener" class="band-hero-link">📸 Instagram</a>
+                      {(band?.instagram || event.instagram) && (
+                        <a href={band?.instagram || event.instagram} target="_blank" rel="noopener" class="band-hero-link">📸 Instagram</a>
                       )}
-                      {band?.facebook && (
-                        <a href={band.facebook} target="_blank" rel="noopener" class="band-hero-link">📘 Facebook</a>
+                      {(band?.facebook || event.facebook) && (
+                        <a href={band?.facebook || event.facebook} target="_blank" rel="noopener" class="band-hero-link">📘 Facebook</a>
                       )}
                     </div>
                   </div>
                 </div>
               )}
-              {event.description && (
+              {event.description && !event.bandName && (
                 <p>{event.description}</p>
               )}
             </div>
@@ -472,6 +472,8 @@ const venueAddress= event.venueAddress|| event.address   || '';
 
   /* ── DESCRIPTION ── */
   .desc-section { background: var(--white); }
+  .desc-section.section,
+  .movie-section.section { padding: 32px 0; }
   .desc-inner { display: grid; grid-template-columns: 1fr 320px; gap: 48px; align-items: start; }
   .desc-body h2 {
     font-family: var(--font-display); font-size: 28px; font-weight: 700;
@@ -506,8 +508,15 @@ const venueAddress= event.venueAddress|| event.address   || '';
     font-size: 36px;
     font-weight: 900;
     color: var(--navy);
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     line-height: 1.1;
+  }
+
+  .band-hero-bio {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.75;
+    margin: 0 0 10px;
   }
 
   .band-hero-genre {
@@ -520,14 +529,14 @@ const venueAddress= event.venueAddress|| event.address   || '';
     background: rgba(212,163,38,0.12);
     border-radius: 20px;
     padding: 3px 12px;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
   }
 
   .band-hero-links {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 18px;
+    gap: 8px;
+    margin-bottom: 0;
   }
 
   .band-hero-link {
@@ -548,13 +557,6 @@ const venueAddress= event.venueAddress|| event.address   || '';
   .band-hero-link:hover { background: var(--navy); color: var(--white); border-color: var(--navy); }
   .band-hero-link-music { background: #fdf6e3; border-color: var(--gold); color: #7a4f00; }
   .band-hero-link-music:hover { background: var(--gold); color: var(--white); border-color: var(--gold); }
-
-  .band-hero-bio {
-    font-size: 15px;
-    color: var(--muted);
-    line-height: 1.75;
-    margin: 0;
-  }
 
   @media (max-width: 600px) {
     .band-hero { flex-direction: column; }

@@ -3,6 +3,27 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
+import { adminDb } from '../lib/firebase-admin';
+
+// ── Server-side: fetch upcoming Music & Movies concerts (includes movie_title) ──
+const _now = new Date();
+const _parkSnap = await adminDb.collection('park_events').orderBy('date', 'asc').get();
+const concertTickets = _parkSnap.docs
+  .filter(doc => {
+    const d = doc.data();
+    if (!d.bandId) return false;
+    return new Date(d.date + 'T12:00:00') >= _now;
+  })
+  .map(doc => {
+    const d = doc.data();
+    return {
+      id:         doc.id,
+      rawDate:    new Date(d.date + 'T12:00:00').toISOString(),
+      time:       d.startTime    || '',
+      title:      d.bandName     || 'TBA',
+      movieTitle: d.movie_title  || '',
+    };
+  });
 
 const firebaseConfig = {
   apiKey:    import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -336,7 +357,7 @@ const programs = [
 
   <Footer />
 
-  <script type="module" define:vars={{ firebaseConfig }}>
+  <script type="module" define:vars={{ firebaseConfig, concertTickets }}>
     import { initializeApp, getApps, getApp }                         from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import { getFirestore, collection, getDocs, orderBy, query }      from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
@@ -430,23 +451,8 @@ const programs = [
         }
       });
 
-      // Music & Movies: query park_events directly so we get movie_title
-      const parkQ    = query(collection(db, 'park_events'), orderBy('date', 'asc'));
-      const parkSnap = await getDocs(parkQ);
-      parkSnap.forEach(doc => {
-        const d       = doc.data();
-        if (!d.bandId) return;                          // skip unassigned shells
-        const dateObj = new Date(d.date + 'T12:00:00'); // YYYY-MM-DD string
-        if (dateObj < now) return;
-        concertEvents.push({
-          id:         doc.id,
-          rawDate:    dateObj.toISOString(),
-          time:       d.startTime || '',
-          title:      d.bandName  || 'TBA',
-          movieTitle: d.movie_title || '',
-          type:       'music_movie_in_park',
-        });
-      });
+      // Music & Movies: use server-side data (avoids Firestore rules on park_events)
+      concertTickets.forEach(t => concertEvents.push(t));
 
       // Music & Movies glance
       renderGlance('glance-loading', 'glance-list', 'glance-empty', concertEvents);

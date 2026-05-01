@@ -372,7 +372,7 @@ const programs = [
                 <span class="ticket-day">${day}</span>
               </div>
               <div class="ticket-body">
-                <span class="ticket-band">${e.title}</span>
+                <span class="ticket-band">${e.title}${e.movieTitle ? ' w/ ' + e.movieTitle : ''}</span>
                 ${e.time ? `<span class="ticket-time">🎤 Doors open at ${e.time}</span>` : ''}
               </div>
               <div class="ticket-right">
@@ -427,9 +427,25 @@ const programs = [
               type:    'arts_festival',
             });
           });
-        } else {
-          concertEvents.push(item);
         }
+      });
+
+      // Music & Movies: query park_events directly so we get movie_title
+      const parkQ    = query(collection(db, 'park_events'), orderBy('date', 'asc'));
+      const parkSnap = await getDocs(parkQ);
+      parkSnap.forEach(doc => {
+        const d       = doc.data();
+        if (!d.bandId) return;                          // skip unassigned shells
+        const dateObj = new Date(d.date + 'T12:00:00'); // YYYY-MM-DD string
+        if (dateObj < now) return;
+        concertEvents.push({
+          id:         doc.id,
+          rawDate:    dateObj.toISOString(),
+          time:       d.startTime || '',
+          title:      d.bandName  || 'TBA',
+          movieTitle: d.movie_title || '',
+          type:       'music_movie_in_park',
+        });
       });
 
       // Music & Movies glance

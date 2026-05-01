@@ -172,8 +172,8 @@ const venueAddress= event.venueAddress|| event.address   || '';
                     {(band?.bio || event.description) && <p class="band-hero-bio">{band?.bio || event.description}</p>}
                     {(band?.genre || event.genre) && <div class="band-hero-genre">{band?.genre || event.genre}</div>}
                     <div class="band-hero-links">
-                      {(band?.website || event.website) && (
-                        <a href={band?.website || event.website} target="_blank" rel="noopener" class="band-hero-link">🌐 Website</a>
+                      {(band?.website || event.bandWebsite || event.website) && (
+                        <a href={band?.website || event.bandWebsite || event.website} target="_blank" rel="noopener" class="band-hero-link">🌐 Website</a>
                       )}
                       {(band?.musicLink || event.musicLink) && (
                         <a href={band?.musicLink || event.musicLink} target="_blank" rel="noopener" class="band-hero-link band-hero-link-music">🎵 Listen</a>
@@ -473,7 +473,8 @@ const venueAddress= event.venueAddress|| event.address   || '';
   /* ── DESCRIPTION ── */
   .desc-section { background: var(--white); }
   .desc-section.section,
-  .movie-section.section { padding: 32px 0; }
+  .movie-section.section { padding: 24px 0 !important; }
+  .band-hero { margin-bottom: 8px !important; padding-bottom: 0 !important; }
   .desc-inner { display: grid; grid-template-columns: 1fr 320px; gap: 48px; align-items: start; }
   .desc-body h2 {
     font-family: var(--font-display); font-size: 28px; font-weight: 700;

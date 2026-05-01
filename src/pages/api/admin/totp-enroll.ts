@@ -22,6 +22,11 @@ export const POST: APIRoute = async ({ request }) => {
     const docRef  = adminDb.collection('admin_users').doc(uid);
     const docSnap = await docRef.get();
 
+    // Only allow enrollment for pre-approved admin accounts
+    if (!docSnap.exists) {
+      return json({ error: 'Not authorized' }, 403);
+    }
+
     if (docSnap.exists && docSnap.data()?.totpEnrolled === true) {
       return json({ error: 'Already enrolled' }, 409);
     }

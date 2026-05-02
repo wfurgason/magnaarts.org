@@ -289,6 +289,7 @@ const hasFeatured = featuredEvents.length > 0;
           presenterArtsArea:           d.presenterArtsArea || null,
           presenterProjectDescription: d.presenterProjectDescription || null,
           presenterName:               d.presenterName || null,
+          presenterImageUrl:           d.presenterImageUrl || null,
         });
       });
 
@@ -305,7 +306,8 @@ const hasFeatured = featuredEvents.length > 0;
           const bio      = truncate(e.description, 150);
           const fullAddr = [e.venueName, e.venueAddress].filter(Boolean).join(', ');
           const isArtNight         = e.eventType === 'group_art_night';
-          const artNightBioHtml    = isArtNight ? (e.presenterArtsArea || e.presenterProjectDescription || '') : '';
+          const cardPosterUrl = isArtNight ? (e.presenterImageUrl || e.posterUrl) : e.posterUrl;
+          const artNightBioHtml    = isArtNight ? (e.presenterProjectDescription || '') : '';
           const artNightNeedsTrunc = isArtNight && artNightBioHtml && stripHtml(artNightBioHtml).length > 300;
 
           return `
@@ -321,8 +323,8 @@ const hasFeatured = featuredEvents.length > 0;
             </div>
             <div class="published-poster">
               <a href="/events/${e.id}">
-              ${e.posterUrl
-                ? `<img src="${e.posterUrl}" alt="${e.presenterName || e.bandName || e.title}" />`
+              ${cardPosterUrl
+                ? `<img src="${cardPosterUrl}" alt="${e.presenterName || e.bandName || e.title}" />`
                 : `<div class="published-poster-placeholder">${isArtNight ? '🎨' : '🎵'}</div>`
               }
               </a>
@@ -333,7 +335,7 @@ const hasFeatured = featuredEvents.length > 0;
               ${fullAddr ? `<div class="published-venue">📍 <a href="${mapsLink(fullAddr)}" target="_blank" rel="noopener">${fullAddr}</a></div>` : ''}
               ${isArtNight && artNightBioHtml ? `
                 <div class="published-bio">
-                  <div class="published-bio-label">About the Presenter</div>
+                  <div class="published-bio-label">This Month's Project</div>
                   <div class="presenter-html-bio${artNightNeedsTrunc ? ' is-clamped' : ''}">
                     ${artNightBioHtml}
                   </div>

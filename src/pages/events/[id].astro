@@ -161,18 +161,21 @@ const venueAddress= event.venueAddress|| event.address   || '';
           <div class="desc-body">
             {event.presenterName && (
               <div class="band-hero">
-                {event.posterUrl && (
+                {event.presenterImageUrl && (
                   <div class="band-hero-photo-wrap">
-                    <img src={event.posterUrl} alt={event.presenterName} class="band-hero-photo" />
+                    <img src={event.presenterImageUrl} alt={event.presenterName} class="band-hero-photo" />
                   </div>
                 )}
                 <div class="band-hero-info">
                   <h2 class="band-hero-name">{event.presenterName}</h2>
                   {event.presenterArtsArea && (
-                    <div class="band-hero-genre">{event.presenterArtsArea}</div>
+                    <div class="presenter-project-desc" set:html={event.presenterArtsArea} />
                   )}
                   {event.presenterProjectDescription && (
-                    <div class="presenter-project-desc" set:html={event.presenterProjectDescription} />
+                    <>
+                      <div class="presenter-section-label">This Month's Project</div>
+                      <div class="presenter-project-desc" set:html={event.presenterProjectDescription} />
+                    </>
                   )}
                 </div>
               </div>
@@ -582,6 +585,15 @@ const venueAddress= event.venueAddress|| event.address   || '';
   }
   .presenter-project-desc p { margin: 0 0 8px; }
   .presenter-project-desc p:last-child { margin-bottom: 0; }
+
+  .presenter-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--navy);
+    margin: 12px 0 4px;
+  }
 
   .band-hero-genre {
     display: inline-block;

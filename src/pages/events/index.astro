@@ -288,6 +288,7 @@ const hasFeatured = featuredEvents.length > 0;
           eventType:                   d.eventType || null,
           presenterArtsArea:           d.presenterArtsArea || null,
           presenterProjectDescription: d.presenterProjectDescription || null,
+          presenterName:               d.presenterName || null,
         });
       });
 
@@ -311,16 +312,18 @@ const hasFeatured = featuredEvents.length > 0;
           <article class="published-card">
             <div class="published-card-header">
               <div class="published-header-text">
-                ${e.bandName ? `<div class="published-band-name">${e.bandName}</div>` : ''}
-                ${e.genre    ? `<div class="published-genre">${e.genre}</div>` : ''}
+                ${isArtNight && e.presenterName ? `<div class="published-band-name">${e.presenterName}</div>` : ''}
+                ${isArtNight && e.presenterArtsArea ? `<div class="published-genre">${e.presenterArtsArea}</div>` : ''}
+                ${!isArtNight && e.bandName ? `<div class="published-band-name">${e.bandName}</div>` : ''}
+                ${!isArtNight && e.genre    ? `<div class="published-genre">${e.genre}</div>` : ''}
               </div>
               ${e.musicLink ? `<a href="${e.musicLink}" target="_blank" rel="noopener" class="listen-btn">🎵 Listen</a>` : ''}
             </div>
             <div class="published-poster">
               <a href="/events/${e.id}">
               ${e.posterUrl
-                ? `<img src="${e.posterUrl}" alt="${e.bandName || e.title}" />`
-                : `<div class="published-poster-placeholder">🎵</div>`
+                ? `<img src="${e.posterUrl}" alt="${e.presenterName || e.bandName || e.title}" />`
+                : `<div class="published-poster-placeholder">${isArtNight ? '🎨' : '🎵'}</div>`
               }
               </a>
             </div>

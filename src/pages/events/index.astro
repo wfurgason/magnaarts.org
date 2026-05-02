@@ -316,9 +316,8 @@ const hasFeatured = featuredEvents.length > 0;
             <div class="published-card-header">
               <div class="published-header-text">
                 ${isArtNight && e.presenterName ? `<div class="published-band-name">${e.presenterName}</div>` : ''}
-                ${isArtNight && e.presenterArtsArea ? `<div class="published-genre">${e.presenterArtsArea}</div>` : ''}
-                ${!isArtNight && e.bandName ? `<div class="published-band-name">${e.bandName}</div>` : ''}
-                ${!isArtNight && e.genre    ? `<div class="published-genre">${e.genre}</div>` : ''}
+                ${!isArtNight ? `<div class="published-band-name">${e.bandName || e.title || ''}</div>` : ''}
+                ${!isArtNight && e.genre ? `<div class="published-genre">${e.genre}</div>` : ''}
               </div>
               ${e.musicLink ? `<a href="${e.musicLink}" target="_blank" rel="noopener" class="listen-btn">🎵 Listen</a>` : ''}
             </div>

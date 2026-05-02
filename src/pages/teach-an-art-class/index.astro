@@ -117,6 +117,15 @@ const firebaseConfig = {
 
             <div class="form-field">
               <label>
+                Project Title <span class="req">*</span>
+                <span class="field-hint">A short, catchy name for the project (e.g. "Watercolor Sunset", "Clay Pinch Pot")</span>
+              </label>
+              <input type="text" id="projectTitle" name="projectTitle" required placeholder="e.g. Watercolor Sunset" maxlength="100" />
+              <span class="field-error" id="err-projectTitle"></span>
+            </div>
+
+            <div class="form-field">
+              <label>
                 Project Description <span class="req">*</span>
                 <span class="field-hint">Describe the specific project or activity you'd like to lead. What will participants make or learn?</span>
               </label>
@@ -370,6 +379,7 @@ const firebaseConfig = {
           fullName:           document.getElementById('fullName').value.trim(),
           email:              document.getElementById('email').value.trim(),
           phone:              document.getElementById('phone').value.trim(),
+          projectTitle:       document.getElementById('projectTitle').value.trim(),
           artsArea:           quillArtsArea.root.innerHTML,
           projectDescription: quillProjectDesc.root.innerHTML,
           presenterPhotoUrl,

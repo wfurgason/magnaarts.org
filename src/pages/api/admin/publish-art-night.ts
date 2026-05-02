@@ -33,6 +33,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     let presenterArtsArea: string | null = null;
     let presenterProjectDescription: string | null = null;
     let presenterImageUrl: string | null = null;
+    let presenterPhotoUrl: string | null = null;
     if (s.presenterId) {
       const presSnap = await adminDb.collection('art_class_submissions').doc(s.presenterId).get();
       if (presSnap.exists) {
@@ -40,6 +41,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         presenterArtsArea = pData.artsArea || null;
         presenterProjectDescription = pData.projectDescription || null;
         presenterImageUrl = pData.projectImageUrl || null;
+        presenterPhotoUrl = pData.presenterPhotoUrl || null;
       }
     }
 
@@ -69,6 +71,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       presenterArtsArea,
       presenterProjectDescription,
       presenterImageUrl,
+      presenterPhotoUrl,
       isFree:        true,
       submissionType: 'art_night',
       publishedBy:   publisher.email,

@@ -125,8 +125,24 @@ const firebaseConfig = {
             </div>
 
             <div class="form-field">
+              <label>Presenter Photo
+                <span class="field-hint">A photo of yourself — used on the event page to introduce you to attendees (JPG or PNG, max 10 MB)</span>
+              </label>
+              <div class="upload-zone" id="presenter-photo-zone">
+                <input type="file" id="presenterPhoto" name="presenterPhoto"
+                  accept="image/jpeg,image/png,image/webp" class="upload-input" />
+                <label for="presenterPhoto" class="upload-label">
+                  <span class="upload-icon">🧑‍🎨</span>
+                  <span class="upload-text"><strong>Choose a photo</strong> or drag and drop</span>
+                  <span class="upload-hint">JPG, PNG or WebP · max 10 MB</span>
+                </label>
+                <div class="upload-preview" id="presenter-photo-preview" hidden></div>
+              </div>
+            </div>
+
+            <div class="form-field">
               <label>Project Image
-                <span class="field-hint">Photo of a finished project — used to promote your session (JPG or PNG, max 10 MB)</span>
+                <span class="field-hint">A photo of the finished project — used to promote your session (JPG or PNG, max 10 MB)</span>
               </label>
               <div class="upload-zone" id="project-image-zone">
                 <input type="file" id="projectImage" name="projectImage"
@@ -203,7 +219,32 @@ const firebaseConfig = {
       quill.on('selection-change', range => wrap.classList.toggle('quill-focused', !!range));
     });
 
-    // ── upload zone drag-and-drop ──────────────────────────────────────
+    // ── upload zone drag-and-drop (presenter photo) ──────────────────
+    const presenterZone = document.getElementById('presenter-photo-zone');
+    presenterZone.addEventListener('dragover', e => { e.preventDefault(); presenterZone.classList.add('drag-over'); });
+    presenterZone.addEventListener('dragleave', () => presenterZone.classList.remove('drag-over'));
+    presenterZone.addEventListener('drop', e => {
+      e.preventDefault(); presenterZone.classList.remove('drag-over');
+      const input = presenterZone.querySelector('.upload-input');
+      if (input && e.dataTransfer?.files.length) {
+        const dt = new DataTransfer(); dt.items.add(e.dataTransfer.files[0]);
+        input.files = dt.files; input.dispatchEvent(new Event('change'));
+      }
+    });
+    const presenterPhotoInput   = document.getElementById('presenterPhoto');
+    const presenterPhotoPreview = document.getElementById('presenter-photo-preview');
+    presenterPhotoInput.addEventListener('change', () => {
+      const file = presenterPhotoInput.files?.[0];
+      if (!file) { presenterPhotoPreview.hidden = true; return; }
+      presenterPhotoPreview.hidden = false;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        presenterPhotoPreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // ── upload zone drag-and-drop (project image) ──────────────────────
     const zone = document.getElementById('project-image-zone');
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
@@ -295,11 +336,23 @@ const firebaseConfig = {
       btnLoading.hidden  = false;
 
       try {
+        // Upload presenter photo if provided
+        let presenterPhotoUrl = null;
+        const presenterFile = document.getElementById('presenterPhoto').files?.[0];
+        if (presenterFile) {
+          btnLoading.textContent = 'Uploading presenter photo…';
+          const ext  = presenterFile.name.split('.').pop();
+          const slug = document.getElementById('fullName').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const storageRef = ref(storage, `art-class-images/${slug}-${Date.now()}/presenter.${ext}`);
+          await uploadBytes(storageRef, presenterFile);
+          presenterPhotoUrl = await getDownloadURL(storageRef);
+        }
+
         // Upload project image if provided
         let projectImageUrl = null;
         const imgFile = document.getElementById('projectImage').files?.[0];
         if (imgFile) {
-          btnLoading.textContent = 'Uploading image…';
+          btnLoading.textContent = 'Uploading project image…';
           const ext  = imgFile.name.split('.').pop();
           const slug = document.getElementById('fullName').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
           const storageRef = ref(storage, `art-class-images/${slug}-${Date.now()}/project.${ext}`);
@@ -319,6 +372,7 @@ const firebaseConfig = {
           phone:              document.getElementById('phone').value.trim(),
           artsArea:           quillArtsArea.root.innerHTML,
           projectDescription: quillProjectDesc.root.innerHTML,
+          presenterPhotoUrl,
           projectImageUrl,
           materials:          materialsHtml,
           status:             'pending',

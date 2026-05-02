@@ -26,6 +26,7 @@ type Presenter = {
   links?: string;
   materials?: string;
   projectImageUrl?: string;
+  presenterPhotoUrl?: string;
   status: string;
   submittedAt?: any;
 };
@@ -72,6 +73,7 @@ if (filterParam !== 'all') {
           data-project-description={p.projectDescription ?? ''}
           data-materials={p.materials ?? ''}
           data-image-url={p.projectImageUrl ?? ''}
+          data-presenter-photo-url={p.presenterPhotoUrl ?? ''}
         >
           <div class="submission-header">
             <div class="submission-title-group">
@@ -88,6 +90,12 @@ if (filterParam !== 'all') {
 
           <div class="submission-body">
             <div class="detail-grid">
+              {p.presenterPhotoUrl && (
+                <div>
+                  <div class="detail-label">Presenter Photo</div>
+                  <img src={p.presenterPhotoUrl} alt="Presenter photo" class="presenter-thumb" />
+                </div>
+              )}
               <div>
                 <div class="detail-label">Arts Area &amp; Experience</div>
                 <p class="detail-text" set:html={p.artsArea}></p>
@@ -101,11 +109,7 @@ if (filterParam !== 'all') {
               {p.projectImageUrl && (
                 <div>
                   <div class="detail-label">Project Image</div>
-                  <img
-                    src={p.projectImageUrl}
-                    alt="Project image"
-                    class="presenter-thumb"
-                  />
+                  <img src={p.projectImageUrl} alt="Project image" class="presenter-thumb" />
                 </div>
               )}
               {p.materials && (
@@ -173,6 +177,7 @@ if (filterParam !== 'all') {
       <form id="edit-form" class="edit-form" novalidate>
         <input type="hidden" id="edit-id" name="id" />
         <input type="hidden" id="edit-image-url" name="projectImageUrl" />
+        <input type="hidden" id="edit-presenter-photo-url" name="presenterPhotoUrl" />
 
         <div class="edit-row two-col">
           <div class="edit-field">
@@ -205,7 +210,25 @@ if (filterParam !== 'all') {
           <div id="quill-materials" class="quill-wrap"></div>
         </div>
 
-        <!-- Image section -->
+        <!-- Presenter photo section -->
+        <div class="edit-field">
+          <label>Presenter Photo</label>
+          <div id="current-presenter-photo-wrap" class="current-image-wrap" hidden>
+            <img id="current-presenter-photo-el" src="" alt="Current presenter photo" class="current-img-thumb" />
+            <span class="current-image-label">Current photo</span>
+          </div>
+          <div class="upload-zone" id="edit-presenter-photo-zone">
+            <input type="file" id="edit-presenter-photo-file" accept="image/jpeg,image/png,image/webp" class="upload-input" />
+            <label for="edit-presenter-photo-file" class="upload-label">
+              <span class="upload-icon">🧑‍🎨</span>
+              <span class="upload-text" id="presenter-photo-zone-text"><strong>Choose a photo</strong> or drag and drop</span>
+              <span class="upload-hint">JPG, PNG or WebP · max 10 MB</span>
+            </label>
+            <div class="upload-preview" id="edit-presenter-photo-preview" hidden></div>
+          </div>
+        </div>
+
+        <!-- Project image section -->
         <div class="edit-field">
           <label>Project Image</label>
           <div id="current-image-wrap" class="current-image-wrap" hidden>
@@ -372,24 +395,32 @@ if (filterParam !== 'all') {
         projectDescription: card.dataset.projectDescription ?? '',
         materials:          card.dataset.materials ?? '',
         projectImageUrl:    card.dataset.imageUrl ?? '',
+        presenterPhotoUrl:  card.dataset.presenterPhotoUrl ?? '',
       };
     });
 
     // ── Modal elements ───────────────────────────────────────────────
-    const modal         = document.getElementById('edit-modal');
-    const editForm      = document.getElementById('edit-form');
-    const closeBtn      = document.getElementById('modal-close-btn');
-    const cancelBtn     = document.getElementById('edit-cancel-btn');
-    const saveBtn       = document.getElementById('edit-save-btn');
-    const btnText       = document.getElementById('edit-btn-text');
-    const btnLoading    = document.getElementById('edit-btn-loading');
-    const curImgWrap    = document.getElementById('current-image-wrap');
-    const curImgEl      = document.getElementById('current-image-el');
-    const uploadZone    = document.getElementById('edit-upload-zone');
-    const uploadPreview = document.getElementById('edit-image-preview');
-    const fileInput     = document.getElementById('edit-image-file');
-    const hiddenImgUrl  = document.getElementById('edit-image-url');
-    const zoneText      = document.getElementById('upload-zone-text');
+    const modal                  = document.getElementById('edit-modal');
+    const editForm               = document.getElementById('edit-form');
+    const closeBtn               = document.getElementById('modal-close-btn');
+    const cancelBtn              = document.getElementById('edit-cancel-btn');
+    const saveBtn                = document.getElementById('edit-save-btn');
+    const btnText                = document.getElementById('edit-btn-text');
+    const btnLoading             = document.getElementById('edit-btn-loading');
+    const curImgWrap             = document.getElementById('current-image-wrap');
+    const curImgEl               = document.getElementById('current-image-el');
+    const uploadZone             = document.getElementById('edit-upload-zone');
+    const uploadPreview          = document.getElementById('edit-image-preview');
+    const fileInput              = document.getElementById('edit-image-file');
+    const hiddenImgUrl           = document.getElementById('edit-image-url');
+    const zoneText               = document.getElementById('upload-zone-text');
+    const curPresenterPhotoWrap  = document.getElementById('current-presenter-photo-wrap');
+    const curPresenterPhotoEl    = document.getElementById('current-presenter-photo-el');
+    const presenterPhotoZone     = document.getElementById('edit-presenter-photo-zone');
+    const presenterPhotoPreview  = document.getElementById('edit-presenter-photo-preview');
+    const presenterPhotoFile     = document.getElementById('edit-presenter-photo-file');
+    const hiddenPresenterPhotoUrl = document.getElementById('edit-presenter-photo-url');
+    const presenterPhotoZoneText = document.getElementById('presenter-photo-zone-text');
 
     // ── Quill editors (init once; populated on open) ─────────────────
     const BASIC_TOOLBAR = [['bold','italic','underline'],['link'],['clean']];
@@ -418,16 +449,29 @@ if (filterParam !== 'all') {
       editForm.querySelector('#edit-email').value      = p.email;
       editForm.querySelector('#edit-phone').value      = p.phone;
       hiddenImgUrl.value = p.projectImageUrl;
+      hiddenPresenterPhotoUrl.value = p.presenterPhotoUrl;
 
       // Populate Quill editors
       qArtsArea.root.innerHTML    = p.artsArea           || '';
       qProjectDesc.root.innerHTML = p.projectDescription || '';
       qMaterials.root.innerHTML   = p.materials          || '';
 
-      // Reset upload zone
+      // Reset upload zones
       fileInput.value = '';
       uploadPreview.hidden = true;
       uploadPreview.innerHTML = '';
+      presenterPhotoFile.value = '';
+      presenterPhotoPreview.hidden = true;
+      presenterPhotoPreview.innerHTML = '';
+
+      if (p.presenterPhotoUrl) {
+        curPresenterPhotoEl.src = p.presenterPhotoUrl;
+        curPresenterPhotoWrap.hidden = false;
+        presenterPhotoZoneText.innerHTML = '<strong>Replace photo</strong> or drag and drop';
+      } else {
+        curPresenterPhotoWrap.hidden = true;
+        presenterPhotoZoneText.innerHTML = '<strong>Choose a photo</strong> or drag and drop';
+      }
 
       if (p.projectImageUrl) {
         curImgEl.src = p.projectImageUrl;
@@ -456,7 +500,26 @@ if (filterParam !== 'all') {
       btn.addEventListener('click', () => openModal(btn.dataset.edit));
     });
 
-    // ── Drag-and-drop + preview ──────────────────────────────────────
+    // ── Drag-and-drop + preview (presenter photo)
+    presenterPhotoZone.addEventListener('dragover', e => { e.preventDefault(); presenterPhotoZone.classList.add('drag-over'); });
+    presenterPhotoZone.addEventListener('dragleave', () => presenterPhotoZone.classList.remove('drag-over'));
+    presenterPhotoZone.addEventListener('drop', e => {
+      e.preventDefault(); presenterPhotoZone.classList.remove('drag-over');
+      if (e.dataTransfer?.files.length) {
+        const dt = new DataTransfer(); dt.items.add(e.dataTransfer.files[0]);
+        presenterPhotoFile.files = dt.files; presenterPhotoFile.dispatchEvent(new Event('change'));
+      }
+    });
+    presenterPhotoFile.addEventListener('change', () => {
+      const file = presenterPhotoFile.files?.[0];
+      if (!file) { presenterPhotoPreview.hidden = true; return; }
+      presenterPhotoPreview.hidden = false;
+      const reader = new FileReader();
+      reader.onload = ev => { presenterPhotoPreview.innerHTML = `<img src="${ev.target.result}" alt="Preview" /><span>${file.name} (${(file.size/1024/1024).toFixed(1)} MB)</span>`; };
+      reader.readAsDataURL(file);
+    });
+
+    // ── Drag-and-drop + preview (project image)
     uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
     uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
     uploadZone.addEventListener('drop', e => {
@@ -488,10 +551,21 @@ if (filterParam !== 'all') {
       btnLoading.hidden = false;
 
       try {
-        // Upload new image if one was chosen
+        // Upload presenter photo if new one chosen
+        const presenterPhotoFileVal = presenterPhotoFile.files?.[0];
+        if (presenterPhotoFileVal) {
+          btnLoading.textContent = 'Uploading presenter photo…';
+          const ext = presenterPhotoFileVal.name.split('.').pop();
+          const id  = editForm.querySelector('#edit-id').value;
+          const storageRef = ref(storage, `art-class-images/${id}/presenter.${ext}`);
+          await uploadBytes(storageRef, presenterPhotoFileVal);
+          hiddenPresenterPhotoUrl.value = await getDownloadURL(storageRef);
+        }
+
+        // Upload project image if new one chosen
         const imgFile = fileInput.files?.[0];
         if (imgFile) {
-          btnLoading.textContent = 'Uploading image…';
+          btnLoading.textContent = 'Uploading project image…';
           const ext = imgFile.name.split('.').pop();
           const id  = editForm.querySelector('#edit-id').value;
           const storageRef = ref(storage, `art-class-images/${id}/project.${ext}`);
@@ -510,6 +584,7 @@ if (filterParam !== 'all') {
           projectDescription: qProjectDesc.getText().trim() ? qProjectDesc.root.innerHTML : '',
           materials:          qMaterials.getText().trim()   ? qMaterials.root.innerHTML   : '',
           projectImageUrl:    hiddenImgUrl.value,
+          presenterPhotoUrl:  hiddenPresenterPhotoUrl.value,
         };
 
         const res = await fetch('/api/admin/update-presenter', {

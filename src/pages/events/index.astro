@@ -290,6 +290,7 @@ const hasFeatured = featuredEvents.length > 0;
           presenterProjectDescription: d.presenterProjectDescription || null,
           presenterName:               d.presenterName || null,
           presenterImageUrl:           d.presenterImageUrl || null,
+          presenterPhotoUrl:            d.presenterPhotoUrl || null,
         });
       });
 
@@ -306,7 +307,7 @@ const hasFeatured = featuredEvents.length > 0;
           const bio      = truncate(e.description, 150);
           const fullAddr = [e.venueName, e.venueAddress].filter(Boolean).join(', ');
           const isArtNight         = e.eventType === 'group_art_night';
-          const cardPosterUrl = isArtNight ? (e.presenterImageUrl || e.posterUrl) : e.posterUrl;
+          const cardPosterUrl = isArtNight ? (e.presenterPhotoUrl || e.presenterImageUrl || e.posterUrl) : e.posterUrl;
           const artNightBioHtml    = isArtNight ? (e.presenterProjectDescription || '') : '';
           const artNightNeedsTrunc = isArtNight && artNightBioHtml && stripHtml(artNightBioHtml).length > 300;
 

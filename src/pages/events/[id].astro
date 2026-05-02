@@ -161,9 +161,9 @@ const venueAddress= event.venueAddress|| event.address   || '';
           <div class="desc-body">
             {event.presenterName && (
               <div class="band-hero">
-                {event.presenterImageUrl && (
+                {event.presenterPhotoUrl && (
                   <div class="band-hero-photo-wrap">
-                    <img src={event.presenterImageUrl} alt={event.presenterName} class="band-hero-photo" />
+                    <img src={event.presenterPhotoUrl} alt={event.presenterName} class="band-hero-photo" />
                   </div>
                 )}
                 <div class="band-hero-info">
@@ -174,6 +174,11 @@ const venueAddress= event.venueAddress|| event.address   || '';
                   {event.presenterProjectDescription && (
                     <>
                       <div class="presenter-section-label">This Month's Project</div>
+                      {event.presenterImageUrl && (
+                        <div class="project-image-wrap">
+                          <img src={event.presenterImageUrl} alt="Project image" class="project-image" />
+                        </div>
+                      )}
                       <div class="presenter-project-desc" set:html={event.presenterProjectDescription} />
                     </>
                   )}
@@ -593,6 +598,19 @@ const venueAddress= event.venueAddress|| event.address   || '';
     letter-spacing: 0.08em;
     color: var(--navy);
     margin: 12px 0 4px;
+  }
+
+  .project-image-wrap {
+    margin: 8px 0 12px;
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 400px;
+  }
+  .project-image {
+    width: 100%;
+    display: block;
+    border-radius: 8px;
+    border: 1.5px solid var(--border, #e5e5e5);
   }
 
   .band-hero-genre {

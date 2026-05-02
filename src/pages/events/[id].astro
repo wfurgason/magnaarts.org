@@ -41,6 +41,7 @@ const displayDate = isoDate
   : (event.displayDate || '');
 
 const isFestival  = event.eventType === 'arts_festival';
+const isArtNight  = event.eventType === 'group_art_night';
 
 function extractEmbedSrc(val: string | null): string | null {
   if (!val) return null;
@@ -153,8 +154,65 @@ const venueAddress= event.venueAddress|| event.address   || '';
       </div>
     </section>
 
+    <!-- ── ART NIGHT PRESENTER SECTION ── -->
+    {isArtNight && (
+      <section class="section desc-section reveal">
+        <div class="container desc-inner">
+          <div class="desc-body">
+            {event.presenterName && (
+              <div class="band-hero">
+                {event.posterUrl && (
+                  <div class="band-hero-photo-wrap">
+                    <img src={event.posterUrl} alt={event.presenterName} class="band-hero-photo" />
+                  </div>
+                )}
+                <div class="band-hero-info">
+                  <h2 class="band-hero-name">{event.presenterName}</h2>
+                  {event.presenterArtsArea && (
+                    <div class="band-hero-genre">{event.presenterArtsArea}</div>
+                  )}
+                  {event.presenterProjectDescription && (
+                    <div class="presenter-project-desc" set:html={event.presenterProjectDescription} />
+                  )}
+                </div>
+              </div>
+            )}
+            {!event.presenterName && event.description && (
+              <p>{event.description}</p>
+            )}
+          </div>
+          <div class="desc-sidebar">
+            <div class="sidebar-card">
+              <h3>Event Details</h3>
+              <dl>
+                <dt>Date</dt>
+                <dd>{displayDate}</dd>
+                {timeDisplay && <><dt>Time</dt><dd>{timeDisplay}</dd></>}
+                <dt>Location</dt>
+                <dd>{venueName}</dd>
+                {venueAddress && <><dt>Address</dt><dd>{venueAddress}</dd></>}
+                <dt>Admission</dt>
+                <dd>Free — all ages welcome</dd>
+              </dl>
+            </div>
+            <div class="sidebar-card attend-card">
+              <h3>Attending</h3>
+              <div class="attend-count-wrap">
+                <span class="attend-count" id="attend-count">{event.attendingCount || 0}</span>
+                <span class="attend-label">people are going</span>
+              </div>
+              <button class="btn btn-gold attend-btn" id="attend-btn" style="width:100%;justify-content:center;" data-event-id={Astro.params.id}>
+                I'm Attending
+              </button>
+              <p class="attend-hint" id="attend-hint"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+    )}
+
     <!-- ── DESCRIPTION ── -->
-    {(!isFestival && (event.bandName || event.description)) && (() => {
+    {(!isFestival && !isArtNight && (event.bandName || event.description)) && (() => {
       const band = (event.bands || []).find((b: any) => b.bandId) as any;
       return (
         <section class="section desc-section reveal">
@@ -515,6 +573,15 @@ const venueAddress= event.venueAddress|| event.address   || '';
     line-height: 1.75;
     margin: 0 0 10px;
   }
+
+  .presenter-project-desc {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.75;
+    margin: 0;
+  }
+  .presenter-project-desc p { margin: 0 0 8px; }
+  .presenter-project-desc p:last-child { margin-bottom: 0; }
 
   .band-hero-genre {
     display: inline-block;

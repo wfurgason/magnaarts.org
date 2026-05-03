@@ -292,6 +292,7 @@ const hasFeatured = featuredEvents.length > 0;
           presenterImageUrl:           d.presenterImageUrl || null,
           presenterPhotoUrl:            d.presenterPhotoUrl || null,
           presenterProjectTitle:        d.presenterProjectTitle || null,
+          presenterSocialUrl:            d.presenterSocialUrl || null,
         });
       });
 
@@ -346,7 +347,7 @@ const hasFeatured = featuredEvents.length > 0;
                        ${e.presenterPhotoUrl ? `<img src="${e.presenterPhotoUrl}" alt="${e.presenterName}" class="published-presenter-photo" />` : ''}
                        <div class="published-presenter-info">
                          <span class="published-bio-label">Instructor</span>
-                         <span class="published-presenter-name">${e.presenterName}</span>
+                         <span class="published-presenter-name">${e.presenterSocialUrl ? `<a href="${e.presenterSocialUrl}" target="_blank" rel="noopener">${e.presenterName}</a>` : e.presenterName}</span>
                          ${e.presenterArtsArea ? `<div class="published-presenter-arts-area">${e.presenterArtsArea}</div>` : ''}
                        </div>
                      </div>` : ''}`

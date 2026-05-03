@@ -167,7 +167,12 @@ const venueAddress= event.venueAddress|| event.address   || '';
                   </div>
                 )}
                 <div class="band-hero-info">
-                  <h2 class="band-hero-name">{event.presenterName}</h2>
+                  <h2 class="band-hero-name">
+                    {event.presenterName}
+                    {event.presenterSocialUrl && (
+                      <a href={event.presenterSocialUrl} target="_blank" rel="noopener" class="presenter-social-link">↗</a>
+                    )}
+                  </h2>
                   {event.presenterArtsArea && (
                     <div class="presenter-project-desc" set:html={event.presenterArtsArea} />
                   )}
@@ -599,6 +604,16 @@ const venueAddress= event.venueAddress|| event.address   || '';
     color: var(--navy);
     margin: 12px 0 4px;
   }
+
+  .presenter-social-link {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--blue);
+    text-decoration: none;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .presenter-social-link:hover { text-decoration: underline; }
 
   .project-image-wrap {
     margin: 8px 0 12px;

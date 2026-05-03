@@ -16,7 +16,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   try {
     const body = await request.json();
-    const { id, fullName, email, phone, artsArea, projectDescription, materials, projectImageUrl, presenterPhotoUrl } = body;
+    const { id, fullName, email, phone, artsArea, projectDescription, materials, projectImageUrl, presenterPhotoUrl, projectTitle } = body;
 
     if (!id || typeof id !== 'string') {
       return new Response(JSON.stringify({ error: 'Missing id' }), { status: 400 });
@@ -32,6 +32,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (materials           !== undefined) update.materials           = materials;
     if (projectImageUrl    !== undefined) update.projectImageUrl    = projectImageUrl;
     if (presenterPhotoUrl  !== undefined) update.presenterPhotoUrl  = presenterPhotoUrl;
+    if (projectTitle       !== undefined) update.projectTitle       = projectTitle;
 
     if (Object.keys(update).length === 0) {
       return new Response(JSON.stringify({ error: 'No fields to update' }), { status: 400 });

@@ -27,6 +27,7 @@ type Presenter = {
   materials?: string;
   projectImageUrl?: string;
   presenterPhotoUrl?: string;
+  projectTitle?: string;
   status: string;
   submittedAt?: any;
 };
@@ -74,6 +75,7 @@ if (filterParam !== 'all') {
           data-materials={p.materials ?? ''}
           data-image-url={p.projectImageUrl ?? ''}
           data-presenter-photo-url={p.presenterPhotoUrl ?? ''}
+          data-project-title={p.projectTitle ?? ''}
         >
           <div class="submission-header">
             <div class="submission-title-group">
@@ -198,6 +200,11 @@ if (filterParam !== 'all') {
         <div class="edit-field">
           <label>Arts Area &amp; Experience</label>
           <div id="quill-artsArea" class="quill-wrap"></div>
+        </div>
+
+        <div class="edit-field">
+          <label for="edit-projectTitle">Project Title</label>
+          <input type="text" id="edit-projectTitle" name="projectTitle" maxlength="100" placeholder="e.g. Watercolor Sunset" />
         </div>
 
         <div class="edit-field">
@@ -396,6 +403,7 @@ if (filterParam !== 'all') {
         materials:          card.dataset.materials ?? '',
         projectImageUrl:    card.dataset.imageUrl ?? '',
         presenterPhotoUrl:  card.dataset.presenterPhotoUrl ?? '',
+        projectTitle:       card.dataset.projectTitle ?? '',
       };
     });
 
@@ -450,6 +458,7 @@ if (filterParam !== 'all') {
       editForm.querySelector('#edit-phone').value      = p.phone;
       hiddenImgUrl.value = p.projectImageUrl;
       hiddenPresenterPhotoUrl.value = p.presenterPhotoUrl;
+      editForm.querySelector('#edit-projectTitle').value = p.projectTitle;
 
       // Populate Quill editors
       qArtsArea.root.innerHTML    = p.artsArea           || '';
@@ -581,6 +590,7 @@ if (filterParam !== 'all') {
           email:              editForm.querySelector('#edit-email').value.trim(),
           phone:              editForm.querySelector('#edit-phone').value.trim(),
           artsArea:           qArtsArea.getText().trim()    ? qArtsArea.root.innerHTML    : '',
+          projectTitle:       editForm.querySelector('#edit-projectTitle').value.trim(),
           projectDescription: qProjectDesc.getText().trim() ? qProjectDesc.root.innerHTML : '',
           materials:          qMaterials.getText().trim()   ? qMaterials.root.innerHTML   : '',
           projectImageUrl:    hiddenImgUrl.value,

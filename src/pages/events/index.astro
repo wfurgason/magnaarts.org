@@ -308,7 +308,7 @@ const hasFeatured = featuredEvents.length > 0;
           const bio      = truncate(e.description, 150);
           const fullAddr = [e.venueName, e.venueAddress].filter(Boolean).join(', ');
           const isArtNight         = e.eventType === 'group_art_night';
-          const cardPosterUrl = isArtNight ? (e.presenterPhotoUrl || e.presenterImageUrl || e.posterUrl) : e.posterUrl;
+          const cardPosterUrl = isArtNight ? (e.presenterImageUrl || e.posterUrl) : e.posterUrl;
           const artNightBioHtml    = isArtNight ? (e.presenterProjectDescription || '') : '';
           const artNightNeedsTrunc = isArtNight && artNightBioHtml && stripHtml(artNightBioHtml).length > 300;
 
@@ -343,8 +343,12 @@ const hasFeatured = featuredEvents.length > 0;
                      </div>` : ''}
                    ${e.presenterName ? `
                      <div class="published-presenter-byline">
-                       <span class="published-bio-label">Instructor: </span>
-                       <span class="published-presenter-name">${e.presenterName}</span>
+                       ${e.presenterPhotoUrl ? `<img src="${e.presenterPhotoUrl}" alt="${e.presenterName}" class="published-presenter-photo" />` : ''}
+                       <div class="published-presenter-info">
+                         <span class="published-bio-label">Instructor</span>
+                         <span class="published-presenter-name">${e.presenterName}</span>
+                         ${e.presenterArtsArea ? `<div class="published-presenter-arts-area">${e.presenterArtsArea}</div>` : ''}
+                       </div>
                      </div>` : ''}`
                 : `<h3 class="published-title">${e.title}</h3>`
               }
@@ -736,14 +740,42 @@ const hasFeatured = featuredEvents.length > 0;
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid var(--border);
-    font-size: 13px;
-    color: var(--muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .published-presenter-photo {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center top;
+    flex-shrink: 0;
+    border: 2px solid var(--border);
+  }
+
+  .published-presenter-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
   }
 
   .published-presenter-name {
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--navy);
+    line-height: 1.2;
   }
+
+  .published-presenter-arts-area {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+  .published-presenter-arts-area p { margin: 0; }
 
   .published-bio { margin-top: 8px; }
   .published-bio-label {

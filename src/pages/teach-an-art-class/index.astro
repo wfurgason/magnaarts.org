@@ -134,6 +134,13 @@ const firebaseConfig = {
             </div>
 
             <div class="form-field">
+              <label for="socialUrl">Social Media or Website
+                <span class="field-hint">A link to your Instagram, Facebook, website, or other profile (optional)</span>
+              </label>
+              <input type="url" id="socialUrl" name="socialUrl" placeholder="https://instagram.com/yourhandle" />
+            </div>
+
+            <div class="form-field">
               <label>Presenter Photo
                 <span class="field-hint">A photo of yourself — used on the event page to introduce you to attendees (JPG or PNG, max 10 MB)</span>
               </label>
@@ -380,6 +387,7 @@ const firebaseConfig = {
           email:              document.getElementById('email').value.trim(),
           phone:              document.getElementById('phone').value.trim(),
           projectTitle:       document.getElementById('projectTitle').value.trim(),
+          socialUrl:          document.getElementById('socialUrl').value.trim(),
           artsArea:           quillArtsArea.root.innerHTML,
           projectDescription: quillProjectDesc.root.innerHTML,
           presenterPhotoUrl,

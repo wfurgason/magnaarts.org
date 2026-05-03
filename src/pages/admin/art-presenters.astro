@@ -28,6 +28,7 @@ type Presenter = {
   projectImageUrl?: string;
   presenterPhotoUrl?: string;
   projectTitle?: string;
+  socialUrl?: string;
   status: string;
   submittedAt?: any;
 };
@@ -76,6 +77,7 @@ if (filterParam !== 'all') {
           data-image-url={p.projectImageUrl ?? ''}
           data-presenter-photo-url={p.presenterPhotoUrl ?? ''}
           data-project-title={p.projectTitle ?? ''}
+          data-social-url={p.socialUrl ?? ''}
         >
           <div class="submission-header">
             <div class="submission-title-group">
@@ -118,6 +120,12 @@ if (filterParam !== 'all') {
                 <div>
                   <div class="detail-label">Materials &amp; Resources</div>
                   <p class="detail-text" set:html={p.materials}></p>
+                </div>
+              )}
+              {p.socialUrl && (
+                <div>
+                  <div class="detail-label">Social / Website</div>
+                  <div class="link-list"><a href={p.socialUrl} target="_blank" rel="noopener">{p.socialUrl} ↗</a></div>
                 </div>
               )}
               {p.links && (
@@ -215,6 +223,11 @@ if (filterParam !== 'all') {
         <div class="edit-field">
           <label>Materials &amp; Resources</label>
           <div id="quill-materials" class="quill-wrap"></div>
+        </div>
+
+        <div class="edit-field">
+          <label for="edit-socialUrl">Social Media or Website</label>
+          <input type="url" id="edit-socialUrl" name="socialUrl" placeholder="https://instagram.com/yourhandle" />
         </div>
 
         <!-- Presenter photo section -->
@@ -404,6 +417,7 @@ if (filterParam !== 'all') {
         projectImageUrl:    card.dataset.imageUrl ?? '',
         presenterPhotoUrl:  card.dataset.presenterPhotoUrl ?? '',
         projectTitle:       card.dataset.projectTitle ?? '',
+        socialUrl:          card.dataset.socialUrl ?? '',
       };
     });
 
@@ -459,6 +473,7 @@ if (filterParam !== 'all') {
       hiddenImgUrl.value = p.projectImageUrl;
       hiddenPresenterPhotoUrl.value = p.presenterPhotoUrl;
       editForm.querySelector('#edit-projectTitle').value = p.projectTitle;
+      editForm.querySelector('#edit-socialUrl').value    = p.socialUrl;
 
       // Populate Quill editors
       qArtsArea.root.innerHTML    = p.artsArea           || '';
@@ -591,6 +606,7 @@ if (filterParam !== 'all') {
           phone:              editForm.querySelector('#edit-phone').value.trim(),
           artsArea:           qArtsArea.getText().trim()    ? qArtsArea.root.innerHTML    : '',
           projectTitle:       editForm.querySelector('#edit-projectTitle').value.trim(),
+          socialUrl:          editForm.querySelector('#edit-socialUrl').value.trim(),
           projectDescription: qProjectDesc.getText().trim() ? qProjectDesc.root.innerHTML : '',
           materials:          qMaterials.getText().trim()   ? qMaterials.root.innerHTML   : '',
           projectImageUrl:    hiddenImgUrl.value,

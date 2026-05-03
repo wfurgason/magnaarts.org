@@ -138,6 +138,11 @@ const archiveJson = JSON.stringify(archive);
                   </div>
                 </div>
                 <div class="event-actions">
+                  {event.eventType === 'group_art_night' && (
+                    <button class="btn btn-secondary btn-sm" data-action="sync-presenter" data-id={event.id}>
+                      Sync Presenter Data
+                    </button>
+                  )}
                   <button class="btn btn-danger btn-sm" data-action="unpublish" data-id={event.id}>
                     Unpublish
                   </button>
@@ -192,6 +197,26 @@ const archiveJson = JSON.stringify(archive);
   </section>
 
   <script>
+    // ── Sync Presenter buttons ──
+    document.querySelectorAll('[data-action="sync-presenter"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const el = btn as HTMLButtonElement;
+        el.disabled = true;
+        el.textContent = 'Syncing…';
+        const res = await fetch('/api/admin/sync-art-night-presenter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: el.dataset.id }),
+        });
+        if (res.ok) {
+          el.textContent = '✓ Synced';
+          setTimeout(() => { el.disabled = false; el.textContent = 'Sync Presenter Data'; }, 2000);
+        } else {
+          alert('Sync failed.'); el.disabled = false; el.textContent = 'Sync Presenter Data';
+        }
+      });
+    });
+
     // ── Unpublish buttons ──
     document.querySelectorAll('[data-action="unpublish"]').forEach(btn => {
       btn.addEventListener('click', async () => {

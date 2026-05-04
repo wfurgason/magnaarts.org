@@ -11,13 +11,21 @@ const firebaseConfig = {
 };
 
 // Fetch all collections in parallel
-const [bandsSnap, programsSnap, eventsSnap, vendorsSnap, volunteersSnap, presentersSnap] = await Promise.all([
+const [
+  bandsSnap, programsSnap, eventsSnap, vendorsSnap, volunteersSnap, presentersSnap,
+  parkEventsSnap, openMicSnap, artNightSnap, festivalSnap, writingGroupSnap
+] = await Promise.all([
   adminDb.collection('band_applications').get(),
   adminDb.collection('program_submissions').get(),
   adminDb.collection('events').get(),
   adminDb.collection('vendor_applications').get(),
   adminDb.collection('volunteer_signups').get(),
   adminDb.collection('art_class_submissions').get(),
+  adminDb.collection('park_events').where('status', 'in', ['band_assigned', 'presenter_assigned', 'confirmed']).get(),
+  adminDb.collection('open_mic_events').where('status', 'in', ['band_assigned', 'presenter_assigned', 'confirmed']).get(),
+  adminDb.collection('art_night_events').where('status', 'in', ['band_assigned', 'presenter_assigned', 'confirmed']).get(),
+  adminDb.collection('festival_events').where('status', 'in', ['band_assigned', 'presenter_assigned', 'confirmed']).get(),
+  adminDb.collection('writing_group_events').where('status', 'in', ['band_assigned', 'presenter_assigned', 'confirmed']).get(),
 ]);
 
 const bands      = bandsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
@@ -25,6 +33,20 @@ const programs   = programsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as an
 const vendors    = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const volunteers = volunteersSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const presenters = presentersSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
+// Events in the planning pipeline (not yet published)
+const inProgressShells = [
+  ...parkEventsSnap.docs,
+  ...openMicSnap.docs,
+  ...artNightSnap.docs,
+  ...festivalSnap.docs,
+  ...writingGroupSnap.docs,
+].map(d => d.data() as any);
+
+const pipelineCounts = {
+  needsConfirmation: inProgressShells.filter(s => s.status === 'band_assigned' || s.status === 'presenter_assigned').length,
+  readyToPublish:    inProgressShells.filter(s => s.status === 'confirmed').length,
+};
 
 const counts = {
   bandsPending:      bands.filter(b => !b.status || b.status === 'pending').length,
@@ -97,6 +119,17 @@ const recentVolunteers = [...volunteers]
       <div class="stat-number">{counts.eventsTotal}</div>
       <div class="stat-label">Published Events</div>
       <a href="/admin/events" class="stat-link">Manage →</a>
+    </div>
+    <div class="stat-card stat-warning">
+      <div class="stat-number">{pipelineCounts.needsConfirmation + pipelineCounts.readyToPublish}</div>
+      <div class="stat-label">Events In Progress</div>
+      <div class="stat-sublabel">
+        {pipelineCounts.needsConfirmation > 0 && `${pipelineCounts.needsConfirmation} need confirmation`}
+        {pipelineCounts.needsConfirmation > 0 && pipelineCounts.readyToPublish > 0 && ' · '}
+        {pipelineCounts.readyToPublish > 0 && `${pipelineCounts.readyToPublish} ready to publish`}
+        {pipelineCounts.needsConfirmation === 0 && pipelineCounts.readyToPublish === 0 && 'None pending'}
+      </div>
+      <a href="/admin/planning" class="stat-link">Go to Planning →</a>
     </div>
   </div>
 

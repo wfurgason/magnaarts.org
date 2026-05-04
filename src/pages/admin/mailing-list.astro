@@ -1,0 +1,239 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminDb } from '../../lib/firebase-admin';
+
+const user = Astro.locals.user;
+const filterParam = Astro.url.searchParams.get('filter') || 'all';
+
+const snap = await adminDb.collection('mailingList')
+  .orderBy('subscribedAt', 'desc')
+  .get();
+
+type Subscriber = {
+  id: string;
+  email: string;
+  status: 'pending' | 'confirmed';
+  token: string;
+  subscribedAt?: any;
+  confirmedAt?: any;
+};
+
+let subscribers = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Subscriber[];
+if (filterParam !== 'all') {
+  subscribers = subscribers.filter(s => s.status === filterParam);
+}
+
+const total     = snap.size;
+const confirmed = snap.docs.filter(d => d.data().status === 'confirmed').length;
+const pending   = total - confirmed;
+
+function fmt(ts: any) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+---
+
+<AdminLayout title="Mailing List" user={user}>
+
+  <div class="page-header">
+    <h1>Mailing List</h1>
+    <p class="page-sub">{total} subscriber{total !== 1 ? 's' : ''} &mdash; {confirmed} confirmed, {pending} pending</p>
+
+    <div class="header-actions">
+      <div class="filter-tabs">
+        {['all', 'confirmed', 'pending'].map(f => (
+          <a
+            href={`/admin/mailing-list${f === 'all' ? '' : `?filter=${f}`}`}
+            class:list={['filter-tab', { active: filterParam === f }]}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </a>
+        ))}
+      </div>
+      <button id="export-btn" class="btn-export">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  {subscribers.length === 0 ? (
+    <div class="empty-state">
+      <p>No subscribers{filterParam !== 'all' ? ` with status "${filterParam}"` : ''} yet.</p>
+    </div>
+  ) : (
+    <div class="table-wrap">
+      <table class="data-table" id="ml-table">
+        <thead>
+          <tr>
+            <th>Email<br/><input class="col-filter" data-col="0" placeholder="Filter..." /></th>
+            <th>Status</th>
+            <th>Subscribed</th>
+            <th>Confirmed</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {subscribers.map(s => (
+            <tr id={`row-${s.id}`} data-email={s.email} data-subscribed={fmt(s.subscribedAt)} data-confirmed={fmt(s.confirmedAt)}>
+              <td class="email-cell">{s.email}</td>
+              <td><span class={`badge badge-${s.status}`}>{s.status}</span></td>
+              <td>{fmt(s.subscribedAt)}</td>
+              <td>{s.status === 'confirmed' ? fmt(s.confirmedAt) : '—'}</td>
+              <td>
+                <button class="btn-xs btn-danger delete-btn" data-id={s.id}>Remove</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <style>
+    .page-sub { color: var(--muted, #5a5a7a); font-size: 14px; margin: 4px 0 16px; }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .btn-export {
+      margin-left: auto;
+      padding: 7px 16px;
+      background: var(--navy, #1a2456);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-export:hover { opacity: 0.85; }
+
+    .table-wrap { overflow-x: auto; }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .data-table th {
+      background: #f1f5f9;
+      color: var(--navy, #1a2456);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: 8px 10px 6px;
+      text-align: left;
+      border-bottom: 2px solid #e2e8f0;
+      vertical-align: top;
+    }
+    .data-table td {
+      padding: 10px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+    .data-table tbody tr:hover { background: #f8fafc; }
+    .data-table tbody tr.hidden { display: none; }
+
+    .col-filter {
+      display: block;
+      margin-top: 4px;
+      width: 100%;
+      font-size: 12px;
+      font-weight: 400;
+      padding: 3px 6px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .email-cell { font-weight: 600; color: var(--navy, #1a2456); }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .badge-confirmed { background: #d1fae5; color: #065f46; }
+    .badge-pending   { background: #fef9c3; color: #854d0e; }
+
+    .btn-xs {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-xs.btn-danger { background: #b52626; color: #fff; }
+    .btn-xs:hover { opacity: .85; }
+    .btn-xs:disabled { opacity: .5; cursor: not-allowed; }
+
+    .empty-state {
+      text-align: center;
+      padding: 64px 0;
+      color: var(--muted, #5a5a7a);
+    }
+  </style>
+
+  <script>
+    // Column filter
+    document.querySelectorAll('.col-filter').forEach(function(input) {
+      input.addEventListener('input', function() {
+        var val = (input as HTMLInputElement).value.trim().toLowerCase();
+        document.querySelectorAll('#ml-table tbody tr').forEach(function(row) {
+          var cell = row.querySelector('.email-cell');
+          var match = !val || (cell && cell.textContent!.toLowerCase().includes(val));
+          row.classList.toggle('hidden', !match);
+        });
+      });
+    });
+
+    // Delete
+    document.querySelectorAll('.delete-btn').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var id = (btn as HTMLButtonElement).dataset.id;
+        if (!confirm('Remove this subscriber? This cannot be undone.')) return;
+        (btn as HTMLButtonElement).disabled = true;
+        var res = await fetch('/api/admin/delete-subscriber', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        if (res.ok) {
+          document.getElementById('row-' + id)?.remove();
+        } else {
+          alert('Failed to remove subscriber.');
+          (btn as HTMLButtonElement).disabled = false;
+        }
+      });
+    });
+
+    // CSV export
+    document.getElementById('export-btn')?.addEventListener('click', function() {
+      var rows = Array.from(document.querySelectorAll('#ml-table tbody tr:not(.hidden)'));
+      var csv = ['Email,Status,Subscribed,Confirmed'];
+      rows.forEach(function(row) {
+        var email     = (row as HTMLElement).dataset.email || '';
+        var status    = row.querySelector('.badge')?.textContent?.trim() || '';
+        var subscribed = (row as HTMLElement).dataset.subscribed || '';
+        var confirmed  = (row as HTMLElement).dataset.confirmed || '';
+        csv.push([email, status, subscribed, confirmed].map(v => `"${v}"`).join(','));
+      });
+      var blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mailing-list.csv';
+      a.click();
+    });
+  </script>
+
+</AdminLayout>

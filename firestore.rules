@@ -38,6 +38,12 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // ── Mailing list — public can create (subscribe), only server reads/updates/deletes ──
+    match /mailingList/{doc} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
     // ── Admin users — no client-side access at all ──
     match /admin_users/{doc} {
       allow read, write: if false;

@@ -1,4 +1,6 @@
 ---
+import MailingListBanner from '../components/MailingListBanner.astro';
+
 interface Props {
   title?: string;
   description?: string;
@@ -72,6 +74,8 @@ const schema = {
   </head>
   <body>
     <slot />
+
+    <MailingListBanner />
 
     <!-- Scroll reveal observer — used site-wide -->
     <script>

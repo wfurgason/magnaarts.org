@@ -27,6 +27,25 @@
       </div>
     </nav>
   </div>
+  <div class="footer-signup">
+    <div class="container">
+      <p class="signup-label">Get updates on events and programs</p>
+      <form id="footer-ml-form" class="signup-form" novalidate>
+        <input
+          id="footer-ml-email"
+          type="email"
+          name="email"
+          placeholder="Your email address"
+          autocomplete="email"
+          required
+          class="signup-input"
+        />
+        <button type="submit" class="signup-btn">Subscribe</button>
+      </form>
+      <p id="footer-ml-msg" class="signup-msg" aria-live="polite"></p>
+    </div>
+  </div>
+
   <div class="footer-bottom">
     <div class="container footer-bottom-inner">
       <span>© {new Date().getFullYear()} Magna Arts Council &nbsp;·&nbsp;
@@ -149,11 +168,124 @@
   }
   .footer-bottom a:hover { color: var(--gold-lt); }
 
+  /* ── Mailing list signup strip ── */
+  .footer-signup {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 24px 0;
+  }
+
+  .footer-signup .container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .signup-label {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 14px;
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  .signup-form {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    min-width: 260px;
+  }
+
+  .signup-input {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--white);
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .signup-input::placeholder { color: rgba(255,255,255,0.35); }
+  .signup-input:focus { border-color: var(--gold); }
+
+  .signup-btn {
+    padding: 9px 18px;
+    background: var(--gold);
+    color: #0e1327;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .signup-btn:hover { background: var(--gold-lt); }
+  .signup-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .signup-msg {
+    font-size: 0.8rem;
+    margin: 0;
+    min-height: 1em;
+  }
+  .signup-msg.success { color: #6ee7a0; }
+  .signup-msg.error   { color: #f87171; }
+
   @media (max-width: 640px) {
     .footer-inner {
       flex-direction: column;
       gap: 24px;
     }
     .footer-nav { gap: 16px; }
+    .footer-signup .container { flex-direction: column; align-items: flex-start; }
+    .signup-form { width: 100%; }
   }
 </style>
+
+<script>
+  const form = document.getElementById('footer-ml-form') as HTMLFormElement;
+  const emailInput = document.getElementById('footer-ml-email') as HTMLInputElement;
+  const submitBtn = form?.querySelector('button[type="submit"]') as HTMLButtonElement;
+  const msg = document.getElementById('footer-ml-msg')!;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = emailInput.value.trim();
+    if (!email) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+    msg.textContent = '';
+    msg.className = 'signup-msg';
+
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+
+      if (res.ok || data.error === 'already_subscribed') {
+        msg.textContent = data.error === 'already_subscribed'
+          ? 'You\'re already subscribed!'
+          : 'Check your inbox to confirm!';
+        msg.classList.add('success');
+        form.style.display = 'none';
+      } else {
+        msg.textContent = data.error ?? 'Something went wrong. Please try again.';
+        msg.classList.add('error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Subscribe';
+      }
+    } catch {
+      msg.textContent = 'Something went wrong. Please try again.';
+      msg.classList.add('error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Subscribe';
+    }
+  });
+</script>

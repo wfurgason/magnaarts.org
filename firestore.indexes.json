@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "mailingList",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "subscribedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "artists",
       "queryScope": "COLLECTION",
       "fields": [

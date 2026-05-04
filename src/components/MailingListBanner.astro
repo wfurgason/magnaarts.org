@@ -1,0 +1,201 @@
+---
+// MailingListBanner.astro — slide-in subscription banner
+---
+
+<div id="ml-banner" class="ml-banner" aria-live="polite">
+  <button id="ml-close" class="ml-close" aria-label="Dismiss">&times;</button>
+  <div class="ml-icon">✉️</div>
+  <h3 class="ml-heading">Stay in the loop</h3>
+  <p class="ml-sub">Get updates on events, programs, and arts news from Magna Arts Council.</p>
+  <form id="ml-form" class="ml-form" novalidate>
+    <input
+      id="ml-email"
+      type="email"
+      name="email"
+      placeholder="Your email address"
+      autocomplete="email"
+      required
+      class="ml-input"
+    />
+    <button type="submit" class="ml-submit">Subscribe</button>
+  </form>
+  <p id="ml-msg" class="ml-msg" aria-live="polite"></p>
+</div>
+
+<style>
+  .ml-banner {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 320px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-hover);
+    padding: 24px 20px 20px;
+    z-index: 9999;
+    transform: translateY(120%);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+    font-family: var(--font-body);
+  }
+
+  .ml-banner.ml-visible {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .ml-banner.ml-hidden {
+    display: none;
+  }
+
+  .ml-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+  }
+  .ml-close:hover { color: var(--text); }
+
+  .ml-icon {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+  }
+
+  .ml-heading {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+
+  .ml-sub {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+    line-height: 1.4;
+  }
+
+  .ml-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ml-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .ml-input:focus { border-color: var(--navy); }
+
+  .ml-submit {
+    width: 100%;
+    padding: 10px;
+    background: var(--navy);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .ml-submit:hover { background: var(--navy-dk); }
+  .ml-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .ml-msg {
+    margin-top: 10px;
+    font-size: 0.83rem;
+    text-align: center;
+    min-height: 1.2em;
+  }
+  .ml-msg.success { color: var(--green); }
+  .ml-msg.error   { color: var(--red); }
+
+  @media (max-width: 400px) {
+    .ml-banner {
+      width: calc(100vw - 32px);
+      right: 16px;
+      bottom: 16px;
+    }
+  }
+</style>
+
+<script>
+  const STORAGE_KEY = 'ml_banner_dismissed';
+
+  const banner  = document.getElementById('ml-banner')!;
+  const closeBtn = document.getElementById('ml-close')!;
+  const form    = document.getElementById('ml-form') as HTMLFormElement;
+  const emailInput = document.getElementById('ml-email') as HTMLInputElement;
+  const submitBtn  = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+  const msg     = document.getElementById('ml-msg')!;
+
+  // Don't show if already dismissed or subscribed
+  if (localStorage.getItem(STORAGE_KEY)) {
+    banner.classList.add('ml-hidden');
+  } else {
+    setTimeout(() => banner.classList.add('ml-visible'), 3500);
+  }
+
+  closeBtn.addEventListener('click', () => {
+    banner.classList.remove('ml-visible');
+    setTimeout(() => banner.classList.add('ml-hidden'), 400);
+    localStorage.setItem(STORAGE_KEY, '1');
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = emailInput.value.trim();
+    if (!email) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+    msg.textContent = '';
+    msg.className = 'ml-msg';
+
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        msg.textContent = 'Check your inbox to confirm your subscription!';
+        msg.classList.add('success');
+        form.style.display = 'none';
+        localStorage.setItem(STORAGE_KEY, '1');
+      } else if (data.error === 'already_subscribed') {
+        msg.textContent = 'You\'re already subscribed!';
+        msg.classList.add('success');
+        localStorage.setItem(STORAGE_KEY, '1');
+      } else {
+        msg.textContent = data.error ?? 'Something went wrong. Please try again.';
+        msg.classList.add('error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Subscribe';
+      }
+    } catch {
+      msg.textContent = 'Something went wrong. Please try again.';
+      msg.classList.add('error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Subscribe';
+    }
+  });
+</script>

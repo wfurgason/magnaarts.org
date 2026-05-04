@@ -43,6 +43,20 @@ const displayDate = isoDate
 const isFestival  = event.eventType === 'arts_festival';
 const isArtNight  = event.eventType === 'group_art_night';
 
+function getSocialPlatform(url: string): string {
+  const u = url.toLowerCase();
+  if (u.includes('facebook.com') || u.includes('fb.com')) return 'Facebook';
+  if (u.includes('instagram.com'))                        return 'Instagram';
+  if (u.includes('youtube.com') || u.includes('youtu.be')) return 'YouTube';
+  if (u.includes('twitter.com') || u.includes('x.com'))  return 'X / Twitter';
+  if (u.includes('linkedin.com'))                         return 'LinkedIn';
+  if (u.includes('tiktok.com'))                           return 'TikTok';
+  if (u.includes('pinterest.com'))                        return 'Pinterest';
+  if (u.includes('bandcamp.com'))                         return 'Bandcamp';
+  if (u.includes('soundcloud.com'))                       return 'SoundCloud';
+  return 'View Profile';
+}
+
 function extractEmbedSrc(val: string | null): string | null {
   if (!val) return null;
   if (val.trim().startsWith('http')) return val.trim();

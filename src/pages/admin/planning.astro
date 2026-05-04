@@ -15,8 +15,7 @@ const firebaseConfig = {
 };
 
 // ── Load existing shells ──────────────────────────────────────────────────
-const [seasonsSnap, shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, vendorSnap, artClassSnap, writingGroupSnap] = await Promise.all([
-  adminDb.collection('park_seasons').orderBy('year', 'desc').get(),
+const [shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, vendorSnap, artClassSnap, writingGroupSnap] = await Promise.all([
   adminDb.collection('park_events').orderBy('date', 'asc').get(),
   adminDb.collection('open_mic_events').orderBy('date', 'asc').get(),
   adminDb.collection('art_night_events').orderBy('date', 'asc').get(),
@@ -172,10 +171,6 @@ if (Astro.request.method === 'POST') {
 
     } else {
       // Music & Movies in the Park
-      await adminDb.collection('park_seasons').doc(String(year)).set({
-        year, venue, address, startTime: start, dateCount: dates.length,
-        createdAt: FieldValue.serverTimestamp(), createdBy: user?.email || 'admin',
-      });
       const existing      = await adminDb.collection('park_events').where('season', '==', year).get();
       const existingDates = new Set(existing.docs.map(d => d.data().date));
       const batch = adminDb.batch();
@@ -650,7 +645,7 @@ const totalShells =
         </thead>
         <tbody>
           {shells.map(shell => (
-            <tr id={`shell-${shell.id}`}>
+            <tr id={`shell-${shell.id}`} data-status={shell.status}>
               <td class="date-cell">{shell.displayDate}</td>
               <td>{shell.startTime}</td>
               <td class="venue-cell">{shell.venue}</td>
@@ -667,6 +662,11 @@ const totalShells =
                   onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','park_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}','${(shell.display_type||'music').replace(/'/g,"\\'")}','${(shell.movie_title||'').replace(/'/g,"\\'")}','${(shell.movie_preview_embed||'').replace(/'/g,"\\'")}')`}>
                   Edit
                 </button>
+                {shell.status === 'shell' && (
+                  <button class="btn-sm btn-assign-mm" data-shell-id={shell.id}>
+                    Assign Band
+                  </button>
+                )}
                 {shell.status === 'band_assigned' && (
                   <button class="btn-sm btn-confirm action-btn"
                     data-action="confirm" data-shell-id={shell.id} data-band-name={shell.bandName}>
@@ -1057,6 +1057,21 @@ const totalShells =
           <button type="submit" class="btn btn-primary" id="presenter-modal-submit" disabled>Assign Presenter →</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ── M&M BAND ASSIGN MODAL ──────────────────────────────────────── -->
+  <div id="mm-band-modal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <h3>🎵 Assign Band</h3>
+      <div class="form-field">
+        <label>Select Band</label>
+        <div id="mm-band-list" class="fest-band-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="mm-modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="mm-modal-submit" disabled>Assign Band →</button>
+      </div>
     </div>
   </div>
 
@@ -1609,6 +1624,79 @@ const totalShells =
     });
   });
 
+  // ── M&M band assign modal ────────────────────────────────────────────────────
+  const mmModal     = document.getElementById('mm-band-modal');
+  const mmBandList  = document.getElementById('mm-band-list');
+  const mmSubmitBtn = document.getElementById('mm-modal-submit');
+  let mmShellId          = null;
+  let mmSelectedBandId   = null;
+  let mmSelectedBandName = null;
+
+  document.querySelectorAll('.btn-assign-mm').forEach(btn => {
+    btn.addEventListener('click', () => {
+      mmShellId          = btn.dataset.shellId;
+      mmSelectedBandId   = null;
+      mmSelectedBandName = null;
+      mmSubmitBtn.disabled = true;
+
+      const bands = window.__APPROVED_BANDS__ || [];
+      if (bands.length === 0) {
+        mmBandList.innerHTML = '<p class="dim" style="font-size:13px;padding:12px">No approved bands found. Approve bands on the Bands page first.</p>';
+      } else {
+        mmBandList.innerHTML = bands.map(b => `
+          <label class="fest-band-option">
+            <input type="radio" name="mm-band-pick" value="${b.id}" data-name="${b.band_name || b.contact_name}" />
+            <span class="fest-band-option-name">${b.band_name || b.contact_name}</span>
+            ${b.genre ? `<span class="fest-band-option-genre">${b.genre}</span>` : ''}
+          </label>
+        `).join('');
+
+        mmBandList.querySelectorAll('input[type=radio]').forEach(radio => {
+          radio.addEventListener('change', () => {
+            mmSelectedBandId   = radio.value;
+            mmSelectedBandName = radio.dataset.name;
+            mmSubmitBtn.disabled = false;
+          });
+        });
+      }
+
+      mmModal.hidden = false;
+    });
+  });
+
+  document.getElementById('mm-modal-cancel')?.addEventListener('click', () => { mmModal.hidden = true; });
+  mmModal.addEventListener('click', e => { if (e.target === mmModal) mmModal.hidden = true; });
+
+  mmSubmitBtn?.addEventListener('click', async () => {
+    if (!mmShellId || !mmSelectedBandId) return;
+    if (!confirm(`Assign ${mmSelectedBandName} to this date?`)) return;
+
+    mmSubmitBtn.disabled = true;
+    mmSubmitBtn.textContent = 'Assigning…';
+
+    try {
+      const res = await fetch('/api/admin/assign-band', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action: 'assign', bandId: mmSelectedBandId, shellId: mmShellId }),
+      });
+
+      if (res.ok) {
+        mmModal.hidden = true;
+        window.location.reload();
+      } else {
+        const { error } = await res.json().catch(() => ({ error: 'Unknown error' }));
+        alert(error || 'Assign failed.');
+        mmSubmitBtn.disabled = false;
+        mmSubmitBtn.textContent = 'Assign Band →';
+      }
+    } catch (err) {
+      alert('Assign failed: ' + (err.message || 'Unknown error'));
+      mmSubmitBtn.disabled = false;
+      mmSubmitBtn.textContent = 'Assign Band →';
+    }
+  });
+
   // ── Open Mic publish buttons ────────────────────────────────────────────
   document.querySelectorAll('.om-publish-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -2046,6 +2134,13 @@ const totalShells =
   .upload-status { font-size: 12px; color: var(--blue, #2563b0); font-style: italic; margin-top: 4px; }
 
   /* ── Shells table ── */
+  .shells-table thead tr { box-shadow: none; background: transparent; }
+  .shells-table tbody tr:has(.badge-band_assigned),
+  .shells-table tbody tr:has(.badge-presenter_assigned),
+  .shells-table tbody tr:has(.badge-planning)  { box-shadow: inset 4px 0 0 #c87e0a; background: #fffbf0; }
+  .shells-table tbody tr:has(.badge-confirmed)  { box-shadow: inset 4px 0 0 #059669; background: #f0fdf4; }
+  .shells-table tbody tr:has(.badge-published)  { box-shadow: inset 4px 0 0 #93c5fd; background: #f8faff; opacity: 0.75; }
+
   .shells-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .shells-table th {
     text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase;
@@ -2107,6 +2202,8 @@ const totalShells =
   .btn-assign          { background: #f1f5f9; border-color: #cbd5e1; color: #64748b; }
   .btn-assign-presenter { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; border: 1.5px solid; }
   .btn-assign-presenter:hover { background: #dbeafe; }
+  .btn-assign-mm { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; border: 1.5px solid; }
+  .btn-assign-mm:hover { background: #dbeafe; }
 
   .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1.5px solid transparent; transition: opacity 0.15s; text-decoration: none; }
   .btn-primary { background: var(--navy, #1a2456); color: #fff; }

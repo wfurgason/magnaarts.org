@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { adminAuth, adminDb } from '../../../lib/firebase-admin';
+import { timeToISO } from '../../../lib/time-utils';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -41,16 +42,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       date:         s.date,
       displayDate:  s.displayDate,
       eventTime:    s.startTime,
-      startTime:    s.startTime,
       venueName:    s.venue,
       venueAddress: s.address,
-      venue:        s.venue,
-      address:      s.address,
       eventType:    'open_mic',
       category:     'Open Mic',
       description:  s.description || '',
       posterUrl:    s.imageUrl || null,
-      photoUrl:     s.imageUrl || null,
       isFree:       true,
       submissionType: 'open_mic',
       publishedBy:  publisher.email,
@@ -77,15 +74,4 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 };
 
-// Convert a time string like "7:00 PM" to "19:00:00" for Date parsing
-function timeToISO(timeStr: string): string {
-  try {
-    const [time, meridiem] = timeStr.trim().split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-    if (meridiem?.toUpperCase() === 'PM' && hours !== 12) hours += 12;
-    if (meridiem?.toUpperCase() === 'AM' && hours === 12) hours = 0;
-    return `${String(hours).padStart(2, '0')}:${String(minutes || 0).padStart(2, '0')}:00`;
-  } catch {
-    return '19:00:00';
-  }
-}
+

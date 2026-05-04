@@ -70,13 +70,13 @@ if (isFestival) {
       (v.space_number || v.booth_number)
     );
 }
-const eventTime   = event.eventTime   || event.startTime || '';
-const endTime     = event.endTime     || null;
-const timeDisplay = isFestival && eventTime && endTime
+const eventTime    = event.eventTime    || '';
+const endTime      = event.endTime      || null;
+const timeDisplay  = isFestival && eventTime && endTime
   ? `${eventTime} – ${endTime}`
   : eventTime;
-const venueName   = event.venueName   || event.venue     || '';
-const venueAddress= event.venueAddress|| event.address   || '';
+const venueName    = event.venueName    || '';
+const venueAddress = event.venueAddress || '';
 ---
 
 <BaseLayout
@@ -265,7 +265,7 @@ const venueAddress= event.venueAddress|| event.address   || '';
 
               {event.movieTitle && (
                 <div class="inline-movie">
-                  <h3 class="inline-movie-heading">🎬 Tonight’s Movie</h3>
+                  <h3 class="inline-movie-heading">🎬 Tonight's Movie</h3>
                   <p class="movie-title-display">{event.movieTitle}</p>
                   {event.moviePreviewEmbed && extractEmbedSrc(event.moviePreviewEmbed) && (
                     <div class="movie-embed-wrapper">
@@ -314,7 +314,7 @@ const venueAddress= event.venueAddress|| event.address   || '';
                   <span class="attend-label">people are going</span>
                 </div>
                 <button class="btn btn-gold attend-btn" id="attend-btn" style="width:100%;justify-content:center;" data-event-id={Astro.params.id}>
-                  I’m Attending
+                  I'm Attending
                 </button>
                 <p class="attend-hint" id="attend-hint"></p>
               </div>

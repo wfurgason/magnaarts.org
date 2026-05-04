@@ -1,3 +1,16 @@
+/**
+ * publish-event.ts
+ *
+ * ACTIVE — called by programs.astro when publishing an approved program proposal
+ * via the "Publish as Event" modal (submissionType: 'program').
+ *
+ * NOT used by any shell-based event flows (Music & Movies, Open Mic, Art Night,
+ * Festival, Writing Group) — those have their own dedicated publish endpoints
+ * and use the shell ID as the event ID rather than an auto-generated one.
+ *
+ * If a program-proposal publish flow is ever refactored to use a shell pattern,
+ * this file can be retired at that point.
+ */
 import type { APIRoute } from 'astro';
 import { adminAuth, adminDb } from '../../../lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';

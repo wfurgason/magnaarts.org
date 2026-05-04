@@ -184,7 +184,9 @@ const venueAddress = event.venueAddress || '';
                   <h2 class="band-hero-name">
                     {event.presenterName}
                     {event.presenterSocialUrl && (
-                      <a href={event.presenterSocialUrl} target="_blank" rel="noopener" class="presenter-social-link">↗</a>
+                      <a href={event.presenterSocialUrl} target="_blank" rel="noopener" class="presenter-social-pill">
+                        {getSocialPlatform(event.presenterSocialUrl)} ↗
+                      </a>
                     )}
                   </h2>
                   {event.presenterArtsArea && (
@@ -795,6 +797,16 @@ const venueAddress = event.venueAddress || '';
     padding: 8px 10px; width: 220px; box-sizing: border-box;
     background: var(--navy); color: #fff;
   }
+  .presenter-social-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--navy); background: #f1f5f9; border: 1.5px solid #cbd5e1;
+    padding: 3px 10px; border-radius: 100px;
+    text-decoration: none; vertical-align: middle; margin-left: 10px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .presenter-social-pill:hover { background: #e2e8f0; border-color: #94a3b8; }
+
   .vendor-info { padding: 24px 24px 24px 0; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
   .vendor-meta-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .vendor-space { font-size: 14px; font-weight: 700; color: var(--amber, #c87e0a); font-family: var(--font-display); }

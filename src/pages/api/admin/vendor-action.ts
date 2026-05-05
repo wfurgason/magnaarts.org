@@ -115,7 +115,7 @@ function approvalEmail(opts: {
         <tr><td style="padding:40px;">
           <p style="margin:0 0 20px;font-size:16px;color:#1a2456;line-height:1.6;">Hi <strong>${contactName}</strong>,</p>
           <p style="margin:0 0 20px;font-size:15px;color:#5a5a7a;line-height:1.65;">
-            Great news — the festival committee has approved <strong>${companyName}</strong> as a <strong>${vendorType}</strong> at the Magna Main Street Arts Festival on <strong>Friday, August 15, 2026</strong>.
+            Great news — the festival committee has approved <strong>${companyName}</strong> as a <strong>${vendorType}</strong> at the Magna Main Street Arts Festival on <strong>August 15, 2026</strong>.
           </p>
 
           <!-- Fee box -->
@@ -249,7 +249,7 @@ function paidConfirmationEmail(opts: {
                 </tr>
                 <tr>
                   <td style="padding:6px 0;font-size:14px;color:#5a5a7a;">📅 Date</td>
-                  <td style="padding:6px 0;font-size:14px;color:#1a2456;font-weight:600;">Friday, August 15, 2026</td>
+                  <td style="padding:6px 0;font-size:14px;color:#1a2456;font-weight:600;">August 15, 2026</td>
                 </tr>
                 <tr>
                   <td style="padding:6px 0;font-size:14px;color:#5a5a7a;">⏰ Hours</td>

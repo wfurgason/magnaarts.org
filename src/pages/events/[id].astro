@@ -11,6 +11,8 @@ const firebaseConfig = {
   projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
 };
 
+Astro.response.headers.set('Cache-Control', 'no-store');
+
 const { id } = Astro.params;
 
 // Load event from Firestore only

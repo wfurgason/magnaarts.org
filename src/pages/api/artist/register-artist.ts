@@ -48,18 +48,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     await adminDb.collection('artists').doc(bandId).set(artistDoc);
 
-    // Notify admin
-    const { Resend } = await import('resend');
-    const resend = new Resend(import.meta.env.RESEND_API_KEY);
-    const adminEmail = import.meta.env.ADMIN_EMAIL ?? 'admin@magnaarts.org';
-
-    const typeLabel = artistType === 'visual' ? 'visual artist' : 'music artist';
-    await resend.emails.send({
-      from:    'Magna Arts <noreply@magnaarts.org>',
-      to:      adminEmail,
-      subject: `New ${typeLabel} profile pending review — ${band_name}`,
-      text:    `${band_name} has submitted a ${typeLabel} profile for review.\n\nReview at: https://magnaarts.org/admin/artists`,
-    });
+    // Admin is notified later when the artist submits for review via /api/artist/submit-for-review
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (error) {

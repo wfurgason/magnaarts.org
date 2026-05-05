@@ -406,8 +406,8 @@ const firebaseConfig = {
     <div id="state-success" class="state">
       <div class="success-card">
         <div class="icon">🎶</div>
-        <h2>Profile Submitted!</h2>
-        <p>Thanks! Your artist profile is now under review. You'll receive an email from the Magna Arts Council once it's approved. After approval, you can log back in to upload your tracks and manage your listing.</p>
+        <h2>Profile Created!</h2>
+        <p>Your profile has been saved. Redirecting you to your Artist Portal where you can add tracks and finish setting up before submitting for review…</p>
       </div>
     </div>
 
@@ -678,6 +678,7 @@ const firebaseConfig = {
         }
 
         showState('success');
+        setTimeout(() => { window.location.href = '/artist/portal'; }, 2000);
 
       } catch (err) {
         console.error('[register] submit error:', err);

@@ -748,7 +748,7 @@ const firebaseConfig = {
       if (status === 'pending_review') {
         cls  = 'banner-pending';
         icon = '⏳';
-        html = '<strong>Profile Under Review</strong>Your profile is being reviewed by the Arts Council. You\'ll receive an email once it\'s approved.';
+        html = '<strong>Finish Setting Up Your Profile</strong>Add your tracks below, then click <strong>Submit for Review</strong> when you\'re ready. Your listing won\'t go live until the Arts Council approves it.<br><br><button id="submit-review-btn" style="margin-top:8px;padding:10px 24px;background:#92400e;color:#fff;font-family:inherit;font-size:14px;font-weight:700;border:none;border-radius:7px;cursor:pointer;">Submit for Review →</button>';
       } else if (status === 'rejected') {
         cls  = 'banner-rejected';
         icon = '✕';
@@ -767,6 +767,33 @@ const firebaseConfig = {
       banner.className = `status-banner ${cls}`;
       banner.innerHTML = `<div class="icon">${icon}</div><div>${html}</div>`;
       banner.style.display = 'flex';
+
+      // Wire submit-for-review button if present
+      const submitReviewBtn = document.getElementById('submit-review-btn');
+      if (submitReviewBtn) {
+        submitReviewBtn.addEventListener('click', async () => {
+          if (!confirm('Submit your profile for review? The Arts Council will be notified and will approve your listing.')) return;
+          submitReviewBtn.disabled = true;
+          submitReviewBtn.textContent = 'Submitting…';
+          try {
+            const idToken = await currentUser.getIdToken();
+            const res = await fetch('/api/artist/submit-for-review', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+              body: JSON.stringify({ bandId }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+            // Update banner to reflect submitted state
+            banner.innerHTML = `<div class="icon">⏳</div><div><strong>Profile Submitted for Review</strong>The Arts Council has been notified and will review your profile. You\'ll receive an email once it\'s approved.</div>`;
+          } catch (err) {
+            console.error('[portal] submit-for-review error:', err);
+            alert('Could not submit for review: ' + (err.message || 'Please try again.'));
+            submitReviewBtn.disabled = false;
+            submitReviewBtn.textContent = 'Submit for Review →';
+          }
+        });
+      }
     }
 
     // ── Profile display ────────────────────────────────────────────────

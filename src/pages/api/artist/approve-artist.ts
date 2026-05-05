@@ -285,45 +285,29 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (action === 'approve') {
       const artistType: 'music' | 'visual' = artist.artist_type === 'visual' ? 'visual' : 'music';
 
-      // Check the relevant subcollection for the artist type
-      const uploadsSnap = artistType === 'visual'
-        ? await artistRef.collection('images').get()
-        : await artistRef.collection('tracks').get();
-      const uploadCount = uploadsSnap.size;
-      const shouldBeVisible = uploadCount >= 1;
-
       await artistRef.update({
         status:  'approved',
-        visible: shouldBeVisible,
+        visible: true,
         approvedAt: FieldValue.serverTimestamp(),
       });
 
-      // Send appropriate approval email based on type and upload status
+      // Send "you're live" email
       let html: string;
       let subject: string;
 
       if (artistType === 'visual') {
-        html = shouldBeVisible
-          ? approvedWithImagesEmail({ bandName: artist.band_name, siteUrl })
-          : approvedNoImagesEmail({ bandName: artist.band_name, siteUrl });
-        subject = shouldBeVisible
-          ? `🎨 You're live on the Magna Local Artists directory!`
-          : `✅ Profile Approved — Upload images to go live`;
+        html    = approvedWithImagesEmail({ bandName: artist.band_name, siteUrl });
+        subject = `🎨 You're live on the Magna Local Artists directory!`;
       } else {
-        html = shouldBeVisible
-          ? approvedWithTracksEmail({ bandName: artist.band_name, siteUrl })
-          : approvedNoTracksEmail({ bandName: artist.band_name, siteUrl });
-        subject = shouldBeVisible
-          ? `🎶 You're live on the Magna Local Artists directory!`
-          : `✅ Profile Approved — Upload a track to go live`;
+        html    = approvedWithTracksEmail({ bandName: artist.band_name, siteUrl });
+        subject = `🎶 You're live on the Magna Local Artists directory!`;
       }
 
       const emailResult = await sendEmail({ to: artist.email, subject, html });
 
       return new Response(JSON.stringify({
         success: true,
-        visible: shouldBeVisible,
-        uploadCount,
+        visible: true,
         artistType,
         ...(emailResult.ok ? {} : { emailError: emailResult.error }),
       }), { status: 200 });

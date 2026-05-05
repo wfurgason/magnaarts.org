@@ -363,17 +363,21 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // ── EDIT ───────────────────────────────────────────────────────────
     if (action === 'edit') {
-      const { vendorType, needsElectricity, needsWater } = body;
+      const { vendorType, needsElectricity, needsWater, email } = body;
       if (!vendorType) {
         return new Response(JSON.stringify({ error: 'Vendor type required' }), { status: 400 });
       }
-      await docRef.update({
+      const updateData: Record<string, any> = {
         vendor_type:       vendorType,
         needs_electricity: needsElectricity || 'no',
         needs_water:       needsWater || 'no',
         editedBy:          reviewer.email,
         editedAt:          FieldValue.serverTimestamp(),
-      });
+      };
+      if (email && email.trim()) {
+        updateData.email = email.trim();
+      }
+      await docRef.update(updateData);
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }
 

@@ -69,6 +69,36 @@ const recentVendors = [...vendors]
 const recentVolunteers = [...volunteers]
   .sort((a, b) => (b.submittedAt?.seconds ?? 0) - (a.submittedAt?.seconds ?? 0))
   .slice(0, 5);
+
+// ── Grant Stats: past events grouped by year → category ──
+function resolveEventCategory(e: any): string {
+  const st = e.submissionType;
+  const et = e.eventType;
+  if (st === 'open_mic'      || et === 'open_mic')        return 'Open Mic Night';
+  if (st === 'art_night'     || et === 'group_art_night') return 'Group Art Night';
+  if (st === 'festival'      || et === 'arts_festival')   return 'Arts Festival';
+  if (st === 'writing_group' || et === 'writing_group')   return 'Writing Group';
+  if (st === 'band'          || et === 'music_movie')     return 'Music & Movies in the Park';
+  if (st === 'program')                                   return 'Program / Seminar';
+  return 'Other';
+}
+
+const nowDate = new Date();
+const eventsByYear: Record<string, { total: number; byType: Record<string, number> }> = {};
+
+for (const doc of eventsSnap.docs) {
+  const e = doc.data() as any;
+  const d = e.eventDate?.toDate ? e.eventDate.toDate() : new Date(e.eventDate);
+  if (d >= nowDate) continue; // skip future / upcoming events
+  const year = d.getFullYear().toString();
+  const cat  = resolveEventCategory(e);
+  if (!eventsByYear[year]) eventsByYear[year] = { total: 0, byType: {} };
+  eventsByYear[year].total++;
+  eventsByYear[year].byType[cat] = (eventsByYear[year].byType[cat] || 0) + 1;
+}
+
+const availableYears = Object.keys(eventsByYear).sort((a, b) => Number(b) - Number(a));
+const grantStatsJson = JSON.stringify({ eventsByYear, availableYears });
 ---
 
 <AdminLayout title="Dashboard" user={user}>
@@ -76,142 +106,272 @@ const recentVolunteers = [...volunteers]
     <h1>Dashboard</h1>
   </div>
 
-  <!-- ── Stat Cards ── -->
-  <div class="stat-grid">
-    <!-- Applications needing a decision -->
-    <div class="stat-card stat-warning">
-      <div class="stat-number">{counts.bandsPending}</div>
-      <div class="stat-label">Band Applications Pending</div>
-      <a href="/admin/bands?filter=pending" class="stat-link">Review →</a>
-    </div>
-    <div class="stat-card stat-warning">
-      <div class="stat-number">{counts.vendorsPending}</div>
-      <div class="stat-label">Vendor Applications Pending</div>
-      <a href="/admin/vendors?filter=pending" class="stat-link">Review →</a>
-    </div>
-    <div class="stat-card stat-warning">
-      <div class="stat-number">{counts.presentersPending}</div>
-      <div class="stat-label">Art Presenters Pending</div>
-      <a href="/admin/art-presenters?filter=pending" class="stat-link">Review →</a>
-    </div>
-    <div class="stat-card stat-warning">
-      <div class="stat-number">{counts.programsPending}</div>
-      <div class="stat-label">Program Proposals Pending</div>
-      <a href="/admin/programs?filter=pending" class="stat-link">Review →</a>
-    </div>
-    <!-- Things approved that need a next step -->
-    <div class="stat-card stat-success">
-      <div class="stat-number">{counts.bandsApproved}</div>
-      <div class="stat-label">Bands Approved — Ready to Publish</div>
-      <a href="/admin/bands?filter=approved" class="stat-link">Publish →</a>
-    </div>
-    <div class="stat-card stat-success">
-      <div class="stat-number">{counts.vendorsApproved}</div>
-      <div class="stat-label">Vendors Approved — Awaiting Payment</div>
-      <a href="/admin/vendors?filter=approved" class="stat-link">Collect Payment →</a>
-    </div>
-    <div class="stat-card stat-info">
-      <div class="stat-number">{counts.volunteersNew}</div>
-      <div class="stat-label">New Volunteer Sign-Ups</div>
-      <a href="/admin/volunteers?filter=new" class="stat-link">Contact →</a>
-    </div>
-    <div class="stat-card stat-primary">
-      <div class="stat-number">{counts.eventsTotal}</div>
-      <div class="stat-label">Published Events</div>
-      <a href="/admin/events" class="stat-link">Manage →</a>
-    </div>
-    <div class="stat-card stat-warning">
-      <div class="stat-number">{pipelineCounts.needsConfirmation + pipelineCounts.readyToPublish}</div>
-      <div class="stat-label">Events In Progress</div>
-      <div class="stat-sublabel">
-        {pipelineCounts.needsConfirmation > 0 && `${pipelineCounts.needsConfirmation} need confirmation`}
-        {pipelineCounts.needsConfirmation > 0 && pipelineCounts.readyToPublish > 0 && ' · '}
-        {pipelineCounts.readyToPublish > 0 && `${pipelineCounts.readyToPublish} ready to publish`}
-        {pipelineCounts.needsConfirmation === 0 && pipelineCounts.readyToPublish === 0 && 'None pending'}
-      </div>
-      <a href="/admin/planning" class="stat-link">Go to Planning →</a>
-    </div>
+  <!-- ── Tab Nav ── -->
+  <div class="dash-tabs">
+    <button class="dash-tab active" data-tab="overview">Overview</button>
+    <button class="dash-tab" data-tab="past-events">Past Events</button>
   </div>
 
-  <!-- ── Recent Activity ── -->
-  <div class="recent-grid">
-    <section class="recent-section">
-      <div class="section-header">
-        <h2>Recent Band Applications</h2>
-        <a href="/admin/bands" class="link-sm">View all</a>
-      </div>
-      {recentBands.length === 0 ? (
-        <p class="empty-msg">No applications yet.</p>
-      ) : (
-        <table class="data-table">
-          <thead>
-            <tr><th>Band</th><th>Genre</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {recentBands.map(b => (
-              <tr>
-                <td><a href={`/admin/bands#${b.id}`}>{b.band_name}</a></td>
-                <td>{b.genre}</td>
-                <td><span class={`badge badge-${b.status || 'pending'}`}>{b.status || 'pending'}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </section>
+  <!-- ══════════════════════════════════════════
+       TAB: OVERVIEW
+  ══════════════════════════════════════════ -->
+  <div id="tab-overview" class="tab-panel">
 
-    <section class="recent-section">
-      <div class="section-header">
-        <h2>Recent Vendor Applications</h2>
-        <a href="/admin/vendors" class="link-sm">View all</a>
+    <!-- ── Stat Cards ── -->
+    <div class="stat-grid">
+      <!-- Applications needing a decision -->
+      <div class="stat-card stat-warning">
+        <div class="stat-number">{counts.bandsPending}</div>
+        <div class="stat-label">Band Applications Pending</div>
+        <a href="/admin/bands?filter=pending" class="stat-link">Review →</a>
       </div>
-      {recentVendors.length === 0 ? (
-        <p class="empty-msg">No applications yet.</p>
-      ) : (
-        <table class="data-table">
-          <thead>
-            <tr><th>Company</th><th>Type</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {recentVendors.map(v => (
-              <tr>
-                <td><a href={`/admin/vendors#card-${v.id}`}>{v.company_name}</a></td>
-                <td style="font-size:12px;color:var(--muted)">{v.vendor_type}</td>
-                <td><span class={`badge badge-${v.status || 'pending'}`}>{v.status || 'pending'}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </section>
+      <div class="stat-card stat-warning">
+        <div class="stat-number">{counts.vendorsPending}</div>
+        <div class="stat-label">Vendor Applications Pending</div>
+        <a href="/admin/vendors?filter=pending" class="stat-link">Review →</a>
+      </div>
+      <div class="stat-card stat-warning">
+        <div class="stat-number">{counts.presentersPending}</div>
+        <div class="stat-label">Art Presenters Pending</div>
+        <a href="/admin/art-presenters?filter=pending" class="stat-link">Review →</a>
+      </div>
+      <div class="stat-card stat-warning">
+        <div class="stat-number">{counts.programsPending}</div>
+        <div class="stat-label">Program Proposals Pending</div>
+        <a href="/admin/programs?filter=pending" class="stat-link">Review →</a>
+      </div>
+      <!-- Things approved that need a next step -->
+      <div class="stat-card stat-success">
+        <div class="stat-number">{counts.bandsApproved}</div>
+        <div class="stat-label">Bands Approved — Ready to Publish</div>
+        <a href="/admin/bands?filter=approved" class="stat-link">Publish →</a>
+      </div>
+      <div class="stat-card stat-success">
+        <div class="stat-number">{counts.vendorsApproved}</div>
+        <div class="stat-label">Vendors Approved — Awaiting Payment</div>
+        <a href="/admin/vendors?filter=approved" class="stat-link">Collect Payment →</a>
+      </div>
+      <div class="stat-card stat-info">
+        <div class="stat-number">{counts.volunteersNew}</div>
+        <div class="stat-label">New Volunteer Sign-Ups</div>
+        <a href="/admin/volunteers?filter=new" class="stat-link">Contact →</a>
+      </div>
+      <div class="stat-card stat-primary">
+        <div class="stat-number">{counts.eventsTotal}</div>
+        <div class="stat-label">Published Events</div>
+        <a href="/admin/events" class="stat-link">Manage →</a>
+      </div>
+      <div class="stat-card stat-warning">
+        <div class="stat-number">{pipelineCounts.needsConfirmation + pipelineCounts.readyToPublish}</div>
+        <div class="stat-label">Events In Progress</div>
+        <div class="stat-sublabel">
+          {pipelineCounts.needsConfirmation > 0 && `${pipelineCounts.needsConfirmation} need confirmation`}
+          {pipelineCounts.needsConfirmation > 0 && pipelineCounts.readyToPublish > 0 && ' · '}
+          {pipelineCounts.readyToPublish > 0 && `${pipelineCounts.readyToPublish} ready to publish`}
+          {pipelineCounts.needsConfirmation === 0 && pipelineCounts.readyToPublish === 0 && 'None pending'}
+        </div>
+        <a href="/admin/planning" class="stat-link">Go to Planning →</a>
+      </div>
+    </div>
 
-    <section class="recent-section">
-      <div class="section-header">
-        <h2>Recent Volunteer Sign-Ups</h2>
-        <a href="/admin/volunteers" class="link-sm">View all</a>
+    <!-- ── Recent Activity ── -->
+    <div class="recent-grid">
+      <section class="recent-section">
+        <div class="section-header">
+          <h2>Recent Band Applications</h2>
+          <a href="/admin/bands" class="link-sm">View all</a>
+        </div>
+        {recentBands.length === 0 ? (
+          <p class="empty-msg">No applications yet.</p>
+        ) : (
+          <table class="data-table">
+            <thead>
+              <tr><th>Band</th><th>Genre</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {recentBands.map(b => (
+                <tr>
+                  <td><a href={`/admin/bands#${b.id}`}>{b.band_name}</a></td>
+                  <td>{b.genre}</td>
+                  <td><span class={`badge badge-${b.status || 'pending'}`}>{b.status || 'pending'}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section class="recent-section">
+        <div class="section-header">
+          <h2>Recent Vendor Applications</h2>
+          <a href="/admin/vendors" class="link-sm">View all</a>
+        </div>
+        {recentVendors.length === 0 ? (
+          <p class="empty-msg">No applications yet.</p>
+        ) : (
+          <table class="data-table">
+            <thead>
+              <tr><th>Company</th><th>Type</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {recentVendors.map(v => (
+                <tr>
+                  <td><a href={`/admin/vendors#card-${v.id}`}>{v.company_name}</a></td>
+                  <td style="font-size:12px;color:var(--muted)">{v.vendor_type}</td>
+                  <td><span class={`badge badge-${v.status || 'pending'}`}>{v.status || 'pending'}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section class="recent-section">
+        <div class="section-header">
+          <h2>Recent Volunteer Sign-Ups</h2>
+          <a href="/admin/volunteers" class="link-sm">View all</a>
+        </div>
+        {recentVolunteers.length === 0 ? (
+          <p class="empty-msg">No sign-ups yet.</p>
+        ) : (
+          <table class="data-table">
+            <thead>
+              <tr><th>Name</th><th>Interests</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {recentVolunteers.map(v => (
+                <tr>
+                  <td><a href={`/admin/volunteers#${v.id}`}>{v.fullName}</a></td>
+                  <td style="font-size:12px;color:var(--muted)">
+                    {Array.isArray(v.interests) ? v.interests.slice(0,2).join(', ') + (v.interests.length > 2 ? '…' : '') : '—'}
+                  </td>
+                  <td><span class={`badge badge-${v.status || 'new'}`}>{v.status || 'new'}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </div>
+
+  </div><!-- /tab-overview -->
+
+  <!-- ══════════════════════════════════════════
+       TAB: PAST EVENTS (Grant Stats)
+  ══════════════════════════════════════════ -->
+  <div id="tab-past-events" class="tab-panel" style="display:none">
+
+    <div class="grant-toolbar">
+      <div class="grant-toolbar-left">
+        <label for="year-select" class="year-label">Year</label>
+        <select id="year-select" class="year-select">
+          <!-- populated by JS -->
+        </select>
       </div>
-      {recentVolunteers.length === 0 ? (
-        <p class="empty-msg">No sign-ups yet.</p>
-      ) : (
-        <table class="data-table">
-          <thead>
-            <tr><th>Name</th><th>Interests</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {recentVolunteers.map(v => (
-              <tr>
-                <td><a href={`/admin/volunteers#${v.id}`}>{v.fullName}</a></td>
-                <td style="font-size:12px;color:var(--muted)">
-                  {Array.isArray(v.interests) ? v.interests.slice(0,2).join(', ') + (v.interests.length > 2 ? '…' : '') : '—'}
-                </td>
-                <td><span class={`badge badge-${v.status || 'new'}`}>{v.status || 'new'}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </section>
-  </div>
+      <p class="grant-note">Data from published events in Firestore. Use these figures for grant applications and annual reports.</p>
+    </div>
+
+    <!-- Total events hero card -->
+    <div id="grant-total-card" class="grant-total-card">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- Per-type breakdown -->
+    <div id="grant-breakdown" class="grant-breakdown">
+      <!-- populated by JS -->
+    </div>
+
+    <div id="grant-empty" class="grant-empty" style="display:none">
+      <p>No past events recorded for this year yet.</p>
+    </div>
+
+  </div><!-- /tab-past-events -->
+
+  <!-- Hidden data island for grant stats -->
+  <script id="grant-stats-data" type="application/json" set:html={grantStatsJson}></script>
+
+  <script>
+    // ── Tab switching ──
+    const tabs    = document.querySelectorAll<HTMLElement>('.dash-tab');
+    const panels  = document.querySelectorAll<HTMLElement>('.tab-panel');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        panels.forEach(p => { p.style.display = 'none'; });
+        tab.classList.add('active');
+        const target = document.getElementById(`tab-${tab.dataset.tab}`);
+        if (target) target.style.display = 'block';
+      });
+    });
+
+    // ── Grant Stats ──
+    const raw = JSON.parse(document.getElementById('grant-stats-data')!.textContent!);
+    const { eventsByYear, availableYears } = raw as {
+      eventsByYear: Record<string, { total: number; byType: Record<string, number> }>;
+      availableYears: string[];
+    };
+
+    const yearSelect  = document.getElementById('year-select')    as HTMLSelectElement;
+    const totalCard   = document.getElementById('grant-total-card')!;
+    const breakdownEl = document.getElementById('grant-breakdown')!;
+    const emptyEl     = document.getElementById('grant-empty')!;
+
+    // Type → accent color class
+    const typeColors: Record<string, string> = {
+      'Music & Movies in the Park': 'gc-blue',
+      'Open Mic Night':             'gc-green',
+      'Group Art Night':            'gc-purple',
+      'Arts Festival':              'gc-amber',
+      'Writing Group':              'gc-teal',
+      'Program / Seminar':          'gc-navy',
+      'Other':                      'gc-muted',
+    };
+
+    function renderYear(year: string) {
+      const data = eventsByYear[year];
+      if (!data || data.total === 0) {
+        totalCard.innerHTML   = '';
+        breakdownEl.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+
+      // Total card
+      totalCard.innerHTML = `
+        <div class="gtc-number">${data.total}</div>
+        <div class="gtc-label">Total Events in ${year}</div>
+      `;
+
+      // Breakdown cards — sorted by count desc
+      const sorted = Object.entries(data.byType).sort((a, b) => b[1] - a[1]);
+      breakdownEl.innerHTML = sorted.map(([type, count]) => {
+        const cls = typeColors[type] || 'gc-muted';
+        return `
+          <div class="grant-card ${cls}">
+            <div class="gc-count">${count}</div>
+            <div class="gc-type">${type}</div>
+            <div class="gc-pct">${Math.round((count / data.total) * 100)}% of total</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Populate year dropdown
+    if (availableYears.length === 0) {
+      yearSelect.innerHTML = '<option value="">No data yet</option>';
+      emptyEl.style.display = 'block';
+    } else {
+      yearSelect.innerHTML = availableYears
+        .map(y => `<option value="${y}">${y}</option>`)
+        .join('');
+      renderYear(availableYears[0]);
+    }
+
+    yearSelect.addEventListener('change', () => renderYear(yearSelect.value));
+  </script>
+
   <Fragment slot="head">
     <script type="module" define:vars={{ firebaseConfig }}>
       import { initializeApp }          from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
@@ -221,9 +381,7 @@ const recentVolunteers = [...volunteers]
       const auth = getAuth(app);
 
       onAuthStateChanged(auth, async (user) => {
-        if (!user) return; // middleware already guards the route server-side
-
-        // Check custom TOTP enrollment flag in Firestore (not Firebase MFA)
+        if (!user) return;
         try {
           const idToken   = await user.getIdToken();
           const statusRes = await fetch('/api/admin/totp-status', {
@@ -236,10 +394,167 @@ const recentVolunteers = [...volunteers]
             if (!enrolled) window.location.replace('/admin/enroll-mfa');
           }
         } catch {
-          // Non-fatal: middleware session check already confirmed the user is authed.
-          // If the status check fails transiently, don't boot them out.
+          // Non-fatal — middleware session check already confirmed authed.
         }
       });
     </script>
   </Fragment>
+
 </AdminLayout>
+
+<style>
+  /* ── Tab Nav ── */
+  .dash-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 28px;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 0;
+  }
+
+  .dash-tab {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .dash-tab:hover  { color: #1a2744; }
+  .dash-tab.active { color: #1a2744; border-bottom-color: #1a2744; }
+
+  /* ── Grant Toolbar ── */
+  .grant-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .grant-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .year-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2744;
+  }
+
+  .year-select {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a2744;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 7px 32px 7px 12px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .year-select:focus { border-color: #1a2744; }
+
+  .grant-note {
+    font-size: 12px;
+    color: #6b7280;
+    font-style: italic;
+    margin: 0;
+  }
+
+  /* ── Total Card ── */
+  .grant-total-card {
+    background: #1a2744;
+    color: #fff;
+    border-radius: 10px;
+    padding: 28px 36px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  .gtc-number {
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 1;
+    color: #e8a020;
+  }
+
+  .gtc-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+  }
+
+  /* ── Breakdown Grid ── */
+  .grant-breakdown {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .grant-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 22px 20px 18px;
+    border-top: 4px solid transparent;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .gc-blue   { border-top-color: #2563b0; }
+  .gc-green  { border-top-color: #16a34a; }
+  .gc-purple { border-top-color: #7c3aed; }
+  .gc-amber  { border-top-color: #d97706; }
+  .gc-teal   { border-top-color: #0d9488; }
+  .gc-navy   { border-top-color: #1a2744; }
+  .gc-muted  { border-top-color: #9ca3af; }
+
+  .gc-count {
+    font-size: 36px;
+    font-weight: 900;
+    color: #1a2744;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .gc-type {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2744;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+
+  .gc-pct {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .grant-empty {
+    text-align: center;
+    padding: 48px;
+    color: #6b7280;
+    font-size: 14px;
+    background: #f9fafb;
+    border-radius: 10px;
+    border: 1px dashed #e5e7eb;
+  }
+</style>

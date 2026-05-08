@@ -86,7 +86,7 @@ function resolveEventCategory(e: any): string {
 }
 
 const nowDate = new Date();
-const eventsByYear: Record<string, { total: number; byType: Record<string, number> }> = {};
+const eventsByYear: Record<string, { total: number; byType: Record<string, { count: number; dates: string[] }> }> = {};
 
 for (const doc of eventsSnap.docs) {
   const e = doc.data() as any;
@@ -96,7 +96,10 @@ for (const doc of eventsSnap.docs) {
   const cat  = resolveEventCategory(e);
   if (!eventsByYear[year]) eventsByYear[year] = { total: 0, byType: {} };
   eventsByYear[year].total++;
-  eventsByYear[year].byType[cat] = (eventsByYear[year].byType[cat] || 0) + 1;
+  if (!eventsByYear[year].byType[cat]) eventsByYear[year].byType[cat] = { count: 0, dates: [] };
+  eventsByYear[year].byType[cat].count++;
+  // Store as ISO string for client-side sort, format there
+  eventsByYear[year].byType[cat].dates.push(d.toISOString());
 }
 
 const availableYears = Object.keys(eventsByYear).sort((a, b) => Number(b) - Number(a));
@@ -349,14 +352,22 @@ const grantStatsJson = JSON.stringify({ eventsByYear, availableYears });
       `;
 
       // Breakdown cards — sorted by count desc
-      const sorted = Object.entries(data.byType).sort((a, b) => b[1] - a[1]);
-      breakdownEl.innerHTML = sorted.map(([type, count]) => {
+      const sorted = Object.entries(data.byType).sort((a, b) => b[1].count - a[1].count);
+      breakdownEl.innerHTML = sorted.map(([type, info]) => {
         const cls = typeColors[type] || 'gc-muted';
+        const dateList = [...info.dates]
+          .sort()
+          .map(iso => {
+            const d = new Date(iso);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          })
+          .map(label => `<li class="gc-date-item">${label}</li>`)
+          .join('');
         return `
           <div class="grant-card ${cls}">
-            <div class="gc-count">${count}</div>
+            <div class="gc-count">${info.count}</div>
             <div class="gc-type">${type}</div>
-            <div class="gc-pct">${Math.round((count / data.total) * 100)}% of total</div>
+            <ul class="gc-date-list">${dateList}</ul>
           </div>
         `;
       }).join('');
@@ -547,10 +558,22 @@ const grantStatsJson = JSON.stringify({ eventsByYear, availableYears });
     margin-bottom: 4px;
   }
 
-  .gc-pct {
+  .gc-date-list {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+  }
+
+  .gc-date-item {
     font-size: 11px;
     color: #6b7280;
     font-weight: 500;
+    line-height: 1.8;
+  }
+
+  .gc-date-item::before {
+    content: '–\00a0';
+    color: #9ca3af;
   }
 
   .grant-empty {

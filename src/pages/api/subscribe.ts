@@ -51,7 +51,7 @@ export const POST: APIRoute = async ({ request }) => {
 };
 
 async function sendConfirmationEmail(email: string, token: string) {
-  const confirmUrl = `${import.meta.env.SITE_URL}/confirm?token=${token}`;
+  const confirmUrl = `${import.meta.env.SITE_URL}/api/confirm?token=${token}`;
   await resend.emails.send({
     from: 'Magna Arts Council <noreply@magnaarts.org>',
     to: email,

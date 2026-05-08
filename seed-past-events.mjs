@@ -19,7 +19,7 @@ import { fileURLToPath }                  from 'url';
 
 // ── Load .env manually (no dotenv dependency needed) ──
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const envPath   = resolve(__dirname, '.env');
+const envPath   = resolve(__dirname, '.env.local');
 
 try {
   const envFile = readFileSync(envPath, 'utf-8');

@@ -1,0 +1,474 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const user = Astro.locals.user;
+
+// Known event types — mirrors resolveEventCategory in dashboard.astro
+const EVENT_TYPES = [
+  { value: 'band',               label: 'Music & Movies in the Park' },
+  { value: 'open_mic',           label: 'Open Mic Night' },
+  { value: 'art_night',          label: 'Group Art Night' },
+  { value: 'festival',           label: 'Arts Festival' },
+  { value: 'writing_group',      label: 'Writing Group' },
+  { value: 'writing_conference', label: 'Writing Conference' },
+  { value: 'lens_of_magna',      label: 'Lens of Magna' },
+  { value: 'program',            label: 'Program / Seminar' },
+  { value: 'custom',             label: 'Custom / Other…' },
+];
+---
+
+<AdminLayout title="Add Manual Event" user={user}>
+
+  <div class="page-header">
+    <div>
+      <h1>Add Manual Event</h1>
+      <p class="page-subtitle">
+        Record a one-off event directly in the published events log. Entries appear immediately
+        in the Past Events grant stats on the Dashboard.
+      </p>
+    </div>
+    <a href="/admin/dashboard#past-events" class="btn-secondary">← Back to Dashboard</a>
+  </div>
+
+  <!-- Success state (hidden until submit) -->
+  <div id="success-banner" class="success-banner" hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    <div>
+      <strong>Event recorded!</strong>
+      <span id="success-detail"></span>
+    </div>
+    <div class="success-actions">
+      <button id="add-another-btn" class="btn-link">Add another</button>
+      <a href="/admin/dashboard" class="btn-link">Go to Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div id="form-wrap" class="form-wrap">
+    <form id="manual-event-form" class="event-form" novalidate>
+
+      <!-- Title -->
+      <div class="field-group">
+        <label for="title" class="field-label">
+          Event Title <span class="required">*</span>
+        </label>
+        <input
+          id="title"
+          name="title"
+          type="text"
+          class="field-input"
+          placeholder="e.g. Lens of Magna — Main Photo Exhibition 2026"
+          required
+        />
+      </div>
+
+      <!-- Type + Custom type -->
+      <div class="field-row">
+        <div class="field-group">
+          <label for="eventType" class="field-label">
+            Event Type <span class="required">*</span>
+          </label>
+          <select id="eventType" name="eventType" class="field-input" required>
+            <option value="">— Select a type —</option>
+            {EVENT_TYPES.map(t => (
+              <option value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div class="field-group" id="custom-type-wrap" hidden>
+          <label for="customEventType" class="field-label">
+            Custom Type Label <span class="required">*</span>
+          </label>
+          <input
+            id="customEventType"
+            name="customEventType"
+            type="text"
+            class="field-input"
+            placeholder="e.g. Photography Contest"
+          />
+          <p class="field-hint">Used for display in grant stats. Keep it short.</p>
+        </div>
+      </div>
+
+      <!-- Date + Venue -->
+      <div class="field-row">
+        <div class="field-group">
+          <label for="eventDate" class="field-label">
+            Event Date &amp; Time <span class="required">*</span>
+          </label>
+          <input
+            id="eventDate"
+            name="eventDate"
+            type="datetime-local"
+            class="field-input"
+            required
+          />
+        </div>
+
+        <div class="field-group">
+          <label for="venue" class="field-label">Venue</label>
+          <input
+            id="venue"
+            name="venue"
+            type="text"
+            class="field-input"
+            placeholder="e.g. Magna Branch — Salt Lake County Library"
+          />
+        </div>
+      </div>
+
+      <!-- Attendee Count -->
+      <div class="field-group field-group--narrow">
+        <label for="attendeeCount" class="field-label">
+          Estimated Attendance
+          <span class="field-label-hint">(optional — useful for grant reports)</span>
+        </label>
+        <input
+          id="attendeeCount"
+          name="attendeeCount"
+          type="number"
+          min="0"
+          class="field-input"
+          placeholder="0"
+        />
+      </div>
+
+      <!-- Description -->
+      <div class="field-group">
+        <label for="description" class="field-label">
+          Public Description
+          <span class="field-label-hint">(optional)</span>
+        </label>
+        <textarea
+          id="description"
+          name="description"
+          class="field-input field-textarea"
+          rows="3"
+          placeholder="Brief description of the event for records…"
+        ></textarea>
+      </div>
+
+      <!-- Internal Notes -->
+      <div class="field-group">
+        <label for="notes" class="field-label">
+          Internal Notes
+          <span class="field-label-hint">(optional — board use only)</span>
+        </label>
+        <textarea
+          id="notes"
+          name="notes"
+          class="field-input field-textarea"
+          rows="2"
+          placeholder="Partners, funders, outcomes, anything worth noting for grant writing…"
+        ></textarea>
+      </div>
+
+      <!-- Error message -->
+      <p id="form-error" class="form-error" hidden></p>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <button type="submit" id="submit-btn" class="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Event
+        </button>
+        <a href="/admin/events" class="btn-secondary">Cancel</a>
+      </div>
+
+    </form>
+  </div>
+
+  <script>
+    const form          = document.getElementById('manual-event-form') as HTMLFormElement;
+    const typeSelect    = document.getElementById('eventType')         as HTMLSelectElement;
+    const customWrap    = document.getElementById('custom-type-wrap')  as HTMLElement;
+    const customInput   = document.getElementById('customEventType')   as HTMLInputElement;
+    const submitBtn     = document.getElementById('submit-btn')        as HTMLButtonElement;
+    const formError     = document.getElementById('form-error')        as HTMLElement;
+    const successBanner = document.getElementById('success-banner')    as HTMLElement;
+    const successDetail = document.getElementById('success-detail')    as HTMLElement;
+    const formWrap      = document.getElementById('form-wrap')         as HTMLElement;
+    const addAnotherBtn = document.getElementById('add-another-btn')   as HTMLButtonElement;
+
+    // Show / hide custom type field
+    typeSelect.addEventListener('change', () => {
+      const isCustom = typeSelect.value === 'custom';
+      customWrap.hidden = !isCustom;
+      customInput.required = isCustom;
+    });
+
+    // Submit
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      formError.hidden = true;
+
+      // Basic client-side validation
+      const title     = (document.getElementById('title')     as HTMLInputElement).value.trim();
+      const eventType = typeSelect.value;
+      const eventDate = (document.getElementById('eventDate') as HTMLInputElement).value;
+      const customVal = customInput.value.trim();
+
+      if (!title)     { showError('Please enter an event title.'); return; }
+      if (!eventType) { showError('Please select an event type.'); return; }
+      if (eventType === 'custom' && !customVal) { showError('Please enter a custom type label.'); return; }
+      if (!eventDate) { showError('Please select an event date.'); return; }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving…';
+
+      const payload = {
+        title,
+        eventType,
+        customEventType:  customVal || null,
+        eventDate:        new Date(eventDate).toISOString(),
+        venue:            (document.getElementById('venue')          as HTMLInputElement).value.trim()  || null,
+        description:      (document.getElementById('description')    as HTMLTextAreaElement).value.trim() || null,
+        notes:            (document.getElementById('notes')          as HTMLTextAreaElement).value.trim() || null,
+        attendeeCount:    (document.getElementById('attendeeCount')  as HTMLInputElement).value || null,
+      };
+
+      try {
+        const res  = await fetch('/api/admin/add-manual-event', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          formWrap.hidden      = true;
+          successBanner.hidden = false;
+          const dateStr = new Date(eventDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          successDetail.textContent = ` "${title}" on ${dateStr} has been added to the events log.`;
+        } else {
+          showError(data.error || 'Something went wrong. Please try again.');
+          resetBtn();
+        }
+      } catch {
+        showError('Network error — please try again.');
+        resetBtn();
+      }
+    });
+
+    // Add another → reset and show form again
+    addAnotherBtn.addEventListener('click', () => {
+      form.reset();
+      customWrap.hidden    = true;
+      customInput.required = false;
+      formError.hidden     = true;
+      successBanner.hidden = true;
+      formWrap.hidden      = false;
+      resetBtn();
+    });
+
+    function showError(msg: string) {
+      formError.textContent = msg;
+      formError.hidden      = false;
+      formError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function resetBtn() {
+      submitBtn.disabled     = false;
+      submitBtn.innerHTML    = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Event`;
+    }
+  </script>
+
+</AdminLayout>
+
+<style>
+  /* ── Page header ── */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 6px 0 0;
+    max-width: 560px;
+    line-height: 1.6;
+  }
+
+  /* ── Success banner ── */
+  .success-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-left: 4px solid #16a34a;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    color: #166534;
+  }
+
+  .success-banner svg { flex-shrink: 0; color: #16a34a; }
+
+  .success-banner strong { display: block; font-size: 15px; margin-bottom: 2px; }
+  .success-banner span   { font-size: 14px; }
+
+  .success-actions {
+    display: flex;
+    gap: 16px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .btn-link {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a2744;
+    cursor: pointer;
+    text-decoration: none;
+    padding: 0;
+    border-bottom: 1px solid currentColor;
+  }
+  .btn-link:hover { color: #16a34a; }
+
+  /* ── Form card ── */
+  .form-wrap {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 32px;
+    max-width: 800px;
+  }
+
+  .event-form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* ── Fields ── */
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field-group--narrow { max-width: 220px; }
+
+  .field-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2744;
+  }
+
+  .field-label-hint {
+    font-size: 12px;
+    font-weight: 400;
+    color: #6b7280;
+  }
+
+  .required { color: #dc2626; margin-left: 2px; }
+
+  .field-input {
+    font-family: inherit;
+    font-size: 14px;
+    color: #1a2744;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 9px 12px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+
+  .field-input:focus {
+    border-color: #1a2744;
+    box-shadow: 0 0 0 3px rgba(26, 39, 68, 0.08);
+  }
+
+  .field-textarea { resize: vertical; min-height: 80px; line-height: 1.55; }
+
+  .field-hint {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 0;
+  }
+
+  /* ── Error ── */
+  .form-error {
+    font-size: 13px;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 0;
+  }
+
+  /* ── Actions ── */
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding-top: 4px;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #1a2744;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 22px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover:not(:disabled) { background: #0f1929; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 18px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .btn-secondary:hover { background: #f9fafb; border-color: #9ca3af; }
+
+  @media (max-width: 640px) {
+    .field-row { grid-template-columns: 1fr; }
+    .form-wrap { padding: 20px; }
+    .field-group--narrow { max-width: 100%; }
+  }
+</style>

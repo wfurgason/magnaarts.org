@@ -157,6 +157,13 @@ body {
   border-left: 2px solid var(--admin-gold);
   padding-left: calc(0.75rem - 2px);
 }
+.nav-link--indent {
+  padding-left: 1.75rem;
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.5);
+}
+.nav-link--indent:hover { color: rgba(255,255,255,0.85); }
+.nav-link--indent.active { padding-left: calc(1.75rem - 2px); }
 
 .sidebar-footer {
   padding: 1rem 1.25rem;

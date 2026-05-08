@@ -74,12 +74,14 @@ const recentVolunteers = [...volunteers]
 function resolveEventCategory(e: any): string {
   const st = e.submissionType;
   const et = e.eventType;
-  if (st === 'open_mic'      || et === 'open_mic')        return 'Open Mic Night';
-  if (st === 'art_night'     || et === 'group_art_night') return 'Group Art Night';
-  if (st === 'festival'      || et === 'arts_festival')   return 'Arts Festival';
-  if (st === 'writing_group' || et === 'writing_group')   return 'Writing Group';
-  if (st === 'band'          || et === 'music_movie')     return 'Music & Movies in the Park';
-  if (st === 'program')                                   return 'Program / Seminar';
+  if (st === 'open_mic'          || et === 'open_mic')            return 'Open Mic Night';
+  if (st === 'art_night'         || et === 'group_art_night')     return 'Group Art Night';
+  if (st === 'festival'          || et === 'arts_festival')       return 'Arts Festival';
+  if (st === 'writing_group'     || et === 'writing_group')       return 'Writing Group';
+  if (st === 'band'              || et === 'music_movie')         return 'Music & Movies in the Park';
+  if (st === 'writing_conference'|| et === 'writing_conference')  return 'Writing Conference';
+  if (st === 'lens_of_magna'     || et === 'lens_of_magna')       return 'Lens of Magna';
+  if (st === 'program')                                           return 'Program / Seminar';
   return 'Other';
 }
 
@@ -324,6 +326,8 @@ const grantStatsJson = JSON.stringify({ eventsByYear, availableYears });
       'Group Art Night':            'gc-purple',
       'Arts Festival':              'gc-amber',
       'Writing Group':              'gc-teal',
+      'Writing Conference':         'gc-teal',
+      'Lens of Magna':              'gc-rose',
       'Program / Seminar':          'gc-navy',
       'Other':                      'gc-muted',
     };
@@ -524,6 +528,7 @@ const grantStatsJson = JSON.stringify({ eventsByYear, availableYears });
   .gc-amber  { border-top-color: #d97706; }
   .gc-teal   { border-top-color: #0d9488; }
   .gc-navy   { border-top-color: #1a2744; }
+  .gc-rose   { border-top-color: #e11d48; }
   .gc-muted  { border-top-color: #9ca3af; }
 
   .gc-count {

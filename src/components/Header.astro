@@ -6,7 +6,17 @@
 <header>
   <div class="container header-inner">
     <a href="/" class="logo" aria-label="Magna Arts Council home">
-      <img src="/images/ArtsCouncil_logo.png" alt="Magna Arts Council" class="logo-img" />
+      <picture>
+        <source srcset="/images/ArtsCouncil_logo.webp" type="image/webp" />
+        <img
+          src="/images/ArtsCouncil_logo.png"
+          alt="Magna Arts Council"
+          class="logo-img"
+          width="400"
+          height="272"
+          fetchpriority="high"
+        />
+      </picture>
     </a>
     <nav aria-label="Main navigation">
       <a href="/events">Events</a>

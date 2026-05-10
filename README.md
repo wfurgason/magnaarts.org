@@ -2,59 +2,6 @@
 
 **Magna, Utah's Designated Local Arts Agency**
 
----
-
-## 🔧 In Progress
-
-### Rich Text Editor (Quill.js) — teach-an-art-class form + art-presenters admin
-
-Adding rich text formatting (bold, italic, underline, headings, bullet/numbered lists, links) to the three large text fields on the art class submission form. Content is stored as HTML in Firestore and rendered as HTML in the admin view.
-
-**Files being changed:**
-- [x] `src/pages/teach-an-art-class/index.astro` — replace `artsArea`, `projectDescription`, and `materials` textareas with Quill editors; update validate + submit logic to read Quill HTML output
-- [x] `src/pages/admin/art-presenters.astro` — render those three fields as HTML in card view; add Quill to the edit modal for all three fields; update modal open/save logic
-- [x] `src/pages/api/admin/update-presenter.ts` — add missing `projectDescription` field to the update payload
-
-**Notes:**
-- Quill loaded from CDN (no npm install needed)
-- Existing plain-text Firestore values will still render correctly — browsers display plain text inside `innerHTML` safely
-- `white-space: pre-wrap` removed from `.detail-text` (fights HTML rendering)
-- Edit modal save path uses existing `/api/admin/update-presenter` endpoint
-
-I've hit the tool limit mid-task. Here's the exact state so you can continue:
-Done:
-
-✅ update-presenter.ts — projectDescription added
-✅ BaseLayout.astro — <slot name="head" /> added
-✅ teach-an-art-class/index.astro — Quill CSS injected via <Fragment slot="head">, artsArea and projectDescription textareas replaced with Quill divs
-
-Still needed in teach-an-art-class/index.astro:
-
-Replace the materials textarea (lines 152–160) with <div id="materials-editor" class="quill-wrap"></div> — the special characters in the placeholder (×, ", …) keep tripping the string matcher
-Replace the entire <script> block to initialize Quill and update validate/submit logic
-
-Still needed in art-presenters.astro:
-
-Render the three fields as HTML (set:html)
-Add Quill to the edit modal
-
-When you start fresh, the README In Progress section has the full checklist so the next Claude instance will know exactly where to pick up.Claude reached its tool-use limit for this turn.Continue
-Remaining work:
-
-Add <slot name="head" /> to AdminLayout.astro (inside <head>, after the fonts link)
-art-presenters.astro:
-
-Inject Quill CSS + JS via <Fragment slot="head">
-Swap {p.artsArea}, {p.projectDescription}, {p.materials} → set:html directives
-Remove white-space: pre-wrap from .detail-text
-Replace the 3 plain textareas in the edit modal with Quill divs
-Update the openModal() function to populate Quill instances
-Update the form submit to read from Quill instances
-
-
-
-When you start fresh, the README In Progress section still has the checklist, but you can also tell the next Claude: "The teach-an-art-class form is fully done. AdminLayout needs a head slot added, then art-presenters.astro needs Quill rendering + edit modal wired up."
-
 A fast, beautiful, community-focused website for the Magna Arts Council. Built to encourage community participation, gather event data for grant reporting, and manage the full lifecycle of arts programming — from proposal to post-event report.
 
 ---
@@ -92,15 +39,15 @@ magnaarts.org/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml          # Disabled — Vercel handles deploys automatically
-├── .env.example                # Template for required environment variables
 ├── firebase.json               # Firebase project config (Firestore rules, hosting)
 ├── firestore.rules             # Firestore security rules
-├── firestore.indexes.json      # Composite index definitions
+├── firestore.indexes.json      # Composite index definitions (mailingList, artists, tracks)
 ├── cors.json                   # CORS config for Firebase Storage
 ├── scripts/
 │   ├── bootstrap-admin.js      # Seeds initial admin user with custom claims (ESM)
 │   └── bootstrap-admin.cjs     # CJS version of the above
 ├── public/                     # Static assets (favicon, images, etc.)
+│   ├── admin-bands.js          # Client-side JS for bands admin page
 │   └── images/
 │       ├── ArtsCouncil_logo.png
 │       ├── classes/
@@ -113,14 +60,18 @@ magnaarts.org/
 │   │   ├── global.css          # Design tokens, reset, utility classes, buttons
 │   │   └── admin.css           # Admin dashboard styles (login, tables, badges, stats)
 │   ├── layouts/
-│   │   ├── BaseLayout.astro    # Shared <head>, OG tags, scroll-reveal observer
-│   │   └── AdminLayout.astro   # Admin shell: sidebar nav, user display, logout
+│   │   ├── BaseLayout.astro    # Shared <head>, OG tags, scroll-reveal observer; has <slot name="head" />
+│   │   └── AdminLayout.astro   # Admin shell: sidebar nav, user display, logout; has <slot name="head" />
 │   ├── components/
 │   │   ├── Header.astro        # Sticky nav with mobile hamburger menu
-│   │   └── Footer.astro        # Dark footer with nav links
+│   │   ├── Footer.astro        # Dark footer with nav links
+│   │   └── MailingListBanner.astro  # Slide-in email subscription banner
 │   ├── lib/
-│   │   └── firebase-admin.ts   # Firebase Admin SDK init (adminAuth + adminDb exports)
-│   ├── middleware.ts            # SSR auth middleware — protects /admin/* routes
+│   │   ├── firebase-admin.ts   # Firebase Admin SDK init (adminAuth, adminDb, adminStorage exports)
+│   │   ├── sendArtistInvite.ts # Email helpers: sendArtistInvite + sendArtistAuthLink (magic link)
+│   │   ├── time-utils.ts       # timeToISO() and related date/time helpers
+│   │   └── totp.ts             # TOTP helpers: generate/encrypt/decrypt secret, verify code, build otpauth URI
+│   ├── middleware.ts            # SSR auth middleware — protects /admin/* routes; /admin/enroll-mfa is public
 │   └── pages/
 │       ├── index.astro              # Homepage — Firestore-driven pinned tiles + Next Up
 │       ├── about.astro
@@ -130,52 +81,101 @@ magnaarts.org/
 │       ├── present.astro            # Presenter landing page (links to sub-forms)
 │       ├── volunteer.astro          # Public volunteer sign-up form
 │       ├── lens-of-magna.astro      # Lens of Magna photography contest page
+│       ├── local-artists.astro      # Public artist directory — reads approved/visible artists from Firestore
+│       ├── writing-conference.astro # Writing Conference 2026 event landing page
+│       ├── confirm.astro            # Mailing list email confirmation landing page
 │       ├── events/
 │       │   ├── index.astro          # Events listing (Firestore-driven)
 │       │   └── [id].astro           # SSR dynamic event detail (prev/next, calendar link)
 │       ├── call-for-bands/
 │       │   └── index.astro          # Band application form with file uploads
 │       ├── teach-an-art-class/
-│       │   └── index.astro          # Art class proposal form → art_class_submissions
+│       │   └── index.astro          # Art class proposal form → art_class_submissions; Quill rich text
 │       ├── vendor-application/
 │       │   └── index.astro          # Arts Festival vendor application form
 │       ├── propose/
 │       │   ├── index.astro          # Multi-step proposal wizard (3 steps)
 │       │   └── confirmation.astro
+│       ├── artist/                  # Artist self-service portal (Firebase magic-link auth)
+│       │   ├── login.astro          # Request magic-link login email
+│       │   ├── optin.astro          # Accept admin invitation, trigger magic-link send
+│       │   ├── register.astro       # Music artist profile setup form
+│       │   ├── register-visual.astro # Visual artist profile setup form
+│       │   ├── portal.astro         # Music artist dashboard (upload tracks, manage profile)
+│       │   └── portal-visual.astro  # Visual artist dashboard (upload images, manage profile)
 │       ├── admin/
 │       │   ├── index.astro          # Login (Firebase email/password → session cookie)
 │       │   ├── dashboard.astro      # Summary stats + recent activity
 │       │   ├── bands.astro          # Band application review queue
+│       │   ├── artists.astro        # Local artist profile review queue
+│       │   ├── artist-preview.astro # Token-gated artist profile preview for admin
 │       │   ├── programs.astro       # Program proposal review queue
-│       │   ├── planning.astro       # Event planning (Music & Movies, Open Mic, Art Night, Festival)
+│       │   ├── planning.astro       # Event planning (Music & Movies, Open Mic, Art Night, Writing Group, Festival)
 │       │   ├── seasons.astro        # 301 redirect → /admin/planning
 │       │   ├── events.astro         # Published events management
+│       │   ├── manual-event.astro   # Manually publish any event type directly to the events collection
 │       │   ├── art-presenters.astro # Art class submission review + Quill edit modal
 │       │   ├── volunteers.astro     # Volunteer sign-up review queue
+│       │   ├── mailing-list.astro   # Email subscriber management (confirmed/pending, delete)
 │       │   ├── vendors.astro        # Vendor application review queue
 │       │   ├── pinned-content.astro # Homepage pinned tile manager
-│       │   └── users.astro          # Board user management (super_admin only)
+│       │   ├── users.astro          # Board user management (super_admin only)
+│       │   └── enroll-mfa.astro     # TOTP MFA enrollment (standalone page, no AdminLayout; public route)
 │       └── api/
 │           ├── auth/
 │           │   ├── session.ts       # POST — creates Firebase session cookie from ID token
-│           │   └── logout.ts        # GET — deletes session cookie, redirects to /admin
+│           │   └── logout.ts        # POST — deletes session cookie, redirects to /admin
+│           ├── contact.ts           # POST — contact form handler (Resend)
+│           ├── subscribe.ts         # POST — mailing list subscribe; stores token in mailingList; sends confirmation email
+│           ├── unsubscribe.ts       # POST — mailing list unsubscribe by token
+│           ├── confirm.ts           # GET — confirm mailing list email via token
+│           ├── events/
+│           │   └── attend.ts        # POST — RSVP / attend intent for a published event
+│           ├── artist/              # Artist portal API (Firebase ID-token auth, not session cookie)
+│           │   ├── register-artist.ts   # POST — create artist Firestore doc after Firebase signup
+│           │   ├── update-artist.ts     # POST — update artist profile fields
+│           │   ├── upload-track.ts      # POST — upload audio track to Storage, save metadata subcollection
+│           │   ├── delete-track.ts      # POST — delete a track from Storage + subcollection
+│           │   ├── upload-image.ts      # POST — upload image to Storage, save metadata subcollection (visual artists)
+│           │   ├── delete-image.ts      # POST — delete an image from Storage + subcollection
+│           │   ├── submit-for-review.ts # POST — set artist status to pending_review
+│           │   ├── request-login.ts     # POST — send magic-link login email to returning artist
+│           │   ├── optin.ts             # POST — accept invite token, send Firebase magic link
+│           │   ├── me.ts                # GET — return artist Firestore doc for current authenticated artist
+│           │   ├── approve-artist.ts    # POST — admin approve artist (sets status + visible)
+│           │   ├── send-artist-invite.ts # POST — admin send invitation email to a band
+│           │   ├── sync-artist.ts       # POST — sync Firebase Auth UID to artist Firestore doc
+│           │   └── delete-artist.ts     # POST — delete artist profile + all tracks/images
 │           └── admin/
-│               ├── update-submission.ts   # POST — approve/reject proposals & bands
+│               ├── update-submission.ts   # POST — legacy approve/reject for proposals & bands
+│               ├── band-action.ts         # POST — approve/reject/waitlist/reinstate band applications
+│               ├── update-band.ts         # POST — inline edit band application fields
+│               ├── upload-band-photo.ts   # POST — admin-side band photo upload to Storage
 │               ├── publish-event.ts       # POST — publish Music & Movies event
 │               ├── publish-open-mic.ts    # POST — publish Open Mic event
 │               ├── publish-art-night.ts   # POST — publish Group Art Night event
+│               ├── publish-writing-group.ts # POST — publish Writing Group event
 │               ├── publish-festival.ts    # POST — publish/republish Arts Festival
 │               ├── unpublish-event.ts     # POST — unpublish any event type
 │               ├── delete-event.ts        # POST — delete a published event
+│               ├── add-manual-event.ts    # POST — manually write any event type to events collection
 │               ├── assign-band.ts         # POST — assign/unassign/confirm/publish bands
 │               ├── update-presenter.ts    # POST — update art class submission fields
 │               ├── delete-presenter.ts    # POST — delete art class submission
+│               ├── move-to-art-presenter.ts # POST — promote a band application into art_class_submissions
+│               ├── update-proposal.ts     # POST — inline edit program proposal fields
+│               ├── delete-proposal.ts     # POST — delete a program proposal
 │               ├── vendor-action.ts       # POST — approve/reject/pay/delete vendor apps
 │               ├── save-pinned-item.ts    # POST — create/update pinned content item
 │               ├── delete-pinned-item.ts  # POST — delete pinned content item
-│               └── manage-user.ts         # POST — create/update board users (super_admin)
+│               ├── manage-user.ts         # POST — create/update board users (super_admin)
+│               ├── artist-preview-token.ts # GET — generate short-lived preview token for artist profile
+│               ├── delete-subscriber.ts   # POST — delete mailing list subscriber
+│               ├── totp-enroll.ts         # POST — generate + encrypt TOTP secret; store in admin_users
+│               ├── totp-status.ts         # POST — check whether caller has TOTP enrolled
+│               └── totp-verify.ts         # POST — verify a TOTP code against stored encrypted secret
 ├── src/data/
-│   └── events.ts               # Single source of truth for 2025 event data
+│   └── events.ts               # Seed data for 2025 events; retained for Past Events Archive in /admin/events
 ├── astro.config.mjs            # Vercel adapter, SSR output, site URL
 ├── package.json
 └── README.md
@@ -236,10 +236,21 @@ Each event type and community role has a consistent color used across cards, tag
 
 1. Board member visits `/admin` and enters email + password
 2. Firebase client SDK (`signInWithEmailAndPassword`) authenticates and returns an ID token
-3. ID token is POSTed to `/api/auth/session`
-4. Server calls `adminAuth.createSessionCookie()` → sets an httpOnly, secure cookie (5-day expiry)
-5. All subsequent `/admin/*` requests are verified server-side in `src/middleware.ts`
-6. Logout hits `/api/auth/logout` → cookie is deleted, redirected to `/admin`
+3. If TOTP MFA is enrolled, the login page calls `/api/admin/totp-status` and prompts for a 6-digit code before proceeding; code verified via `/api/admin/totp-verify`
+4. ID token is POSTed to `/api/auth/session`
+5. Server calls `adminAuth.createSessionCookie()` → sets an httpOnly, secure cookie (5-day expiry)
+6. All subsequent `/admin/*` requests are verified server-side in `src/middleware.ts`; `/admin/enroll-mfa` is whitelisted as a public route
+7. Logout hits `/api/auth/logout` → cookie is deleted, redirected to `/admin`
+
+### TOTP MFA Enrollment
+
+MFA is optional but available to all admin accounts. It uses a custom server-side TOTP implementation (`src/lib/totp.ts`, backed by Node's `crypto` module) — Firebase's built-in MFA was abandoned due to SMS/reCAPTCHA failures and TOTP requiring an unavailable Cloud Identity Platform tier.
+
+- Admin visits `/admin/enroll-mfa` (public route, no session cookie required)
+- Page generates a TOTP secret server-side, stores it encrypted in `admin_users/{uid}` via `/api/admin/totp-enroll`
+- QR code displayed for scanning with any authenticator app
+- On next login the login page detects enrollment and gates session creation behind code verification
+- Encryption key: `TOTP_ENCRYPTION_KEY` env var (64-character hex string, 32 bytes AES-256-GCM)
 
 ### Roles (custom claims)
 
@@ -295,11 +306,12 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
 
 - [x] **Phase 1.5 — Shared Data**
   - [x] `src/data/events.ts` — single source of truth for 2025 season event data; used by the admin past-events archive; **no longer imported by public-facing pages** (public site is 100% Firestore-driven as of March 2026)
+  - [x] `src/lib/time-utils.ts` — shared `timeToISO()` helper used by all publish endpoints
 
 - [x] **Phase 1.6 — Call for Bands Form**
   - [x] Application form (`/call-for-bands`) — contact info, genre, member count, 300-char bio, website/music links, date availability
   - [x] Submissions saved to Firestore `band_applications` collection
-  - [x] File uploads (promo photo, tech rider) — wired to Firebase Storage
+  - [x] File uploads (promo photo, tech rider) — wired to Firebase Storage (`band-promos/`, `band-tech-riders/`)
   - [x] Date availability: replaced free-text field with 2026 date checkboxes (7 dates, min 2 required), saves as array to Firestore
   - [ ] Wire `/call-for-bands` into Header nav under "Movie and Music in the Park"
   - [ ] Email notification to board on new submission
@@ -311,20 +323,21 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [ ] Email notification to board on submit
 
 - [x] **Phase 3 — Board Dashboard** (auth-protected, SSR)
-  - [x] Login (`/admin`) — Firebase email/password auth → httpOnly session cookie
-  - [x] Auth middleware (`src/middleware.ts`) — protects all `/admin/*` except login; role check for `/admin/users`
+  - [x] Login (`/admin`) — Firebase email/password auth → httpOnly session cookie; TOTP gate if enrolled
+  - [x] Auth middleware (`src/middleware.ts`) — protects all `/admin/*` except login and `/admin/enroll-mfa`; role check for `/admin/users`
   - [x] Dashboard (`/admin/dashboard`) — stat cards (pending bands, approved bands, pending proposals, total events) + recent activity tables
-  - [x] Band applications (`/admin/bands`) — filterable list, status badges, inline review actions
-  - [x] Program proposals (`/admin/programs`) — filterable list, status badges, inline review actions
-  - [x] Events management (`/admin/events`) — view/publish/delete published events
+  - [x] Band applications (`/admin/bands`) — filterable list with milestone tabs, status badges, inline editing, rejection notes modal; `band-action.ts` + `update-band.ts` + `upload-band-photo.ts`
+  - [x] Program proposals (`/admin/programs`) — filterable list, status badges, inline edit (`update-proposal.ts`), delete (`delete-proposal.ts`)
+  - [x] Events management (`/admin/events`) — view/unpublish/delete published events
+  - [x] Manual event entry (`/admin/manual-event`) — publish any event type directly to `events` collection via `add-manual-event.ts`; supports all known event types including custom
   - [x] User management (`/admin/users`) — create/manage board users, assign roles (super_admin only)
-  - [x] API routes — `update-submission`, `publish-event`, `delete-event`, `manage-user`, `session`, `logout`
-  - [x] `AdminLayout.astro` — shared admin shell with sidebar, user display, logout link
+  - [x] TOTP MFA enrollment (`/admin/enroll-mfa`) — standalone page (no AdminLayout); generates QR code, stores encrypted secret via `totp-enroll.ts`
+  - [x] `AdminLayout.astro` — shared admin shell with sidebar, user display, logout link; `<slot name="head" />` supported
   - [x] `admin.css` — admin-specific styles (login card, stat grid, data tables, badges)
   - [ ] Assign Board Sponsor to a proposal
   - [ ] Email notifications to presenter on status change
 
-- [ ] **Phase 3.5 — Music & Movie in the Park Planning**
+- [x] **Phase 3.5 — Music & Movie in the Park Planning**
   - [x] Season Setup wizard (`/admin/seasons`) — enter year + dates, generates Firestore event shells with static template (venue, address, start time); skips existing dates; 2026 pre-populated
   - [x] Event shells editable (venue, address, start time) and deletable from the season table
   - [x] `park_seasons` Firestore collection — one doc per year
@@ -336,23 +349,23 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [x] Renamed sidebar nav item "Season Setup" → "Plan Events"
   - [x] Replaced event-type radio toggle with dropdown populated from EVA.rtf event list
   - [x] Dropdown auto-fills venue & address for each event title (still editable)
-  - [x] Per-event workflows: Music & Movies (existing), Open Mic (existing), Group Art Night (new)
+  - [x] Per-event workflows: Music & Movies (existing), Open Mic (existing), Group Art Night (new), Writing Group (new)
   - [x] Group Art Night shells saved to `art_night_events` Firestore collection
-  - [x] Group Art Night shell table with placeholder "Assign Presenter" button (disabled; wired in next build)
-  - [x] Annual Arts Seminar, Arts Festival, "or something else" show placeholder UI (no workflow yet)
-  - [x] Public "Teach an Art Class" form at `/teach-an-art-class` — saves to `art_class_submissions`
+  - [x] Writing Group shells saved to `writing_group_events` Firestore collection; published via `publish-writing-group.ts`
+  - [x] Arts Festival shells saved to `festival_events` Firestore collection
+  - [x] Public "Teach an Art Class" form at `/teach-an-art-class` — saves to `art_class_submissions`; Quill rich text on artsArea, projectDescription, materials fields
   - [x] Link to `/teach-an-art-class` added above "See Upcoming Events" on `programs.astro#art-night`
   - [x] Open Mic shells table now visible on planning page
-  - [x] Edit modal updated to pass `collection` param; works for park_events, open_mic_events, art_night_events
-  - [ ] Wire presenter assignment for Group Art Night (pulls from `art_class_submissions`)
-  - [x] Admin page to review art class submissions (`/admin/art-presenters`) — filter tabs, status actions, sidebar nav link
-  - [ ] Add `art_class_submissions` to Firestore security rules (allow public write)
+  - [x] Edit modal updated to pass `collection` param; works for park_events, open_mic_events, art_night_events, writing_group_events
+  - [x] Admin page to review art class submissions (`/admin/art-presenters`) — filter tabs, status actions, sidebar nav link; Quill edit modal
+  - [x] `art_class_submissions` Firestore security rules — allow public create
   - [x] Band assignment — "Assign to Date" button on approved bands; modal shows available shells; warns if date not in band's availability list
   - [x] Unassign / reassign — removes band from shell, resets both docs; available from bands page and seasons page
   - [x] Band confirmation tracking — "Mark Confirmed" on season shell; sets `bandConfirmed: true`; Publish button only enabled after confirmation
   - [x] Publish event to public site — writes to `events` collection using shell ID; marks shell + band application as `published`
   - [x] `/api/admin/assign-band` — handles assign / unassign / confirm / publish actions
   - [x] `assigned` filter tab added to band applications list
+  - [x] `move-to-art-presenter.ts` — promotes a band application doc into `art_class_submissions`
   - [ ] Movie info token-protected form for licensor
   - [ ] Update public `/events/[id]` to render band + movie combined layout
 
@@ -379,6 +392,47 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [x] Items filtered by `active: true`, expiry date, and `showOn` (home / events / both)
   - [x] Added Pinned Content to AdminLayout sidebar nav
 
+- [x] **Phase 3.10 — Mailing List**
+  - [x] `MailingListBanner.astro` component — slide-in subscription banner in public pages
+  - [x] Double opt-in flow: `subscribe.ts` stores pending subscriber + sends confirmation email via Resend; `confirm.ts` verifies token → sets status to `confirmed`; `confirm.astro` landing page shows status
+  - [x] `unsubscribe.ts` — remove subscriber by token (linked from emails)
+  - [x] `mailingList` Firestore collection with `allow create: if true` security rule
+  - [x] Admin mailing list page (`/admin/mailing-list`) — view confirmed/pending subscribers, delete; linked in sidebar
+  - [x] `delete-subscriber.ts` — admin-only delete of a subscriber doc
+  - [x] Composite index on `mailingList`: `status ASC` + `subscribedAt DESC`
+
+- [x] **Phase 3.11 — Local Artist Portal**
+  - [x] Artist invitation flow: admin sends invite email from `/admin/artists` via `send-artist-invite.ts`; email contains opt-in link (`/artist/optin`); opt-in stores token in Firestore, sends Firebase magic link
+  - [x] Artist login (`/artist/login`) — email magic-link auth (request via `request-login.ts`)
+  - [x] Music artist registration (`/artist/register`) → `register-artist.ts` creates `artists` doc
+  - [x] Visual artist registration (`/artist/register-visual`) → same endpoint with `artistType: 'visual'`
+  - [x] Music artist portal (`/artist/portal`) — upload/delete audio tracks, edit profile, submit for review
+  - [x] Visual artist portal (`/artist/portal-visual`) — upload/delete images, edit profile, submit for review
+  - [x] Artist API routes: `me.ts`, `update-artist.ts`, `upload-track.ts`, `delete-track.ts`, `upload-image.ts`, `delete-image.ts`, `submit-for-review.ts`, `sync-artist.ts`, `approve-artist.ts`, `delete-artist.ts`
+  - [x] Admin artist review queue (`/admin/artists`) — filter tabs (pending_review / approved / rejected), approve/reject actions, track/image counts, send invite from the page
+  - [x] Admin artist preview (`/admin/artist-preview`) — token-gated preview of an artist's public profile; token generated by `artist-preview-token.ts`
+  - [x] `local-artists.astro` — public artist directory showing approved + visible artists
+  - [x] `artists` Firestore collection with subcollections `tracks` and `images`; security rules allow public read, authenticated artist writes
+  - [x] Composite index on `artists`: `visible ASC` + `status ASC`; Collection-group index on `tracks`: `uploadedAt DESC`
+  - [x] `sendArtistInvite.ts` lib — `sendArtistInvite` (invitation email with opt-in token) + `sendArtistAuthLink` (Firebase magic-link email)
+
+- [x] **Phase 3.12 — TOTP MFA**
+  - [x] `src/lib/totp.ts` — `generateTotpSecret`, `encryptSecret`, `decryptSecret`, `verifyTotpCode`, `buildOtpauthUri` using Node `crypto` (AES-256-GCM + HMAC-SHA1 TOTP)
+  - [x] `/admin/enroll-mfa` — standalone enrollment page; shows QR code; calls `totp-enroll.ts`
+  - [x] `totp-enroll.ts` — generates + stores encrypted secret in `admin_users/{uid}`
+  - [x] `totp-status.ts` — checks whether a given ID token's UID has TOTP enrolled
+  - [x] `totp-verify.ts` — verifies submitted 6-digit code against stored encrypted secret
+  - [x] Admin login page polls `totp-status` after Firebase sign-in; shows TOTP prompt if enrolled
+  - [x] `admin_users` Firestore collection — no client access (rules: `allow read, write: if false`)
+  - [x] Middleware whitelists `/admin/enroll-mfa` so unenrolled admins can set up MFA before first session
+  - [ ] Grace period / backup codes for locked-out admins
+
+- [x] **Phase 3.13 — Writing Conference + Manual Event Entry**
+  - [x] `writing-conference.astro` — public landing page for Writing Conference 2026 event
+  - [x] Writing Group shells added to planning page; `publish-writing-group.ts` publishes to `events` collection
+  - [x] `/admin/manual-event` — admin form to directly write any event type to `events` collection; supports all series types plus custom; backed by `add-manual-event.ts`
+  - [x] Manual event linked as indented sub-item under Published Events in the admin sidebar
+
 - [ ] **Phase 4 — Planning Checklist**
   - [ ] Sponsor + presenter shared checklist
   - [ ] Auto-publish trigger when checklist complete
@@ -395,17 +449,22 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
 
 | Collection | Purpose |
 |---|---|
-| `band_applications` | Call-for-bands submissions; status: `pending` → `approved` / `declined` / `waitlisted` / `published` |
+| `band_applications` | Call-for-bands submissions; status: `pending` → `approved` / `declined` / `waitlisted` / `published`; milestone flags: `everApproved`, `everAssigned`, `everPublished`; `goodStanding` boolean is independent of status |
 | `program_submissions` | Proposal wizard submissions; status: `pending` → `approved` / `rejected` |
-| `events` | Published events with date/time/location |
+| `events` | Published events with date/time/location; written by all publish endpoints + `add-manual-event.ts` |
 | `park_seasons` | One doc per season year; holds year + array of event shell IDs |
 | `park_events` | Music & Movies in the Park event shells; status: `shell` → `band_assigned` → `confirmed` → `published` |
 | `open_mic_events` | Open Mic Night event shells; status: `shell` → `published` |
 | `art_night_events` | Group Art Night event shells; status: `shell` → `published` |
-| `art_class_submissions` | Teach an Art Class proposals from the public form; status: `pending` → `approved` / `rejected` |
+| `writing_group_events` | Writing Group event shells; status: `shell` → `published` |
+| `festival_events` | Arts Festival event shells; one doc per festival year |
+| `art_class_submissions` | Teach an Art Class proposals from the public form; status: `pending` → `approved` / `rejected` / `contacted` |
 | `vendor_applications` | Arts Festival vendor applications; status: `pending` → `approved` → `paid` / `rejected`; `space_number` assigned on payment |
 | `volunteer_signups` | Public volunteer sign-up submissions; status: `new` → `contacted` → `active` / `inactive` |
 | `pinned_content` | Homepage hero pinned tiles; fields: `title`, `badge`, `icon`, `sublabel`, `meta`, `href`, `ctaText`, `ctaExternal`, `colorClass`, `showOn`, `active`, `expiresDate`, `createdAt` |
+| `mailingList` | Email subscribers; fields: `email`, `status` (`pending` / `confirmed`), `token`, `subscribedAt`, `confirmedAt`; double opt-in via confirmation email |
+| `artists` | Local artist profiles; fields: `band_name`, `artistType` (`music` / `visual`), `genre`, `bio`, `photo_url`, `email`, `website`, `music_link`, `social_instagram`, `social_facebook`, `uid`, `status` (`pending_review` / `approved` / `rejected`), `visible`, `registeredAt`; subcollections: `tracks` (music artists), `images` (visual artists) |
+| `admin_users` | Per-admin MFA data; fields: `totpSecret` (AES-256-GCM encrypted), `totpEnrolled` (boolean); keyed by Firebase Auth UID |
 
 ### Planned collections (Phase 4–5)
 
@@ -414,26 +473,26 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
 | `attendance` | Intent-to-attend and actual attendance per event |
 | `endorsements` | Post-event testimonials / quotes |
 | `board_members` | Board roster, roles, sponsor assignments |
-| `volunteers` | Volunteer signups per event |
 
 ---
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and fill in values before running locally.
-
-```bash
-cp .env.example .env
-```
+Create a `.env` file at the project root and fill in these values before running locally.
 
 | Variable | Scope | Description |
 |---|---|---|
 | `PUBLIC_FIREBASE_API_KEY` | Public (browser-safe) | Firebase web API key |
 | `PUBLIC_FIREBASE_AUTH_DOMAIN` | Public (browser-safe) | Firebase auth domain (e.g. `yourapp.firebaseapp.com`) |
 | `PUBLIC_FIREBASE_PROJECT_ID` | Public (browser-safe) | Firebase project ID |
+| `PUBLIC_FIREBASE_STORAGE_BUCKET` | Public (browser-safe) | Firebase Storage bucket (e.g. `yourapp.appspot.com`) |
+| `PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Public (browser-safe) | Firebase messaging sender ID |
+| `PUBLIC_FIREBASE_APP_ID` | Public (browser-safe) | Firebase web app ID |
 | `FIREBASE_PROJECT_ID` | **Server-side only** | Same project ID — used by Admin SDK |
 | `FIREBASE_CLIENT_EMAIL` | **Server-side only** | Service account client email |
 | `FIREBASE_PRIVATE_KEY` | **Server-side only** | Service account private key (with `\\n` escaped newlines) |
+| `RESEND_API_KEY` | **Server-side only** | Resend API key for transactional email (contact form, mailing list, artist invites) |
+| `TOTP_ENCRYPTION_KEY` | **Server-side only** | 64-character hex string (32 bytes) used to AES-256-GCM encrypt TOTP secrets in Firestore |
 | `SITE_URL` | Server-side | Full URL of the site (used in emails, OG tags) |
 
 **In Vercel:** add these in Project → Settings → Environment Variables.

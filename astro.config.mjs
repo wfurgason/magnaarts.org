@@ -7,6 +7,6 @@ export default defineConfig({
   adapter: vercel(),
   site: 'https://magnaarts.org',
   build: {
-    inlineStylesheets: 'auto', // inline CSS files under 4 KB to eliminate render-blocking stylesheet requests
+    inlineStylesheets: 'always', // inline all CSS into HTML to eliminate render-blocking stylesheet requests
   },
 });

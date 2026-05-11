@@ -5,7 +5,10 @@
 <footer>
   <div class="container footer-inner">
     <div class="footer-brand">
-      <img src="/images/ArtsCouncil_logo.png" alt="Magna Arts Council logo" class="brand-logo" />
+      <picture>
+        <source srcset="/images/ArtsCouncil_logo.webp" type="image/webp" />
+        <img src="/images/ArtsCouncil_logo.png" alt="Magna Arts Council logo" class="brand-logo" width="400" height="272" />
+      </picture>
       <div>
         <span class="logo">Magna Arts Council</span>
         <p>Magna, Utah's Designated Local Arts Agency</p>
@@ -50,11 +53,16 @@
     <div class="container footer-bottom-inner">
       <span>© {new Date().getFullYear()} Magna Arts Council &nbsp;·&nbsp;
       <a href="/privacy">Privacy</a></span>
-      <img
-        src="/images/ZAPLogoHorizontal_PrimaryColor_White.png"
-        alt="Funded by ZAP — Zoo, Arts & Parks"
-        class="zap-logo"
-      />
+      <picture>
+        <source srcset="/images/ZAPLogoHorizontal_PrimaryColor_White.webp" type="image/webp" />
+        <img
+          src="/images/ZAPLogoHorizontal_PrimaryColor_White.png"
+          alt="Funded by ZAP — Zoo, Arts & Parks"
+          class="zap-logo"
+          width="250"
+          height="63"
+        />
+      </picture>
     </div>
   </div>
 </footer>

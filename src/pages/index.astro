@@ -5,12 +5,31 @@ import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 import { adminDb } from '../lib/firebase-admin';
 
-// Firebase public config — events collection is publicly readable
-const firebaseConfig = {
-  apiKey:     import.meta.env.PUBLIC_FIREBASE_API_KEY,
-  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId:  import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
-};
+// ── UPCOMING EVENTS — sourced server-side; no client JS needed ──────────────
+const eventNow = new Date();
+eventNow.setHours(0, 0, 0, 0);
+
+const eventsSnap = await adminDb
+  .collection('events')
+  .orderBy('eventDate', 'asc')
+  .get();
+
+const upcomingEvents = eventsSnap.docs
+  .map(doc => {
+    const d = doc.data();
+    const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
+    if (isNaN(dateObj.getTime()) || dateObj < eventNow) return null;
+    return {
+      title:     d.title || 'Untitled Event',
+      day:       dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      time:      d.eventTime || d.startTime || '',
+      location:  d.venueName || d.venue || '',
+      eventType: d.eventType || '',
+      genre:     d.category || d.genre || d.bandGenre || 'Event',
+    };
+  })
+  .filter(Boolean)
+  .slice(0, 3);
 
 // ── PINNED HERO CONTENT — sourced from Firestore `pinned_content` collection ──
 // Manage pinned items from the admin panel at /admin/pinned-content.
@@ -173,10 +192,24 @@ const roles = [
           <a href="/events" class="all-link">All Events →</a>
         </div>
         <div class="events-grid" id="next-up-grid">
-          <!-- Populated by Firestore client-side script below -->
-          <div id="next-up-empty" style="display:none; grid-column:1/-1; text-align:center; padding:32px 0; color:var(--muted); font-size:15px;">
-            No upcoming events scheduled yet — check back soon!
-          </div>
+          {upcomingEvents.length === 0 ? (
+            <div style="grid-column:1/-1; text-align:center; padding:32px 0; color:var(--muted); font-size:15px;">
+              No upcoming events scheduled yet — check back soon!
+            </div>
+          ) : (
+            upcomingEvents.map((e, i) => (
+              <article class={`event-card ${e.eventType}`} style={`transition-delay:${i * 0.1}s`}>
+                <span class={`event-tag${e.eventType ? ` tag-${e.eventType}` : ''}`}>{e.genre}</span>
+                <h3>{e.title}</h3>
+                <div class="event-meta">
+                  {e.day      && <div class="meta-row"><span class="meta-icon">📅</span>{e.day}</div>}
+                  {e.time     && <div class="meta-row"><span class="meta-icon">🕐</span>{e.time}</div>}
+                  {e.location && <div class="meta-row"><span class="meta-icon">📍</span>{e.location}</div>}
+                </div>
+                <a href="/events" class="event-link">Learn More →</a>
+              </article>
+            ))
+          )}
         </div>
       </div>
     </section>
@@ -213,78 +246,7 @@ const roles = [
 
   <Footer />
 
-<script type="module" define:vars={{ firebaseConfig }}>
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-  import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
-  // 1️⃣ Initialize Firebase app
-  const app = initializeApp(firebaseConfig);
-  const db  = getFirestore(app);
-
-  (async function loadNextUpEvents() {
-    try {
-      const grid = document.querySelector('.events-grid');
-      if (!grid) {
-        console.error('Next Up — .events-grid container not found');
-        return;
-      }
-
-      // 2️⃣ Fetch documents from Firestore
-      const q = query(collection(db, 'events'), orderBy('eventDate', 'asc'));
-      const snapshot = await getDocs(q);
-
-      // 3️⃣ Build upcoming events array (future dates only)
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-      const upcoming = [];
-      snapshot.forEach(doc => {
-        const d = doc.data();
-        const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
-        if (isNaN(dateObj.getTime())) return;
-        if (dateObj < now) return;
-
-        upcoming.push({
-          title:     d.title || 'Untitled Event',
-          day:       dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-          time:      d.eventTime || d.startTime || '',
-          location:  d.venueName || d.venue || '',
-          eventType: d.eventType || '',
-          genre:     d.category || d.genre || d.bandGenre || 'Event',
-          _ts:       dateObj.getTime(),
-        });
-      });
-
-      // 4️⃣ Generate HTML and insert into page
-      const html = upcoming.slice(0, 3).map((e, i) => `
-        <article class="event-card ${e.eventType}" style="transition-delay:${i * 0.1}s">
-          <span class="event-tag ${e.eventType ? `tag-${e.eventType}` : ''}">${e.genre}</span>
-          <h3>${e.title}</h3>
-          <div class="event-meta">
-            ${e.day ? `<div class="meta-row"><span class="meta-icon">📅</span>${e.day}</div>` : ''}
-            ${e.time ? `<div class="meta-row"><span class="meta-icon">🕐</span>${e.time}</div>` : ''}
-            ${e.location ? `<div class="meta-row"><span class="meta-icon">📍</span>${e.location}</div>` : ''}
-          </div>
-          <a href="/events" class="event-link">Learn More →</a>
-        </article>
-      `).join('');
-
-      if (upcoming.length === 0) {
-        document.getElementById('next-up-empty').style.display = 'block';
-        return;
-      }
-
-      grid.innerHTML = html;
-
-      // 5️⃣ Optional: scroll reveal
-      if (window.observer) {
-        grid.querySelectorAll('.event-card').forEach(card => window.observer.observe(card));
-      }
-
-    } catch (err) {
-      console.error('Next Up — Firestore load failed:', err);
-    }
-  })();
-</script>
 
 <script>
   // ── PINNED CONTENT CAROUSEL ──────────────────────────────────────────────

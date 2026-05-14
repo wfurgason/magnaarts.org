@@ -430,7 +430,7 @@ const firebaseConfig = {
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
       // Honeypot check — bots fill this field, humans don't
-      if ((form.querySelector('#website_url') as HTMLInputElement)?.value) return;
+      if (form.querySelector('#website_url')?.value) return;
 
       // Require at least 2 date selections
       const checkedDates = form.querySelectorAll('input[name="available_dates"]:checked');

@@ -479,9 +479,7 @@ const firebaseConfig = {
         if (riderFile) {
           submitBtn.textContent = 'Uploading tech rider…';
           const riderPath = `band-tech-riders/${prefix}/rider.pdf`;
-          const riderRef  = ref(storage, riderPath);
-          await uploadBytes(riderRef, riderFile);
-          tech_rider_url = riderPath; // store path, not download URL
+          tech_rider_url = await firebaseUpload(riderPath, riderFile);
         }
 
         // save to Firestore

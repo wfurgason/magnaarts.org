@@ -343,9 +343,13 @@ if (Astro.request.method === 'POST') {
     const displayType       = form.get('displayType')?.toString() || null;
     const movieTitle        = form.get('movieTitle')?.toString() || null;
     const moviePreviewEmbed = form.get('moviePreviewEmbed')?.toString() || null;
+    const eventDescription  = form.get('eventDescription')?.toString() ?? null;
     if (shellId) {
       const updateData: Record<string, any> = { venue, address, startTime };
       if (newImageUrl) updateData.imageUrl = newImageUrl;
+      if (col === 'writing_group_events') {
+        updateData.eventDescription = eventDescription || null;
+      }
       if (col === 'park_events') {
         updateData.display_type        = displayType || 'music_only';
         updateData.movie_title         = movieTitle || null;
@@ -659,7 +663,7 @@ const totalShells =
               <td>{shell.movie ? <span class="check-yes">✓ {shell.movie}</span> : <span class="dim">—</span>}</td>
               <td class="actions-cell">
                 <button class="btn-sm btn-outline"
-                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','park_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}','${(shell.display_type||'music').replace(/'/g,"\\'")}','${(shell.movie_title||'').replace(/'/g,"\\'")}','${(shell.movie_preview_embed||'').replace(/'/g,"\\'")}')`}>
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','park_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}','${(shell.display_type||'music').replace(/'/g,"\\'")}','${(shell.movie_title||'').replace(/'/g,"\\'")}','${(shell.movie_preview_embed||'').replace(/'/g,"\\'")}',' ${encodeURIComponent(shell.eventDescription||'')}')`}>
                   Edit
                 </button>
                 {shell.status === 'shell' && (
@@ -730,7 +734,7 @@ const totalShells =
               <td>{shell.imageUrl ? <span class="check-yes">✓ Set</span> : <span class="dim">—</span>}</td>
               <td class="actions-cell">
                 <button class="btn-sm btn-outline"
-                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','open_mic_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}')`}>
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','open_mic_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}',' ','','','${encodeURIComponent(shell.eventDescription||'')}')`}>
                   Edit
                 </button>
                 {shell.status !== 'published' && (
@@ -784,7 +788,7 @@ const totalShells =
             <div class="fest-header-actions">
               <span class={`badge badge-${shell.status}`}>{shell.status}</span>
               <button class="btn-sm btn-outline"
-                onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}',' ${(shell.address||'').replace(/'/g,"\\'")}',' ${shell.startTime}','festival_events')`}>
+                onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}',' ${(shell.address||'').replace(/'/g,"\\'")}',' ${shell.startTime}','festival_events','','','','','${encodeURIComponent(shell.eventDescription||'')}')`}>
                 Edit Details
               </button>
               {shell.status !== 'published' && (
@@ -929,7 +933,7 @@ const totalShells =
               <td>{shell.presenterName || <span class="dim">—</span>}</td>
               <td class="actions-cell">
                 <button class="btn-sm btn-outline"
-                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','art_night_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}')`}>
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}','${(shell.address||'').replace(/'/g,"\\'")}','${shell.startTime}','art_night_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}',' ','','','${encodeURIComponent(shell.eventDescription||'')}')`}>
                   Edit
                 </button>
                 {!shell.presenterId && (
@@ -1000,7 +1004,7 @@ const totalShells =
               <td>{shell.imageUrl ? <span class="check-yes">✓ Set</span> : <span class="dim">—</span>}</td>
               <td class="actions-cell">
                 <button class="btn-sm btn-outline"
-                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}',' ${(shell.address||'').replace(/'/g,"\\'")}',' ${shell.startTime}','writing_group_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}')`}>
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}',' ${(shell.address||'').replace(/'/g,"\\'")}',' ${shell.startTime}','writing_group_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}',' ','','','${encodeURIComponent(shell.eventDescription||'')}')`}>
                   Edit
                 </button>
                 {shell.status !== 'published' && (
@@ -1141,6 +1145,14 @@ const totalShells =
               <label for="edit-moviePreviewEmbed">Movie Preview Embed <span class="field-hint">YouTube embed src</span></label>
               <textarea id="edit-moviePreviewEmbed" name="moviePreviewEmbed" rows="3" placeholder="https://www.youtube.com/embed/..."></textarea>
             </div>
+          </div>
+        </div>
+
+        <!-- Per-event description — only shown for writing_group_events -->
+        <div id="edit-event-description-section" style="display:none">
+          <div class="form-field">
+            <label for="edit-eventDescription">Event Description <span class="field-hint">Shown below the series description on the card and detail page</span></label>
+            <textarea id="edit-eventDescription" name="eventDescription" rows="4" placeholder="What's happening at this specific meeting? Optional."></textarea>
           </div>
         </div>
 
@@ -1923,7 +1935,7 @@ const totalShells =
 
   const IMAGE_COLLECTIONS = new Set(['open_mic_events', 'art_night_events', 'park_events', 'writing_group_events']);
 
-  window.openEditModal = function(id, venue, address, startTime, collection, currentImageUrl, displayType, movieTitle, moviePreviewEmbed) {
+  window.openEditModal = function(id, venue, address, startTime, collection, currentImageUrl, displayType, movieTitle, moviePreviewEmbed, eventDescription) {
     document.getElementById('edit-shell-id').value   = id;
     document.getElementById('edit-venue').value      = venue;
     document.getElementById('edit-address').value    = address;
@@ -1971,6 +1983,8 @@ const totalShells =
       const v = displayTypeSel.value;
       movieFields.style.display = (v === 'movie' || v === 'both') ? 'flex' : 'none';
     };
+
+    document.getElementById('edit-eventDescription').value = eventDescription ? decodeURIComponent(eventDescription) : '';
 
     editModal.hidden = false;
   };

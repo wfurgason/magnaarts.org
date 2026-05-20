@@ -280,6 +280,9 @@ const venueAddress = event.venueAddress || '';
               {event.description && !event.bandName && (
                 <p>{event.description}</p>
               )}
+              {event.eventDescription && !event.bandName && (
+                <p class="event-specific-desc">{event.eventDescription}</p>
+              )}
 
               {event.movieTitle && (
                 <div class="inline-movie">
@@ -605,6 +608,14 @@ const venueAddress = event.venueAddress || '';
     margin: 0 0 10px;
   }
 
+  .event-specific-desc {
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.75;
+    margin: 12px 0 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
   .presenter-project-desc {
     font-size: 15px;
     color: var(--muted);

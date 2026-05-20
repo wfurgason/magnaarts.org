@@ -1004,7 +1004,7 @@ const totalShells =
               <td>{shell.imageUrl ? <span class="check-yes">✓ Set</span> : <span class="dim">—</span>}</td>
               <td class="actions-cell">
                 <button class="btn-sm btn-outline"
-                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}',' ${(shell.address||'').replace(/'/g,"\\'")}',' ${shell.startTime}','writing_group_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}',' ','','','${encodeURIComponent(shell.eventDescription||'')}')`}>
+                  onclick={`openEditModal('${shell.id}','${(shell.venue||'').replace(/'/g,"\\'")}',' ${(shell.address||'').replace(/'/g,"\\'")}',' ${shell.startTime}','writing_group_events','${(shell.imageUrl||'').replace(/'/g,"\\'")}','','','','${encodeURIComponent(shell.eventDescription||'')}')`}>
                   Edit
                 </button>
                 {shell.status !== 'published' && (
@@ -1984,6 +1984,13 @@ const totalShells =
       movieFields.style.display = (v === 'movie' || v === 'both') ? 'flex' : 'none';
     };
 
+    // Per-event description — only for writing_group_events
+    const descSection = document.getElementById('edit-event-description-section');
+    if (collection === 'writing_group_events') {
+      descSection.style.display = 'block';
+    } else {
+      descSection.style.display = 'none';
+    }
     document.getElementById('edit-eventDescription').value = eventDescription ? decodeURIComponent(eventDescription) : '';
 
     editModal.hidden = false;

@@ -39,6 +39,14 @@ type Vendor = {
 
 let vendors = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Vendor[];
 
+// Build conflict map from ALL vendors before filter is applied
+const assignedSpaces: Record<string, string> = {};
+for (const v of vendors) {
+  if ((v.status || 'pending') === 'paid' && v.space_number) {
+    assignedSpaces[String(v.space_number).trim()] = v.company_name || v.contact_name || 'Unknown';
+  }
+}
+
 const filters = ['all', 'pending', 'approved', 'paid', 'rejected'];
 const filterLabels: Record<string, string> = {
   all: 'All',
@@ -118,7 +126,12 @@ function calcTotal(v: Vendor): number {
               </div>
               <div class="header-right">
                 {v.status === 'paid' && v.space_number && (
-                  <div class="space-badge">Space {v.space_number}</div>
+                  <div
+                    class="space-badge space-badge-editable"
+                    data-id={v.id}
+                    data-space={v.space_number}
+                    title="Click to edit space number"
+                  >Space {v.space_number}</div>
                 )}
                 <span class={`badge badge-${v.status || 'pending'}`}>{v.status || 'pending'}</span>
               </div>
@@ -192,7 +205,7 @@ function calcTotal(v: Vendor): number {
                 <div class="paid-notice">
                   <span>✅</span>
                   <span>
-                    Payment confirmed · Space <strong>{v.space_number}</strong>
+                    Payment confirmed · Space <strong id={`space-display-${v.id}`}>{v.space_number}</strong>
                     {v.payment_method && <> · {v.payment_method}</>}
                   </span>
                 </div>
@@ -378,7 +391,122 @@ function calcTotal(v: Vendor): number {
     </div>
   </div>
 
+  <script type="application/json" id="assigned-spaces-data" set:html={JSON.stringify(assignedSpaces)}></script>
+
   <script>
+    // ── Assigned spaces conflict map ──────────────────────────────────────
+    const ASSIGNED_SPACES: Record<string, string> = JSON.parse(
+      document.getElementById('assigned-spaces-data')?.textContent || '{}'
+    );
+
+    // ── Space badge inline editing ────────────────────────────────────────
+    document.querySelectorAll('.space-badge-editable').forEach(el => {
+      const badge = el as HTMLElement;
+
+      badge.addEventListener('click', () => {
+        if (badge.querySelector('input')) return; // already editing
+
+        const id           = badge.dataset.id!;
+        const currentSpace = badge.dataset.space || '';
+        const originalText = badge.textContent || '';
+
+        badge.textContent = '';
+        const input = document.createElement('input');
+        input.type  = 'text';
+        input.value = currentSpace;
+        input.style.cssText = [
+          'width:80px',
+          'font-family:inherit',
+          'font-size:13px',
+          'font-weight:700',
+          'color:#e8a020',
+          'background:#1a2456',
+          'border:1.5px solid #e8a020',
+          'border-radius:6px',
+          'padding:2px 7px',
+          'outline:none',
+          'text-align:center',
+        ].join(';');
+        badge.appendChild(input);
+        input.focus();
+        input.select();
+
+        let saved = false;
+
+        async function saveSpace() {
+          if (saved) return;
+          const newSpace = input.value.trim();
+
+          // No change — just cancel
+          if (!newSpace || newSpace === currentSpace) {
+            badge.textContent = originalText;
+            return;
+          }
+
+          // Conflict check
+          const conflictVendor = ASSIGNED_SPACES[newSpace];
+          if (conflictVendor && newSpace !== currentSpace) {
+            const ok = confirm(`Space ${newSpace} is already assigned to "${conflictVendor}". Assign anyway?`);
+            if (!ok) {
+              badge.textContent = originalText;
+              return;
+            }
+          }
+
+          saved = true;
+          badge.textContent = 'Saving…';
+
+          try {
+            const res = await fetch('/api/admin/vendor-action', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ action: 'update-space', id, spaceNumber: newSpace }),
+            });
+
+            if (res.ok) {
+              const json = await res.json().catch(() => ({}));
+              badge.textContent   = `Space ${newSpace}`;
+              badge.dataset.space = newSpace;
+
+              // Update paid-notice in card body
+              const displayEl = document.getElementById(`space-display-${id}`);
+              if (displayEl) displayEl.textContent = newSpace;
+
+              // Keep conflict map current
+              delete ASSIGNED_SPACES[currentSpace];
+              ASSIGNED_SPACES[newSpace] = badge.closest('.submission-card')
+                ?.querySelector('.submission-name')?.textContent || 'Unknown';
+
+              if (json.emailError) {
+                alert(`⚠️ Space updated, but confirmation email failed to send:\n\n${json.emailError}`);
+              }
+            } else {
+              const json = await res.json().catch(() => ({}));
+              alert(`Error: ${json.error || 'Update failed. Please try again.'}`);
+              badge.textContent = originalText;
+            }
+          } catch {
+            alert('Network error. Please check your connection and try again.');
+            badge.textContent = originalText;
+          }
+        }
+
+        function cancelEdit() {
+          if (!saved) badge.textContent = originalText;
+        }
+
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter')  { e.preventDefault(); saveSpace(); }
+          if (e.key === 'Escape') { saved = true; cancelEdit(); }
+        });
+
+        // Blur cancels (not saves) so accidental clicks away don’t trigger an email
+        input.addEventListener('blur', () => {
+          setTimeout(() => { if (badge.querySelector('input')) cancelEdit(); }, 150);
+        });
+      });
+    });
+
     // ── Admin notes auto-save (debounced on input + blur) ─────────────────
     document.querySelectorAll('.admin-notes-textarea').forEach(el => {
       const textarea = el as HTMLTextAreaElement;
@@ -730,6 +858,13 @@ function calcTotal(v: Vendor): number {
       color: var(--gold);
       letter-spacing: 0.02em;
     }
+
+    .space-badge-editable {
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .space-badge-editable:hover { opacity: 0.8; }
 
     /* status badges */
     .badge {

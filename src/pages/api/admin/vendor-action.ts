@@ -335,7 +335,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await request.json();
     const { action, id } = body;
 
-    if (!['approve', 'unapprove', 'reject', 'mark-paid', 'edit', 'delete', 'note'].includes(action)) {
+    if (!['approve', 'unapprove', 'reject', 'mark-paid', 'update-space', 'edit', 'delete', 'note'].includes(action)) {
       return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400 });
     }
 
@@ -478,6 +478,52 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }),
         attachments,
       });
+
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }
+
+    // ── UPDATE SPACE ─────────────────────────────────────────────────────────
+    if (action === 'update-space') {
+      const { spaceNumber } = body;
+      if (!spaceNumber) {
+        return new Response(JSON.stringify({ error: 'Space number required' }), { status: 400 });
+      }
+
+      await docRef.update({
+        space_number:     spaceNumber,
+        spaceUpdatedBy:   reviewer.email,
+        spaceUpdatedAt:   FieldValue.serverTimestamp(),
+      });
+
+      const [infoBase64, mapBase64, flyerBase64] = await Promise.all([
+        fetchAsBase64(`${siteUrl}/downloads/festival/vendor-info-sheet.pdf`),
+        fetchAsBase64(`${siteUrl}/downloads/festival/festival-map.pdf`),
+        fetchAsBase64(`${siteUrl}/downloads/festival/festival-flyer.png`),
+      ]);
+
+      const spaceAttachments: { filename: string; content: string }[] = [];
+      if (infoBase64)  spaceAttachments.push({ filename: 'Vendor-Info-Sheet.pdf',   content: infoBase64 });
+      if (mapBase64)   spaceAttachments.push({ filename: 'Festival-Map.pdf',         content: mapBase64 });
+      if (flyerBase64) spaceAttachments.push({ filename: 'Festival-Flyer-2026.png', content: flyerBase64 });
+
+      const emailResult = await sendEmail({
+        to:      vendor.email,
+        subject: `📍 Updated Space Assignment — Space ${spaceNumber} — ${vendor.company_name}`,
+        html:    paidConfirmationEmail({
+          contactName:      vendor.contact_name,
+          companyName:      vendor.company_name,
+          spaceNumber,
+          vendorType:       vendor.vendor_type,
+          needsElectricity: vendor.needs_electricity,
+          needsWater:       vendor.needs_water,
+          siteUrl,
+        }),
+        attachments: spaceAttachments,
+      });
+
+      if (!emailResult.ok) {
+        return new Response(JSON.stringify({ success: true, emailError: emailResult.error }), { status: 200 });
+      }
 
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }

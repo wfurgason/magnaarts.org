@@ -276,7 +276,8 @@ export interface SendArtistInviteResult {
  * Does NOT generate a Firebase auth link.
  */
 export async function sendArtistInvite(opts: SendArtistInviteOptions): Promise<SendArtistInviteResult> {
-  const { bandId, email, bandName, existingStatus, artistType = 'music' } = opts;
+  const { bandId, bandName, existingStatus, artistType = 'music' } = opts;
+  const email = opts.email.trim();
   const siteUrl = process.env.SITE_URL || (import.meta as any).env?.SITE_URL || 'https://magnaarts.org';
 
   let status = existingStatus;

@@ -400,6 +400,10 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
   - [x] Admin mailing list page (`/admin/mailing-list`) — view confirmed/pending subscribers, delete; linked in sidebar
   - [x] `delete-subscriber.ts` — admin-only delete of a subscriber doc
   - [x] Composite index on `mailingList`: `status ASC` + `subscribedAt DESC`
+  - [x] 48-hour confirmation expiry: `confirm.ts` rejects expired tokens; `confirm.astro` shows expired-link card; `subscribe.ts` resets `subscribedAt` on resend for a fresh window
+  - [x] `purge-expired-subscribers.ts` — deletes all `pending` docs older than 48 hours; accepts cron secret header or admin session cookie
+  - [x] Vercel cron job (`vercel.json`) runs purge daily at 3 AM UTC
+  - [x] Admin mailing list page shows expired badge on stale pending records + Purge Expired button with count
 
 - [x] **Phase 3.11 — Local Artist Portal**
   - [x] Artist invitation flow: admin sends invite email from `/admin/artists` via `send-artist-invite.ts`; email contains opt-in link (`/artist/optin`); opt-in stores token in Firestore, sends Firebase magic link
@@ -582,6 +586,15 @@ Preview URLs are generated for every branch and pull request.
 ---
 
 ## Recent Changes
+
+### May 23, 2026 — Mailing list 48-hour confirmation expiry + auto-purge
+- `confirm.ts`: tokens older than 48 hours now redirect to `/confirm?error=expired` instead of confirming
+- `confirm.astro`: added expired-link card (⏰ icon, messaging directing user to re-subscribe)
+- `subscribe.ts`: resending a confirmation to an existing pending address now resets `subscribedAt` to the current time, giving the user a fresh 48-hour window
+- `purge-expired-subscribers.ts`: new GET endpoint that batch-deletes all `pending` mailingList docs older than 48 hours; authenticated via `CRON_SECRET` header (Vercel cron) or admin session cookie (manual use)
+- `vercel.json`: created at project root; configures a daily Vercel cron job at `0 3 * * *` (3 AM UTC / ~9 PM Mountain) to call the purge endpoint automatically
+- `mailing-list.astro`: expired pending records now show a red `expired` badge alongside the yellow `pending` badge; subtitle line includes expired count; Purge Expired button appears when expired records exist
+- New env variable: `CRON_SECRET` — add to Vercel environment variables and local `.env`
 
 ### April 7, 2026 — Pinned Content admin + homepage Firestore hookup
 - Created `/admin/pinned-content` — slide-in drawer form to create/edit/delete homepage hero tiles

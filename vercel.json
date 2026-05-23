@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/purge-expired-subscribers",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

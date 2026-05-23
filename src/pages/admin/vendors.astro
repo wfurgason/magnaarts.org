@@ -205,11 +205,19 @@ function calcTotal(v: Vendor): number {
                 <div class="paid-notice">
                   <span>✅</span>
                   <span>
-                    Payment confirmed · Space <strong id={`space-display-${v.id}`}>{v.space_number}</strong>
+                    Payment confirmed · Space
+                    <strong
+                      id={`space-display-${v.id}`}
+                      class="space-inline-editable"
+                      data-id={v.id}
+                      data-space={v.space_number || ''}
+                      title="Click to edit space number"
+                    >{v.space_number || 'Assign…'}</strong>
                     {v.payment_method && <> · {v.payment_method}</>}
                   </span>
                 </div>
               )}
+
               <div class="admin-notes-box">
                 <label class="detail-label" for={`notes-${v.id}`}>🔒 Admin Notes</label>
                 <textarea
@@ -399,8 +407,8 @@ function calcTotal(v: Vendor): number {
       document.getElementById('assigned-spaces-data')?.textContent || '{}'
     );
 
-    // ── Space badge inline editing ────────────────────────────────────────
-    document.querySelectorAll('.space-badge-editable').forEach(el => {
+    // ── Space inline editing (header badge + paid-notice) ─────────────────
+    function attachSpaceEditor(el: Element) {
       const badge = el as HTMLElement;
 
       badge.addEventListener('click', () => {
@@ -409,24 +417,39 @@ function calcTotal(v: Vendor): number {
         const id           = badge.dataset.id!;
         const currentSpace = badge.dataset.space || '';
         const originalText = badge.textContent || '';
+        const isBadge      = badge.classList.contains('space-badge-editable');
 
         badge.textContent = '';
         const input = document.createElement('input');
         input.type  = 'text';
         input.value = currentSpace;
-        input.style.cssText = [
-          'width:80px',
-          'font-family:inherit',
-          'font-size:13px',
-          'font-weight:700',
-          'color:#e8a020',
-          'background:#1a2456',
-          'border:1.5px solid #e8a020',
-          'border-radius:6px',
-          'padding:2px 7px',
-          'outline:none',
-          'text-align:center',
-        ].join(';');
+        input.style.cssText = isBadge
+          ? [
+              'width:80px',
+              'font-family:inherit',
+              'font-size:13px',
+              'font-weight:700',
+              'color:#e8a020',
+              'background:#1a2456',
+              'border:1.5px solid #e8a020',
+              'border-radius:6px',
+              'padding:2px 7px',
+              'outline:none',
+              'text-align:center',
+            ].join(';')
+          : [
+              'width:70px',
+              'font-family:inherit',
+              'font-size:13px',
+              'font-weight:700',
+              'color:#1e40af',
+              'background:#fff',
+              'border:1.5px solid #1e40af',
+              'border-radius:4px',
+              'padding:1px 6px',
+              'outline:none',
+              'text-align:center',
+            ].join(';');
         badge.appendChild(input);
         input.focus();
         input.select();
@@ -439,7 +462,8 @@ function calcTotal(v: Vendor): number {
 
           // No change — just cancel
           if (!newSpace || newSpace === currentSpace) {
-            badge.textContent = originalText;
+            badge.textContent  = originalText;
+            badge.dataset.space = currentSpace;
             return;
           }
 
@@ -465,15 +489,22 @@ function calcTotal(v: Vendor): number {
 
             if (res.ok) {
               const json = await res.json().catch(() => ({}));
-              badge.textContent   = `Space ${newSpace}`;
-              badge.dataset.space = newSpace;
 
-              // Update paid-notice in card body
-              const displayEl = document.getElementById(`space-display-${id}`);
-              if (displayEl) displayEl.textContent = newSpace;
+              // Update this element
+              badge.dataset.space = newSpace;
+              badge.textContent   = isBadge ? `Space ${newSpace}` : newSpace;
+
+              // Sync the other element (badge <-> paid-notice)
+              if (isBadge) {
+                const displayEl = document.getElementById(`space-display-${id}`) as HTMLElement | null;
+                if (displayEl) { displayEl.dataset.space = newSpace; displayEl.textContent = newSpace; }
+              } else {
+                const headerBadge = document.querySelector(`.space-badge-editable[data-id="${id}"]`) as HTMLElement | null;
+                if (headerBadge) { headerBadge.dataset.space = newSpace; headerBadge.textContent = `Space ${newSpace}`; }
+              }
 
               // Keep conflict map current
-              delete ASSIGNED_SPACES[currentSpace];
+              if (currentSpace) delete ASSIGNED_SPACES[currentSpace];
               ASSIGNED_SPACES[newSpace] = badge.closest('.submission-card')
                 ?.querySelector('.submission-name')?.textContent || 'Unknown';
 
@@ -500,12 +531,14 @@ function calcTotal(v: Vendor): number {
           if (e.key === 'Escape') { saved = true; cancelEdit(); }
         });
 
-        // Blur cancels (not saves) so accidental clicks away don’t trigger an email
+        // Blur cancels (not saves) so accidental clicks away don't trigger an email
         input.addEventListener('blur', () => {
           setTimeout(() => { if (badge.querySelector('input')) cancelEdit(); }, 150);
         });
       });
-    });
+    }
+
+    document.querySelectorAll('.space-badge-editable, .space-inline-editable').forEach(attachSpaceEditor);
 
     // ── Admin notes auto-save (debounced on input + blur) ─────────────────
     document.querySelectorAll('.admin-notes-textarea').forEach(el => {
@@ -865,6 +898,14 @@ function calcTotal(v: Vendor): number {
     }
 
     .space-badge-editable:hover { opacity: 0.8; }
+
+    .space-inline-editable {
+      cursor: pointer;
+      text-decoration: underline dotted;
+      text-underline-offset: 2px;
+    }
+
+    .space-inline-editable:hover { opacity: 0.75; }
 
     /* status badges */
     .badge {

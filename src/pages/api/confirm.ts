@@ -24,6 +24,13 @@ export const GET: APIRoute = async ({ url }) => {
       return new Response(null, { status: 302, headers: { Location: '/confirm?status=already' } });
     }
 
+    // Reject tokens older than 48 hours
+    const subscribedAt = doc.data().subscribedAt?.toDate?.() ?? null;
+    const ageMs = subscribedAt ? Date.now() - subscribedAt.getTime() : Infinity;
+    if (ageMs > 48 * 60 * 60 * 1000) {
+      return new Response(null, { status: 302, headers: { Location: '/confirm?error=expired' } });
+    }
+
     await doc.ref.update({ status: 'confirmed', confirmedAt: new Date() });
 
     return new Response(null, { status: 302, headers: { Location: '/confirm?status=success' } });

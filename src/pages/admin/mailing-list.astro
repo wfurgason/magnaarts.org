@@ -9,6 +9,8 @@ const snap = await adminDb.collection('mailingList')
   .orderBy('subscribedAt', 'desc')
   .get();
 
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+
 type Subscriber = {
   id: string;
   email: string;
@@ -16,9 +18,17 @@ type Subscriber = {
   token: string;
   subscribedAt?: any;
   confirmedAt?: any;
+  expired?: boolean;
 };
 
-let subscribers = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Subscriber[];
+let subscribers = snap.docs.map(d => {
+  const data = d.data();
+  const subscribedAt = data.subscribedAt?.toDate?.() ?? null;
+  const expired = data.status === 'pending' && subscribedAt
+    ? (Date.now() - subscribedAt.getTime()) > FORTY_EIGHT_HOURS_MS
+    : false;
+  return { ...data, id: d.id, expired } as Subscriber;
+});
 if (filterParam !== 'all') {
   subscribers = subscribers.filter(s => s.status === filterParam);
 }
@@ -26,6 +36,7 @@ if (filterParam !== 'all') {
 const total     = snap.size;
 const confirmed = snap.docs.filter(d => d.data().status === 'confirmed').length;
 const pending   = total - confirmed;
+const expired   = subscribers.filter(s => s.expired).length;
 
 function fmt(ts: any) {
   if (!ts) return '—';
@@ -38,7 +49,7 @@ function fmt(ts: any) {
 
   <div class="page-header">
     <h1>Mailing List</h1>
-    <p class="page-sub">{total} subscriber{total !== 1 ? 's' : ''} &mdash; {confirmed} confirmed, {pending} pending</p>
+    <p class="page-sub">{total} subscriber{total !== 1 ? 's' : ''} &mdash; {confirmed} confirmed, {pending} pending{expired > 0 ? `, ${expired} expired` : ''}</p>
 
     <div class="header-actions">
       <div class="filter-tabs">
@@ -51,6 +62,7 @@ function fmt(ts: any) {
           </a>
         ))}
       </div>
+      {expired > 0 && <button id="purge-btn" class="btn-purge">🗑 Purge Expired ({expired})</button>}
       <button id="export-btn" class="btn-export">⬇ Export CSV</button>
     </div>
   </div>
@@ -75,7 +87,10 @@ function fmt(ts: any) {
           {subscribers.map(s => (
             <tr id={`row-${s.id}`} data-email={s.email} data-subscribed={fmt(s.subscribedAt)} data-confirmed={fmt(s.confirmedAt)}>
               <td class="email-cell">{s.email}</td>
-              <td><span class={`badge badge-${s.status}`}>{s.status}</span></td>
+              <td>
+                <span class={`badge badge-${s.status}`}>{s.status}</span>
+                {s.expired && <span class="badge badge-expired">expired</span>}
+              </td>
               <td>{fmt(s.subscribedAt)}</td>
               <td>{s.status === 'confirmed' ? fmt(s.confirmedAt) : '—'}</td>
               <td>
@@ -98,6 +113,18 @@ function fmt(ts: any) {
       flex-wrap: wrap;
       margin-bottom: 20px;
     }
+
+    .btn-purge {
+      padding: 7px 16px;
+      background: #b52626;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-purge:hover { opacity: 0.85; }
 
     .btn-export {
       margin-left: auto;
@@ -164,6 +191,7 @@ function fmt(ts: any) {
     }
     .badge-confirmed { background: #d1fae5; color: #065f46; }
     .badge-pending   { background: #fef9c3; color: #854d0e; }
+    .badge-expired   { background: #fee2e2; color: #991b1b; margin-left: 4px; }
 
     .btn-xs {
       font-size: 11px;
@@ -216,6 +244,30 @@ function fmt(ts: any) {
         }
       });
     });
+
+    // Purge expired
+    var purgeBtn = document.getElementById('purge-btn');
+    if (purgeBtn) {
+      purgeBtn.addEventListener('click', async function() {
+        if (!confirm('Remove all expired pending subscribers? This cannot be undone.')) return;
+        (purgeBtn as HTMLButtonElement).disabled = true;
+        (purgeBtn as HTMLButtonElement).textContent = 'Purging…';
+        try {
+          var res = await fetch('/api/admin/purge-expired-subscribers');
+          var data = await res.json();
+          if (res.ok) {
+            alert(`Done — ${data.deleted} expired record${data.deleted !== 1 ? 's' : ''} removed.`);
+            window.location.reload();
+          } else {
+            alert('Purge failed. Please try again.');
+            (purgeBtn as HTMLButtonElement).disabled = false;
+          }
+        } catch {
+          alert('Purge failed. Please try again.');
+          (purgeBtn as HTMLButtonElement).disabled = false;
+        }
+      });
+    }
 
     // CSV export
     document.getElementById('export-btn')?.addEventListener('click', function() {

@@ -26,8 +26,9 @@ export const POST: APIRoute = async ({ request }) => {
       if (sub.status === 'confirmed') {
         return new Response(JSON.stringify({ error: 'already_subscribed' }), { status: 409 });
       }
-      // Resend confirmation for pending
+      // Resend confirmation for pending — reset subscribedAt for a fresh 48-hour window
       const token = sub.token;
+      await existing.docs[0].ref.update({ subscribedAt: new Date() });
       await sendConfirmationEmail(email, token);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }

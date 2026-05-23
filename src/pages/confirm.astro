@@ -18,9 +18,10 @@ const error  = Astro.url.searchParams.get('error');
     <section class="page-hero">
       <div class="container">
         <div class="hero-badge">Mailing List</div>
-        {status === 'success' && <h1>You're confirmed! 🎉</h1>}
-        {status === 'already'  && <h1>Already confirmed</h1>}
-        {error                 && <h1>Something went wrong</h1>}
+        {status === 'success'  && <h1>You're confirmed! 🎉</h1>}
+        {status === 'already'   && <h1>Already confirmed</h1>}
+        {error === 'expired'   && <h1>Link expired</h1>}
+        {error && error !== 'expired' && <h1>Something went wrong</h1>}
         {!status && !error     && <h1>Confirmation</h1>}
       </div>
     </section>
@@ -39,6 +40,14 @@ const error  = Astro.url.searchParams.get('error');
           <div class="confirm-card">
             <div class="confirm-icon">👍</div>
             <p>Your email is already confirmed. You're all set to receive updates from us.</p>
+            <a href="/" class="btn-primary">Back to Home</a>
+          </div>
+        )}
+
+        {error === 'expired' && (
+          <div class="confirm-card error">
+            <div class="confirm-icon">⏰</div>
+            <p>This confirmation link has expired — links are valid for 48 hours. If you'd still like to subscribe, sign up again using the form on our site.</p>
             <a href="/" class="btn-primary">Back to Home</a>
           </div>
         )}

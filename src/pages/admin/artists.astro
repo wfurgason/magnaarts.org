@@ -554,6 +554,13 @@ const artistsForClient = artistsWithCounts.map(a => ({
         return;
       }
 
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        feedback.textContent   = 'Please enter a valid email address (e.g. name@example.com).';
+        feedback.className     = 'invite-feedback error';
+        feedback.style.display = 'block';
+        return;
+      }
+
       btn.disabled    = true;
       btn.textContent = 'Sending…';
       feedback.style.display = 'none';

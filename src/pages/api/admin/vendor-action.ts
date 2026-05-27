@@ -363,7 +363,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // ── EDIT ───────────────────────────────────────────────────────────
     if (action === 'edit') {
-      const { vendorType, needsElectricity, needsWater, email } = body;
+      const {
+        vendorType, needsElectricity, needsWater,
+        email, contactName, companyName, address, cityZip,
+        phone, website, selling, description,
+        locationRequest, additionalComments, profileImageUrl,
+      } = body;
       if (!vendorType) {
         return new Response(JSON.stringify({ error: 'Vendor type required' }), { status: 400 });
       }
@@ -374,9 +379,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         editedBy:          reviewer.email,
         editedAt:          FieldValue.serverTimestamp(),
       };
-      if (email && email.trim()) {
-        updateData.email = email.trim();
-      }
+      if (email              !== undefined) updateData.email               = email.trim();
+      if (contactName        !== undefined) updateData.contact_name        = contactName.trim();
+      if (companyName        !== undefined) updateData.company_name        = companyName.trim();
+      if (address            !== undefined) updateData.address             = address.trim();
+      if (cityZip            !== undefined) updateData.city_zip            = cityZip.trim();
+      if (phone              !== undefined) updateData.phone               = phone.trim();
+      if (website            !== undefined) updateData.website             = website.trim();
+      if (selling            !== undefined) updateData.selling             = selling.trim();
+      if (description        !== undefined) updateData.description         = description.trim();
+      if (locationRequest    !== undefined) updateData.location_request    = locationRequest.trim();
+      if (additionalComments !== undefined) updateData.additional_comments = additionalComments.trim();
+      if (profileImageUrl    !== undefined) updateData.profile_image_url   = profileImageUrl || null;
       await docRef.update(updateData);
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }

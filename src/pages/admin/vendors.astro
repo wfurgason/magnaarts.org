@@ -39,6 +39,11 @@ type Vendor = {
 
 let vendors = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Vendor[];
 
+// Data map for edit modal — all vendors keyed by doc ID, built before filter is applied
+const vendorDataMap: Record<string, Record<string, any>> = Object.fromEntries(
+  snap.docs.map(d => [d.id, d.data()])
+);
+
 // Build conflict map from ALL vendors before filter is applied
 const assignedSpaces: Record<string, string> = {};
 for (const v of vendors) {
@@ -238,15 +243,6 @@ function calcTotal(v: Vendor): number {
                   <button class="btn btn-success" data-action="approve" data-id={v.id} data-company={v.company_name}>
                     ✓ Approve &amp; Notify
                   </button>
-                  <button class="btn btn-edit" data-action="open-edit-modal"
-                    data-id={v.id}
-                    data-company={v.company_name}
-                    data-email={v.email}
-                    data-vendor-type={v.vendor_type}
-                    data-electricity={v.needs_electricity}
-                    data-water={v.needs_water}>
-                    ✏️ Edit
-                  </button>
                   <button class="btn btn-danger" data-action="reject" data-id={v.id} data-company={v.company_name}>
                     Reject
                   </button>
@@ -276,6 +272,9 @@ function calcTotal(v: Vendor): number {
                 </button>
               )}
 
+              <button class="btn btn-edit" data-action="open-edit-modal" data-id={v.id}>
+                ✏️ Edit
+              </button>
               <button class="btn btn-delete" data-action="delete" data-id={v.id} data-company={v.company_name}>
                 🗑 Delete
               </button>
@@ -330,48 +329,118 @@ function calcTotal(v: Vendor): number {
 
   <!-- ── Edit Modal ── -->
   <div id="edit-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true">
-    <div class="modal-box">
+    <div class="modal-box modal-box--large">
       <div class="modal-header">
-        <h2>✏️ Edit Vendor Application</h2>
-        <button id="edit-modal-close" class="modal-close" aria-label="Close">✕</button>
+        <h2>&#x270F;&#xFE0F; Edit Vendor Application</h2>
+        <button id="edit-modal-close" class="modal-close" aria-label="Close">&#x2715;</button>
       </div>
       <p class="modal-sub" id="edit-modal-company"></p>
 
-      <div class="modal-field">
-        <label for="edit-email">Email Address <span class="req">*</span></label>
-        <input type="email" id="edit-email" placeholder="vendor@example.com" />
+      <div class="edit-section-label">Contact &amp; Business Info</div>
+
+      <div class="modal-two-col">
+        <div class="modal-field">
+          <label for="edit-contact-name">Contact Name</label>
+          <input type="text" id="edit-contact-name" placeholder="Jane Smith" />
+        </div>
+        <div class="modal-field">
+          <label for="edit-company-name">Business / Company Name</label>
+          <input type="text" id="edit-company-name" placeholder="Acme Arts" />
+        </div>
       </div>
+
+      <div class="modal-field">
+        <label for="edit-address">Address</label>
+        <input type="text" id="edit-address" placeholder="123 Main St" />
+      </div>
+
+      <div class="modal-two-col">
+        <div class="modal-field">
+          <label for="edit-city-zip">City &amp; ZIP</label>
+          <input type="text" id="edit-city-zip" placeholder="Magna, UT 84044" />
+        </div>
+        <div class="modal-field">
+          <label for="edit-phone">Phone</label>
+          <input type="tel" id="edit-phone" placeholder="(801) 555-0100" />
+        </div>
+      </div>
+
+      <div class="modal-two-col">
+        <div class="modal-field">
+          <label for="edit-email">Email Address</label>
+          <input type="email" id="edit-email" placeholder="vendor@example.com" />
+        </div>
+        <div class="modal-field">
+          <label for="edit-website">Website (optional)</label>
+          <input type="url" id="edit-website" placeholder="https://example.com" />
+        </div>
+      </div>
+
+      <div class="edit-section-label">Booth &amp; Products</div>
 
       <div class="modal-field">
         <label for="edit-vendor-type">Vendor Type <span class="req">*</span></label>
         <select id="edit-vendor-type">
-          <option value="Individual Artist">Individual Artist — $25</option>
-          <option value="Retail / Franchise / non-profit">Retail / Franchise / Non-Profit — $50</option>
-          <option value="Political">Political — $75</option>
-          <option value="Food Vendor">Food Vendor — $100</option>
+          <option value="Individual Artist">Individual Artist &#x2014; $25</option>
+          <option value="Retail / Franchise / non-profit">Retail / Franchise / Non-Profit &#x2014; $50</option>
+          <option value="Political">Political &#x2014; $75</option>
+          <option value="Food Vendor">Food Vendor &#x2014; $100</option>
         </select>
       </div>
 
-      <div class="modal-field">
-        <label for="edit-electricity">Needs Electricity?</label>
-        <select id="edit-electricity">
-          <option value="no">No</option>
-          <option value="yes">Yes (+$10)</option>
-        </select>
-      </div>
-
-      <div class="modal-field">
-        <label for="edit-water">Needs Water?</label>
-        <select id="edit-water">
-          <option value="no">No</option>
-          <option value="yes">Yes (+$10)</option>
-        </select>
+      <div class="modal-two-col">
+        <div class="modal-field">
+          <label for="edit-electricity">Needs Electricity?</label>
+          <select id="edit-electricity">
+            <option value="no">No</option>
+            <option value="yes">Yes (+$10)</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label for="edit-water">Needs Water?</label>
+          <select id="edit-water">
+            <option value="no">No</option>
+            <option value="yes">Yes (+$10)</option>
+          </select>
+        </div>
       </div>
 
       <div class="edit-fee-preview">
         <span class="edit-fee-label">Updated Fee Total</span>
         <span class="edit-fee-amount" id="edit-fee-amount">$0</span>
         <span class="edit-fee-breakdown" id="edit-fee-breakdown"></span>
+      </div>
+
+      <div class="modal-field">
+        <label for="edit-selling">What They're Selling</label>
+        <textarea id="edit-selling" rows="2" placeholder="Handmade jewelry, prints&#x2026;"></textarea>
+      </div>
+
+      <div class="modal-field">
+        <label for="edit-description">Public Website Description (optional)</label>
+        <textarea id="edit-description" rows="2" placeholder="Description shown on the festival page&#x2026;"></textarea>
+      </div>
+
+      <div class="modal-field">
+        <label for="edit-location-request">Space Location Request (optional)</label>
+        <textarea id="edit-location-request" rows="2" placeholder="Near the stage, corner spot&#x2026;"></textarea>
+      </div>
+
+      <div class="modal-field">
+        <label for="edit-comments">Additional Comments (optional)</label>
+        <textarea id="edit-comments" rows="2" placeholder="Any other notes&#x2026;"></textarea>
+      </div>
+
+      <div class="edit-section-label">Vendor Photo</div>
+
+      <div class="modal-field">
+        <div id="edit-photo-preview-wrap" style="display:none;margin-bottom:10px;">
+          <img id="edit-photo-preview" alt="Vendor photo preview" style="max-width:200px;max-height:150px;object-fit:cover;border-radius:8px;border:1.5px solid #e2e0d8;display:block;" />
+        </div>
+        <label for="edit-photo-file" class="photo-upload-btn">Choose Photo</label>
+        <input type="file" id="edit-photo-file" accept="image/*" style="display:none;" />
+        <div id="edit-photo-status" class="edit-photo-status"></div>
+        <div style="font-size:11px;color:#6b7280;margin-top:6px;">Uploading a new photo replaces the existing one &#x2014; the old file is deleted automatically.</div>
       </div>
 
       <div class="modal-actions">
@@ -400,11 +469,16 @@ function calcTotal(v: Vendor): number {
   </div>
 
   <script type="application/json" id="assigned-spaces-data" set:html={JSON.stringify(assignedSpaces)}></script>
+  <script type="application/json" id="vendor-data-map" set:html={JSON.stringify(vendorDataMap)}></script>
 
   <script>
     // ── Assigned spaces conflict map ──────────────────────────────────────
     const ASSIGNED_SPACES: Record<string, string> = JSON.parse(
       document.getElementById('assigned-spaces-data')?.textContent || '{}'
+    );
+
+    const VENDOR_DATA_MAP: Record<string, any> = JSON.parse(
+      document.getElementById('vendor-data-map')?.textContent || '{}'
     );
 
     // ── Space inline editing (header badge + paid-notice) ─────────────────
@@ -586,6 +660,8 @@ function calcTotal(v: Vendor): number {
     let pendingTotal: number = 0;
     let pendingDeleteId: string | null = null;
     let pendingEditId: string | null = null;
+    let pendingPhotoUrl: string | null = null;
+    let isUploadingPhoto = false;
 
     // ── Fee map (must match server) ────────────────────────────────────────
     const FEE_MAP: Record<string, number> = {
@@ -616,23 +692,52 @@ function calcTotal(v: Vendor): number {
     }
 
     // ── Edit modal ──────────────────────────────────────────────────────
-    function openEditModal(id: string, company: string, email: string, vendorType: string, electricity: string, water: string) {
+    function openEditModal(id: string) {
       pendingEditId = id;
-      (document.getElementById('edit-modal-company') as HTMLElement).textContent = company;
-      (document.getElementById('edit-email') as HTMLInputElement).value = email || '';
-      (document.getElementById('edit-vendor-type') as HTMLSelectElement).value = vendorType;
-      (document.getElementById('edit-electricity') as HTMLSelectElement).value = electricity || 'no';
-      (document.getElementById('edit-water') as HTMLSelectElement).value = water || 'no';
+      const v = VENDOR_DATA_MAP[id] || {};
+      (document.getElementById('edit-modal-company') as HTMLElement).textContent = v.company_name || id;
+      (document.getElementById('edit-contact-name')   as HTMLInputElement).value  = v.contact_name || '';
+      (document.getElementById('edit-company-name')   as HTMLInputElement).value  = v.company_name || '';
+      (document.getElementById('edit-address')         as HTMLInputElement).value  = v.address || '';
+      (document.getElementById('edit-city-zip')        as HTMLInputElement).value  = v.city_zip || '';
+      (document.getElementById('edit-phone')           as HTMLInputElement).value  = v.phone || '';
+      (document.getElementById('edit-email')           as HTMLInputElement).value  = v.email || '';
+      (document.getElementById('edit-website')         as HTMLInputElement).value  = v.website || '';
+      (document.getElementById('edit-vendor-type')     as HTMLSelectElement).value = v.vendor_type || '';
+      (document.getElementById('edit-selling')         as HTMLTextAreaElement).value = v.selling || '';
+      (document.getElementById('edit-description')     as HTMLTextAreaElement).value = v.description || '';
+      (document.getElementById('edit-location-request') as HTMLTextAreaElement).value = v.location_request || '';
+      (document.getElementById('edit-comments')        as HTMLTextAreaElement).value = v.additional_comments || '';
+      (document.getElementById('edit-electricity')     as HTMLSelectElement).value = v.needs_electricity || 'no';
+      (document.getElementById('edit-water')           as HTMLSelectElement).value = v.needs_water || 'no';
+      // Photo preview
+      pendingPhotoUrl = v.profile_image_url || null;
+      const preview     = document.getElementById('edit-photo-preview') as HTMLImageElement;
+      const previewWrap = document.getElementById('edit-photo-preview-wrap') as HTMLElement;
+      const fileInput   = document.getElementById('edit-photo-file') as HTMLInputElement;
+      const statusEl    = document.getElementById('edit-photo-status') as HTMLElement;
+      fileInput.value = '';
+      if (statusEl) statusEl.textContent = '';
+      if (pendingPhotoUrl) {
+        preview.src = pendingPhotoUrl;
+        previewWrap.style.display = 'block';
+      } else {
+        previewWrap.style.display = 'none';
+      }
       updateEditFeeDisplay();
       (document.getElementById('edit-modal') as HTMLElement).style.display = 'flex';
     }
 
     function closeEditModal() {
       (document.getElementById('edit-modal') as HTMLElement).style.display = 'none';
-      pendingEditId = null;
+      pendingEditId    = null;
+      pendingPhotoUrl  = null;
+      isUploadingPhoto = false;
       const btn = document.getElementById('edit-modal-confirm') as HTMLButtonElement;
       btn.disabled    = false;
       btn.textContent = 'Save Changes';
+      const statusEl = document.getElementById('edit-photo-status') as HTMLElement;
+      if (statusEl) statusEl.textContent = '';
     }
 
     document.getElementById('edit-vendor-type')?.addEventListener('change', updateEditFeeDisplay);
@@ -645,18 +750,84 @@ function calcTotal(v: Vendor): number {
     });
 
     document.getElementById('edit-modal-confirm')?.addEventListener('click', async () => {
-      if (!pendingEditId) return;
+      if (!pendingEditId || isUploadingPhoto) return;
       const btn = document.getElementById('edit-modal-confirm') as HTMLButtonElement;
       btn.disabled    = true;
       btn.textContent = 'Saving…';
       await doVendorAction({
-        action:           'edit',
-        id:               pendingEditId,
-        email:            (document.getElementById('edit-email') as HTMLInputElement).value.trim(),
-        vendorType:       (document.getElementById('edit-vendor-type') as HTMLSelectElement).value,
-        needsElectricity: (document.getElementById('edit-electricity') as HTMLSelectElement).value,
-        needsWater:       (document.getElementById('edit-water') as HTMLSelectElement).value,
+        action:             'edit',
+        id:                 pendingEditId,
+        contactName:        (document.getElementById('edit-contact-name')      as HTMLInputElement).value.trim(),
+        companyName:        (document.getElementById('edit-company-name')      as HTMLInputElement).value.trim(),
+        address:            (document.getElementById('edit-address')            as HTMLInputElement).value.trim(),
+        cityZip:            (document.getElementById('edit-city-zip')           as HTMLInputElement).value.trim(),
+        phone:              (document.getElementById('edit-phone')              as HTMLInputElement).value.trim(),
+        email:              (document.getElementById('edit-email')              as HTMLInputElement).value.trim(),
+        website:            (document.getElementById('edit-website')            as HTMLInputElement).value.trim(),
+        vendorType:         (document.getElementById('edit-vendor-type')        as HTMLSelectElement).value,
+        selling:            (document.getElementById('edit-selling')            as HTMLTextAreaElement).value.trim(),
+        description:        (document.getElementById('edit-description')        as HTMLTextAreaElement).value.trim(),
+        locationRequest:    (document.getElementById('edit-location-request')   as HTMLTextAreaElement).value.trim(),
+        additionalComments: (document.getElementById('edit-comments')           as HTMLTextAreaElement).value.trim(),
+        needsElectricity:   (document.getElementById('edit-electricity')        as HTMLSelectElement).value,
+        needsWater:         (document.getElementById('edit-water')              as HTMLSelectElement).value,
+        profileImageUrl:    pendingPhotoUrl,
       });
+    });
+
+    // ── Photo upload ────────────────────────────────────────────────────
+    document.getElementById('edit-photo-file')?.addEventListener('change', async (e) => {
+      const input = e.target as HTMLInputElement;
+      const file  = input.files?.[0];
+      if (!file || !pendingEditId) return;
+
+      const statusEl    = document.getElementById('edit-photo-status') as HTMLElement;
+      const preview     = document.getElementById('edit-photo-preview') as HTMLImageElement;
+      const previewWrap = document.getElementById('edit-photo-preview-wrap') as HTMLElement;
+      const confirmBtn  = document.getElementById('edit-modal-confirm') as HTMLButtonElement;
+
+      // Show local blob preview immediately so user gets live feedback
+      const localUrl = URL.createObjectURL(file);
+      preview.src = localUrl;
+      previewWrap.style.display = 'block';
+
+      statusEl.textContent = 'Uploading…';
+      statusEl.className   = 'edit-photo-status uploading';
+      isUploadingPhoto     = true;
+      confirmBtn.disabled  = true;
+
+      const formData = new FormData();
+      formData.append('vendorId', pendingEditId);
+      formData.append('file', file);
+      if (pendingPhotoUrl) formData.append('oldUrl', pendingPhotoUrl);
+
+      try {
+        const res = await fetch('/api/admin/upload-vendor-photo', { method: 'POST', body: formData });
+        if (res.ok) {
+          const json = await res.json();
+          pendingPhotoUrl = json.url;
+          preview.src = pendingPhotoUrl!;
+          URL.revokeObjectURL(localUrl);
+          statusEl.textContent = '✓ Photo uploaded';
+          statusEl.className   = 'edit-photo-status success';
+          setTimeout(() => { if (statusEl.className.includes('success')) statusEl.textContent = ''; }, 3000);
+        } else {
+          const json = await res.json().catch(() => ({}));
+          statusEl.textContent = `Upload failed: ${json.error || res.status}`;
+          statusEl.className   = 'edit-photo-status error';
+          if (pendingPhotoUrl) { preview.src = pendingPhotoUrl; }
+          else { previewWrap.style.display = 'none'; }
+        }
+      } catch {
+        statusEl.textContent = 'Network error — upload failed';
+        statusEl.className   = 'edit-photo-status error';
+        if (pendingPhotoUrl) { preview.src = pendingPhotoUrl; }
+        else { previewWrap.style.display = 'none'; }
+      } finally {
+        isUploadingPhoto    = false;
+        confirmBtn.disabled = false;
+        input.value = '';
+      }
     });
 
     // ── Delete modal ────────────────────────────────────────────────────
@@ -698,14 +869,7 @@ function calcTotal(v: Vendor): number {
         if (action === 'delete') { openDeleteModal(id, company); return; }
 
         if (action === 'open-edit-modal') {
-          openEditModal(
-            id,
-            company,
-            el.dataset.email || '',
-            el.dataset.vendorType || '',
-            el.dataset.electricity || 'no',
-            el.dataset.water || 'no',
-          );
+          openEditModal(id);
           return;
         }
 
@@ -1212,6 +1376,73 @@ function calcTotal(v: Vendor): number {
     .admin-notes-status.saving { color: #92400e; }
     .admin-notes-status.saved  { color: #166534; }
     .admin-notes-status.error  { color: #991b1b; }
+
+    /* ── Expanded edit modal ── */
+    .modal-box--large {
+      max-width: 620px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .edit-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin: 20px 0 10px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e0d8;
+    }
+
+    .modal-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .modal-field textarea {
+      font-family: inherit;
+      font-size: 14px;
+      color: #1a1a2e;
+      background: #fff;
+      border: 1.5px solid #e2e0d8;
+      border-radius: 8px;
+      padding: 10px 14px;
+      outline: none;
+      resize: vertical;
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+
+    .modal-field textarea:focus { border-color: #1a2456; }
+
+    .photo-upload-btn {
+      display: inline-block;
+      padding: 8px 18px;
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .photo-upload-btn:hover { background: #dbeafe; }
+
+    .edit-photo-status {
+      font-size: 12px;
+      font-weight: 700;
+      min-height: 16px;
+      margin-top: 4px;
+    }
+
+    .edit-photo-status.uploading { color: #92400e; }
+    .edit-photo-status.success   { color: #166534; }
+    .edit-photo-status.error     { color: #991b1b; }
   </style>
 
 </AdminLayout>

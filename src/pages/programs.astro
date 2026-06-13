@@ -7,12 +7,13 @@ import { adminDb } from '../lib/firebase-admin';
 
 // ── Server-side: fetch upcoming Music & Movies concerts (includes movie_title) ──
 const _now = new Date();
+const _cutoff = new Date(_now); _cutoff.setDate(_cutoff.getDate() - 7);
 const _parkSnap = await adminDb.collection('park_events').orderBy('date', 'asc').get();
 const concertTickets = _parkSnap.docs
   .filter(doc => {
     const d = doc.data();
     if (!d.bandId) return false;
-    return new Date(d.date + 'T12:00:00') >= _now;
+    return new Date(d.date + 'T12:00:00') >= _cutoff;
   })
   .map(doc => {
     const d = doc.data();
@@ -365,6 +366,7 @@ const programs = [
     const db  = getFirestore(app);
 
     const now = new Date();
+    const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() - 7);
 
     // ── Helper: render ticket stubs into a glance list ─────────────────
     function renderGlance(loadingId, listId, emptyId, items) {
@@ -419,7 +421,7 @@ const programs = [
       snap.forEach(doc => {
         const d       = doc.data();
         const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
-        if (dateObj < now) return;
+        if (dateObj < cutoff) return;
 
         const item = {
           id:      doc.id,

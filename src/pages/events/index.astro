@@ -237,12 +237,13 @@ const hasFeatured = featuredEvents.length > 0;
       const snap = await getDocs(q);
 
       const now      = new Date();
+      const cutoff   = new Date(now); cutoff.setDate(cutoff.getDate() - 7);
       const upcoming = [];
 
       snap.forEach(doc => {
         const d       = doc.data();
         const dateObj = d.eventDate?.toDate ? d.eventDate.toDate() : new Date(d.eventDate);
-        if (dateObj < now) return;
+        if (dateObj < cutoff) return;
 
         if (d.eventType === 'arts_festival') {
           const festDate    = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

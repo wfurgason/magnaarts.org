@@ -42,8 +42,9 @@ const displayDate = isoDate
     })()
   : (event.displayDate || '');
 
-const isFestival  = event.eventType === 'arts_festival';
-const isArtNight  = event.eventType === 'group_art_night';
+const isFestival     = event.eventType === 'arts_festival';
+const isArtNight     = event.eventType === 'group_art_night';
+const isWritingGroup = event.eventType === 'writing_group';
 
 function getSocialPlatform(url: string): string {
   const u = url.toLowerCase();
@@ -282,6 +283,12 @@ const venueAddress = event.venueAddress || '';
               )}
               {event.eventDescription && !event.bandName && (
                 <p class="event-specific-desc">{event.eventDescription}</p>
+              )}
+
+              {isWritingGroup && (
+                <div class="band-hero-links" style="margin-top:16px;">
+                  <a href="/downloads/writing/writing_guidelines.pdf" target="_blank" rel="noopener" class="band-hero-link">📄 Writing Group Critique Policy</a>
+                </div>
               )}
 
               {event.movieTitle && (

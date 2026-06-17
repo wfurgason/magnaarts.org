@@ -46,6 +46,13 @@ const isFestival     = event.eventType === 'arts_festival';
 const isArtNight     = event.eventType === 'group_art_night';
 const isWritingGroup = event.eventType === 'writing_group';
 
+// Split stored description on newlines so single Enter presses in the
+// admin textarea become visual line breaks on the public page.
+const descriptionLines = (event.eventDescription || '')
+  .split('\n')
+  .map((line: string) => line.trim())
+  .filter((line: string) => line.length > 0);
+
 function getSocialPlatform(url: string): string {
   const u = url.toLowerCase();
   if (u.includes('facebook.com') || u.includes('fb.com')) return 'Facebook';
@@ -282,7 +289,14 @@ const venueAddress = event.venueAddress || '';
                 <p>{event.description}</p>
               )}
               {event.eventDescription && !event.bandName && (
-                <p class="event-specific-desc">{event.eventDescription}</p>
+                <p class="event-specific-desc">
+                  {descriptionLines.map((line: string, i: number) => (
+                    <>
+                      {line}
+                      {i < descriptionLines.length - 1 && <br />}
+                    </>
+                  ))}
+                </p>
               )}
 
               {isWritingGroup && (

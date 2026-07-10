@@ -335,7 +335,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await request.json();
     const { action, id } = body;
 
-    if (!['approve', 'unapprove', 'reject', 'mark-paid', 'update-space', 'edit', 'delete', 'note'].includes(action)) {
+    if (!['approve', 'unapprove', 'reject', 'mark-paid', 'update-space', 'resend-confirmation', 'edit', 'delete', 'note'].includes(action)) {
       return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400 });
     }
 
@@ -537,6 +537,50 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
       if (!emailResult.ok) {
         return new Response(JSON.stringify({ success: true, emailError: emailResult.error }), { status: 200 });
+      }
+
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }
+
+    // ── RESEND CONFIRMATION ─────────────────────────────────────────────────
+    if (action === 'resend-confirmation') {
+      if (vendor.status !== 'paid' || !vendor.space_number) {
+        return new Response(JSON.stringify({ error: 'Vendor must be paid with a space assigned before resending.' }), { status: 400 });
+      }
+
+      const [infoBase64, mapBase64, flyerBase64] = await Promise.all([
+        fetchAsBase64(`${siteUrl}/downloads/festival/vendor-info-sheet.pdf`),
+        fetchAsBase64(`${siteUrl}/downloads/festival/festival-map.pdf`),
+        fetchAsBase64(`${siteUrl}/downloads/festival/festival-flyer.png`),
+      ]);
+
+      const resendAttachments: { filename: string; content: string }[] = [];
+      if (infoBase64)  resendAttachments.push({ filename: 'Vendor-Info-Sheet.pdf',   content: infoBase64 });
+      if (mapBase64)   resendAttachments.push({ filename: 'Festival-Map.pdf',         content: mapBase64 });
+      if (flyerBase64) resendAttachments.push({ filename: 'Festival-Flyer-2026.png', content: flyerBase64 });
+
+      const emailResult = await sendEmail({
+        to:      vendor.email,
+        subject: `✅ Payment Confirmed — Space ${vendor.space_number} — ${vendor.company_name}`,
+        html:    paidConfirmationEmail({
+          contactName:      vendor.contact_name,
+          companyName:      vendor.company_name,
+          spaceNumber:      vendor.space_number,
+          vendorType:       vendor.vendor_type,
+          needsElectricity: vendor.needs_electricity,
+          needsWater:       vendor.needs_water,
+          siteUrl,
+        }),
+        attachments: resendAttachments,
+      });
+
+      await docRef.update({
+        confirmationResentBy: reviewer.email,
+        confirmationResentAt: FieldValue.serverTimestamp(),
+      });
+
+      if (!emailResult.ok) {
+        return new Response(JSON.stringify({ error: emailResult.error || 'Email failed to send.' }), { status: 200 });
       }
 
       return new Response(JSON.stringify({ success: true }), { status: 200 });

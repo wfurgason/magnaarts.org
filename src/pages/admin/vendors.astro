@@ -131,12 +131,22 @@ function calcTotal(v: Vendor): number {
               </div>
               <div class="header-right">
                 {v.status === 'paid' && v.space_number && (
-                  <div
-                    class="space-badge space-badge-editable"
-                    data-id={v.id}
-                    data-space={v.space_number}
-                    title="Click to edit space number"
-                  >Space {v.space_number}</div>
+                  <>
+                    <div
+                      class="space-badge space-badge-editable"
+                      data-id={v.id}
+                      data-space={v.space_number}
+                      title="Click to edit space number"
+                    >Space {v.space_number}</div>
+                    <button
+                      type="button"
+                      class="resend-link"
+                      data-action="resend-confirmation"
+                      data-id={v.id}
+                      data-company={v.company_name}
+                      title="Resend the space confirmation email to this vendor"
+                    >✉️ Resend</button>
+                  </>
                 )}
                 <span class={`badge badge-${v.status || 'pending'}`}>{v.status || 'pending'}</span>
               </div>
@@ -885,6 +895,35 @@ function calcTotal(v: Vendor): number {
           return;
         }
 
+        if (action === 'resend-confirmation') {
+          if (!confirm(`Resend the space confirmation email to "${company}"?`)) return;
+          const originalLabel = el.textContent;
+          el.disabled    = true;
+          el.textContent = 'Sending…';
+          fetch('/api/admin/vendor-action', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ action, id }),
+          })
+            .then(async res => {
+              const json = await res.json().catch(() => ({}));
+              if (res.ok && !json.error) {
+                el.textContent = '✓ Sent';
+                setTimeout(() => { el.textContent = originalLabel; el.disabled = false; }, 2500);
+              } else {
+                alert(`⚠️ Email failed to send:\n\n${json.error || 'Unknown error'}`);
+                el.textContent = originalLabel;
+                el.disabled    = false;
+              }
+            })
+            .catch(() => {
+              alert('Network error. Please check your connection and try again.');
+              el.textContent = originalLabel;
+              el.disabled    = false;
+            });
+          return;
+        }
+
         const label = action === 'approve' ? 'approved' : action === 'unapprove' ? 'moved back to pending' : 'rejected';
         if (!confirm(`Set "${company}" to "${label}"?`)) return;
 
@@ -1062,6 +1101,29 @@ function calcTotal(v: Vendor): number {
     }
 
     .space-badge-editable:hover { opacity: 0.8; }
+
+    .resend-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      background: none;
+      border: 1.5px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .resend-link:hover:not(:disabled) {
+      border-color: #1e40af;
+      color: #1e40af;
+    }
+
+    .resend-link:disabled { opacity: 0.6; cursor: default; }
 
     .space-inline-editable {
       cursor: pointer;

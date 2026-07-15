@@ -432,8 +432,8 @@ const venueAddress = event.venueAddress || '';
           )}
 
           <!-- Vendor List (server-rendered) -->
-          <div class="festival-section reveal">
-            <h2 class="festival-section-heading">🛒 Participating Vendors</h2>
+          <div class="festival-section">
+            <h2 class="festival-section-heading reveal">🛒 Participating Vendors</h2>
             {vendors.length > 0 ? (
               <div class="vendor-list">
                 {vendors.map((v: any) => {
@@ -441,7 +441,7 @@ const venueAddress = event.venueAddress || '';
                   const space = v.space_number || v.booth_number;
                   const vendorName = v.company_name || v.vendor_name || v.contact_name;
                   return (
-                    <div class="vendor-profile-card">
+                    <div class="vendor-profile-card reveal">
                       <div class="vendor-photo-col">
                         {v.profile_image_url
                           ? <div class="vendor-photo-wrap"><img src={v.profile_image_url} alt={vendorName} class="vendor-photo" /></div>

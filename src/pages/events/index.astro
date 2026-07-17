@@ -253,6 +253,7 @@ const hasFeatured = featuredEvents.length > 0;
             if (!b.bandId) return;
             upcoming.push({
               id:           doc.id + '-slot' + b.slot,
+              eventId:      doc.id,
               title:        'Magna Main Street Arts Festival',
               date:         festDate,
               time:         b.time || d.eventTime || '',
@@ -272,6 +273,7 @@ const hasFeatured = featuredEvents.length > 0;
 
         upcoming.push({
           id:           doc.id,
+          eventId:      doc.id,
           title:        d.title,
           date:         dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           time:         d.eventTime || '',
@@ -325,7 +327,7 @@ const hasFeatured = featuredEvents.length > 0;
               ${e.musicLink ? `<a href="${e.musicLink}" target="_blank" rel="noopener" class="listen-btn">🎵 Listen</a>` : ''}
             </div>
             <div class="published-poster">
-              <a href="/events/${e.id}">
+              <a href="/events/${e.eventId}">
               ${cardPosterUrl
                 ? `<img src="${cardPosterUrl}" alt="${e.presenterName || e.bandName || e.title}" />`
                 : `<div class="published-poster-placeholder">${isArtNight ? '🎨' : '🎵'}</div>`
@@ -387,7 +389,7 @@ const hasFeatured = featuredEvents.length > 0;
                 ${e.rsvpUrl   ? `<a href="${e.rsvpUrl}"   target="_blank" rel="noopener" class="btn btn-outline-navy">RSVP</a>` : ''}
               </div>` : ''}
               <div class="published-links">
-                <a href="/events/${e.id}" class="event-details-link">View Details →</a>
+                <a href="/events/${e.eventId}" class="event-details-link">View Details →</a>
               </div>
             </div>
           </article>`;

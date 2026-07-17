@@ -5,6 +5,31 @@ import { randomUUID } from 'crypto';
 
 const resend = new Resend(import.meta.env.RESEND_API_KEY);
 
+// In-memory per-IP rate limit: 1 accepted submission per hour.
+// Resets on cold start/redeploy — this is meant to blunt bursts of
+// bot signups, not act as a hard/persistent cap.
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const lastSubmissionByIp = new Map<string, number>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const last = lastSubmissionByIp.get(ip);
+
+  // Occasionally prune old entries so the map doesn't grow forever
+  // between cold starts.
+  if (lastSubmissionByIp.size > 500) {
+    for (const [key, ts] of lastSubmissionByIp) {
+      if (now - ts > RATE_LIMIT_WINDOW_MS) lastSubmissionByIp.delete(key);
+    }
+  }
+
+  if (last && now - last < RATE_LIMIT_WINDOW_MS) {
+    return true;
+  }
+  lastSubmissionByIp.set(ip, now);
+  return false;
+}
+
 export const POST: APIRoute = async ({ request }) => {
   try {
     const data = await request.json();
@@ -12,6 +37,17 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return new Response(JSON.stringify({ error: 'Valid email required.' }), { status: 400 });
+    }
+
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+
+    if (isRateLimited(ip)) {
+      // Silently pretend success so bots/scrapers get no signal —
+      // just skip the DB write and the confirmation email.
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
 
     // Check for existing subscriber

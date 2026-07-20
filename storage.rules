@@ -79,6 +79,17 @@ service firebase.storage {
       allow write: if request.auth != null;
     }
 
+    // ── Festival Feature entry photos — admin upload (planning page) ──
+    match /festival-feature-photos/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /festival-feature-artwork/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // ── All other paths — deny by default ──
     match /{allPaths=**} {
       allow read, write: if false;

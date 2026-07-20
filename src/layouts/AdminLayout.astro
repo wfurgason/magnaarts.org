@@ -87,6 +87,10 @@ const currentPath = Astro.url.pathname;
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         Vendor Applications
       </a>
+      <a href="/admin/festival-features" class:list={['nav-link', { active: currentPath.startsWith('/admin/festival-features') }]}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="2.5"/><path d="M19.5 12c0 4.5-3.5 9-7.5 9s-7.5-4.5-7.5-9a7.5 7.5 0 0 1 15 0z"/><circle cx="9" cy="9" r="1"/><circle cx="9" cy="14" r="1"/><circle cx="14" cy="15" r="1"/></svg>
+        Festival Features
+      </a>
       {isSuperAdmin && (
         <a href="/admin/users" class:list={['nav-link', { active: currentPath.startsWith('/admin/users') }]}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>

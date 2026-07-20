@@ -15,7 +15,7 @@ const firebaseConfig = {
 };
 
 // ── Load existing shells ──────────────────────────────────────────────────
-const [shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, vendorSnap, artClassSnap, writingGroupSnap] = await Promise.all([
+const [shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, vendorSnap, artClassSnap, writingGroupSnap, festivalFeaturesSnap] = await Promise.all([
   adminDb.collection('park_events').orderBy('date', 'asc').get(),
   adminDb.collection('open_mic_events').orderBy('date', 'asc').get(),
   adminDb.collection('art_night_events').orderBy('date', 'asc').get(),
@@ -24,6 +24,7 @@ const [shellsSnap, openMicSnap, artNightSnap, festivalSnap, approvedBandsSnap, v
   adminDb.collection('vendor_applications').where('status', 'in', ['approved', 'paid']).get(),
   adminDb.collection('art_class_submissions').where('status', 'in', ['pending', 'approved', 'contacted']).orderBy('submittedAt', 'desc').get(),
   adminDb.collection('writing_group_events').orderBy('date', 'asc').get(),
+  adminDb.collection('festival_features').get(),
 ]);
 
 const allShells         = shellsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
@@ -34,6 +35,18 @@ const allWritingGroupShells  = writingGroupSnap.docs.map(d => ({ id: d.id, ...d.
 const approvedBands     = approvedBandsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 const approvedVendorCount  = vendorSnap.size;
 const artClassSubmissions  = artClassSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
+// Festival feature entries, counted per festival event shell (by eventId), plus a breakdown by featureTitle
+const allFestivalFeatures = festivalFeaturesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+const festivalFeatureCountsByEvent: Record<string, number> = {};
+const festivalFeatureTitlesByEvent: Record<string, Record<string, number>> = {};
+for (const f of allFestivalFeatures) {
+  const evId = f.eventId || '';
+  festivalFeatureCountsByEvent[evId] = (festivalFeatureCountsByEvent[evId] || 0) + 1;
+  if (!festivalFeatureTitlesByEvent[evId]) festivalFeatureTitlesByEvent[evId] = {};
+  const title = f.featureTitle || 'Untitled';
+  festivalFeatureTitlesByEvent[evId][title] = (festivalFeatureTitlesByEvent[evId][title] || 0) + 1;
+}
 
 // ── POST handling ─────────────────────────────────────────────────────────
 let flashMsg  = '';
@@ -903,6 +916,28 @@ const totalShells =
                 </div>
               </div>
               <p class="vendor-hint">Booth space numbers are assigned on the Vendors page. Approved vendors automatically appear on the public festival page.</p>
+            </div>
+
+            <!-- ── FESTIVAL FEATURES SUMMARY ── -->
+            <div class="fest-section">
+              <h3 class="fest-section-heading">🎨 Festival Features</h3>
+              <div class="vendor-summary-card">
+                <div class="vendor-summary-stat">
+                  <span class="vendor-stat-number">{festivalFeatureCountsByEvent[shell.id] || 0}</span>
+                  <span class="vendor-stat-label">Entries</span>
+                </div>
+                <div class="vendor-summary-actions">
+                  <a href="/admin/festival-features" class="btn btn-outline btn">Manage Festival Features ↗</a>
+                </div>
+              </div>
+              {festivalFeatureTitlesByEvent[shell.id] && Object.keys(festivalFeatureTitlesByEvent[shell.id]).length > 0 && (
+                <p class="vendor-hint">
+                  {Object.entries(festivalFeatureTitlesByEvent[shell.id]).map(([title, count]) => `${title}: ${count}`).join(' · ')}
+                </p>
+              )}
+              {(!festivalFeatureTitlesByEvent[shell.id] || Object.keys(festivalFeatureTitlesByEvent[shell.id]).length === 0) && (
+                <p class="vendor-hint">No entries yet for this event — add chalk artists, car show entries, and similar from the Festival Features page.</p>
+              )}
             </div>
 
           </div>

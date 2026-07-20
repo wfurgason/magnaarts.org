@@ -94,6 +94,28 @@ if (isFestival) {
       (v.space_number || v.booth_number)
     );
 }
+
+// For festival pages, load festival feature entries (chalk artists, car show, etc.)
+// tied to this event, grouped by featureTitle
+let festivalFeatureGroups: { title: string; entries: any[] }[] = [];
+if (isFestival) {
+  const featuresSnap = await adminDb.collection('festival_features')
+    .where('eventId', '==', event.id)
+    .get();
+  const featureEntries = featuresSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const grouped: Record<string, any[]> = {};
+  for (const f of featureEntries) {
+    const title = f.featureTitle || 'Untitled';
+    if (!grouped[title]) grouped[title] = [];
+    grouped[title].push(f);
+  }
+  festivalFeatureGroups = Object.entries(grouped)
+    .map(([title, entries]) => ({
+      title,
+      entries: entries.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.name || '').localeCompare(b.name || '')),
+    }))
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
 const eventTime    = event.eventTime    || '';
 const endTime      = event.endTime      || null;
 const timeDisplay  = isFestival && eventTime && endTime
@@ -430,6 +452,37 @@ const venueAddress = event.venueAddress || '';
               <p class="coming-soon">Band lineup being announced soon — check back!</p>
             </div>
           )}
+
+          <!-- Festival Feature groups (chalk artists, car show, etc.) -->
+          {festivalFeatureGroups.map(group => (
+            <div class="festival-section reveal">
+              <h2 class="festival-section-heading">🎨 {group.title}</h2>
+              <div class="vendor-list">
+                {group.entries.map((entry: any) => (
+                  <div class="vendor-profile-card reveal">
+                    <div class="vendor-photo-col">
+                      {entry.artworkPhotoUrl
+                        ? <div class="vendor-photo-wrap"><img src={entry.artworkPhotoUrl} alt={`${entry.name} artwork`} class="vendor-photo" /></div>
+                        : (entry.artistPhotoUrl
+                          ? <div class="vendor-photo-wrap"><img src={entry.artistPhotoUrl} alt={entry.name} class="vendor-photo" /></div>
+                          : <div class="vendor-photo-placeholder">🎨</div>)
+                      }
+                      <h3 class="vendor-name">{entry.name}</h3>
+                    </div>
+                    <div class="vendor-info">
+                      {entry.artworkPhotoUrl && entry.artistPhotoUrl && (
+                        <div class="vendor-photo-wrap feature-artist-thumb"><img src={entry.artistPhotoUrl} alt={`${entry.name} portrait`} class="vendor-photo" /></div>
+                      )}
+                      {entry.websiteUrl && (
+                        <a href={entry.websiteUrl} target="_blank" rel="noopener" class="band-link">Website ↗</a>
+                      )}
+                      {entry.bio && <p class="band-bio">{entry.bio}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
 
           <!-- Vendor List (server-rendered) -->
           <div class="festival-section">
@@ -820,6 +873,13 @@ const venueAddress = event.venueAddress || '';
   .vendor-photo-col { display: flex; flex-direction: column; align-items: center; gap: 0; }
   .vendor-photo-wrap { overflow: hidden; width: 220px; aspect-ratio: 4/3; flex-shrink: 0; }
   .vendor-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .feature-artist-thumb {
+    width: 56px;
+    aspect-ratio: 1/1;
+    border-radius: 50%;
+    margin-bottom: 12px;
+  }
   .vendor-photo-placeholder {
     width: 220px; aspect-ratio: 4/3; display: flex; align-items: center;
     justify-content: center; font-size: 48px;

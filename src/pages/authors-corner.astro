@@ -1,0 +1,407 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+const authors = [
+  {
+    name: 'Mary Martinez',
+    photo: '/images/authors-corner/mary-martinez.jpg',
+    bio: "Mary Martinez is an award-winning author from Magna, Utah, writing romantic suspense, women's fiction, and YA mystery. She also publishes fantasy and sci-fi as ML Foxx and loves traveling with her husband.",
+    link: 'https://www.marymartinez.com/',
+    linkLabel: 'marymartinez.com',
+  },
+  {
+    name: 'L. L. Muir',
+    photo: '/images/authors-corner/ll-muir.jpg',
+    bio: "L.L. Muir loves convincing readers that falling for a Highland ghost, a dangerous English nobleman, a magnetic Irish Fae, or a grumpy Scottish laird is a perfectly reasonable life choice. An award-winning author, she has nearly a hundred novels, one of which might well be your favorite book ever.",
+    link: 'https://www.amazon.com/stores/L.L.-Muir/author/B00736A0A4',
+    linkLabel: 'Amazon Author Page',
+  },
+  {
+    name: 'Stanalei Fletcher',
+    subtitle: 'Art by Samantha Stevens @ Stanalei Fletcher Booth',
+    photo: '/images/authors-corner/stanalei-fletcher.jpg',
+    bio: 'After a taste of life on both U.S. coasts, Stanalei resides near the beautiful Wasatch Mountain Range to write her stories of romance and more.',
+    link: 'https://www.stanaleifletcher.com/',
+    linkLabel: 'stanaleifletcher.com',
+  },
+  {
+    name: 'Lyn Worthen',
+    subtitle: 'Camden Park Press',
+    photo: '/images/authors-corner/lyn-worthen.jpg',
+    bio: "Lyn Worthen (aka Leigh Saunders / Lauryn Christopher / Michele Dean) has written twelve novels, numerous short stories, and edited twenty-four anthologies. Follow her various 'selves' on Facebook/Instagram @camdenparkpress.",
+    link: 'https://www.camdenparkpress.com',
+    linkLabel: 'camdenparkpress.com',
+  },
+  {
+    name: 'Craig Kingsman',
+    photo: '/images/authors-corner/craig-kingsman.jpg',
+    bio: 'Craig Kingsman writes about murder because committing it would be a real bummer for the victim. He is the author of the Zane Grayson Mysteries that take place in a small, rural, Utah town.',
+    link: 'https://craigkingsman.com',
+    linkLabel: 'craigkingsman.com',
+  },
+  {
+    name: 'Jodi L. Milner',
+    photo: '/images/authors-corner/jodi-milner.jpg',
+    bio: 'Jodi L. Milner is the author of the award-winning Shadow Barrier Trilogy and cohost of Squirrel! The Podcast for Distracted Writers. She teaches at writing conferences and mentors fellow authors through the League of Utah Writers.',
+    link: 'https://jodilmilner.com/',
+    linkLabel: 'jodilmilner.com',
+  },
+  {
+    name: 'Stacey Haynes',
+    photo: '/images/authors-corner/stacey-haynes.jpg',
+    bio: 'Stacey Haynes has been writing Clean Contemporary and Historical Western Romances since 2019. Her favorite tropes are Mail-Order Brides, Billionaires, and Forbidden Love. She lives in Roy, Utah.',
+    link: 'https://stacey-haynes.author-pages.com/',
+    linkLabel: 'Author Page',
+  },
+  {
+    name: 'Gail Knezevich',
+    photo: '/images/authors-corner/gail-knezevich.jpg',
+    bio: 'Gail is a Utah writer of historical western romance filled with love, adventure, intrigue, and a touch of spice.',
+    link: 'https://gailknezevich.com/',
+    linkLabel: 'gailknezevich.com',
+  },
+  {
+    name: 'Marie Higgins',
+    photo: '/images/authors-corner/marie-higgins.jpg',
+    bio: 'Marie is an award-winning, bestselling author of more than 100 sweet romance stories — historical, contemporary, time-travel, and paranormal — known for swoon-worthy heroes and strong, spirited heroines.',
+    link: 'http://www.authormariehiggins.com/',
+    linkLabel: 'authormariehiggins.com',
+  },
+  {
+    name: 'Keyra K. Allred',
+    photo: '/images/authors-corner/keyra-allred.jpg',
+    bio: 'Native of nowhere, traipser of Planet Earth, linguaphile, unquenchable reader, and three-time "Best of" winner for short story anthologies with the League of Utah Writers Romance Chapter. Keyra plans to do so much more in novel form.',
+    link: '',
+    linkLabel: '',
+  },
+  {
+    name: 'Jennifer Sue Campbell',
+    photo: '/images/authors-corner/jennifer-campbell.jpg',
+    bio: 'Jennifer is a fantasy author and creator of the Fairy Circles series, crafting immersive fantasy worlds filled with heart, mystery, and hope.',
+    link: 'https://www.amazon.com/stores/Jennifer-S-Campbell/author/B0D9RL9V3Z',
+    linkLabel: 'Amazon Author Page',
+  },
+  {
+    name: 'Valeria Nunez',
+    photo: '/images/authors-corner/valeria-nunez.jpg',
+    bio: "Valeria, originally from Chile and a mother of four, discovered her passion for creating magical stories and drawing for children. With a background in accounting, she embarked on an exciting journey of self-publishing her children's books seven years ago.",
+    link: 'https://www.instagram.com/autorvalerian',
+    linkLabel: '@autorvalerian',
+    link2: 'http://www.facebook.com/share/1EV44G8AiU/',
+    link2Label: 'Facebook',
+  },
+];
+
+const panelists = [
+  {
+    name: 'Lilly Jones',
+    photo: '/images/authors-corner/lilly-jones.jpg',
+    bio: "I'm Lilly, a teen author. I write sci-fi, horror and sometimes historical fiction! Though I am not published I hope I can answer questions and help other people create worlds along the way!",
+  },
+  {
+    name: 'Parker Lee',
+    photo: '/images/authors-corner/parker-lee.jpg',
+    bio: "I write because I want to, I do a lot of things because I want to, like eating bricks. Teenage novelist and... dang, that's all I've got. (I'm 13, okay? I don't have much going on right now)",
+  },
+  {
+    name: 'Heather Golsan & Alisha Golson',
+    photo: '/images/authors-corner/golsan-golson.jpg',
+    bio: 'Aspiring writers for fantasy and sci-fi, with a focus on crafting words and multiple worlds.',
+  },
+];
+
+const schedule = [
+  { time: '11:00 AM', name: 'Mary Martinez', desc: '30 Minute Chat/Q&A' },
+  { time: '11:30 AM', name: 'Craig Kingsman', desc: '30 Minute Chat/Q&A' },
+  { time: 'Noon', name: 'Jodi L. Milner', desc: '30 Minute Chat/Q&A' },
+  { time: '12:30 PM', name: 'Stacey Haynes', desc: '10 min. Reading, 20 min. Q&A' },
+  { time: '1:00 PM', name: 'Stanalei Fletcher', desc: '30 Minute Chat/Q&A' },
+  { time: '1:30 PM', name: 'L. L. Muir', desc: '10 min. Reading, 20 min. Q&A' },
+  { time: '2:00 PM', name: 'Panel: Writers on the Road to Publication', desc: 'Q&A about their writing journey', highlight: true },
+  { time: '3:00 PM', name: 'Jennifer Campbell', desc: '30 Minute Chat/Q&A' },
+  { time: '3:30 PM', name: 'Lyn Worthen', desc: '10 min. Reading, 20 min. Q&A' },
+  { time: '4:00 PM', name: 'Gail Knezevich', desc: '10 min. Reading, 20 min. Q&A' },
+  { time: '4:30 PM', name: 'Valeria Nunez', desc: '10 Min. Reading' },
+];
+---
+
+<BaseLayout
+  title="Authors Corner — Magna Arts Council"
+  description="Meet the participating authors and see the schedule of events for Authors Corner at the Magna Arts Festival."
+>
+  <Header />
+
+  <main>
+
+    <!-- ── HERO ── -->
+    <section class="ac-hero">
+      <div class="container">
+        <h1>Authors Corner</h1>
+        <p class="ac-hero-sub">Meet our participating authors, catch a reading or Q&A, and enter to win a Blind Date with a Book — drawn every hour on the hour!</p>
+      </div>
+    </section>
+
+    <!-- ── SCHEDULE OF EVENTS ── -->
+    <section class="section ac-schedule-section">
+      <div class="container">
+        <h2 class="ac-section-title">Schedule of Events</h2>
+        <p class="ac-section-sub">Chats with the Authors</p>
+
+        <div class="ac-schedule-table reveal">
+          {schedule.map((s) => (
+            <div class={`ac-schedule-row${s.highlight ? ' ac-schedule-row--highlight' : ''}`}>
+              <div class="ac-schedule-time">{s.time}</div>
+              <div class="ac-schedule-name">{s.name}</div>
+              <div class="ac-schedule-desc">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        <p class="ac-drawing-note">🎁 We'll be drawing for winners of <em>Blind Date with a Book</em> at the top of every hour. Need to be present to win.</p>
+      </div>
+    </section>
+
+    <!-- ── FEATURED AUTHORS ── -->
+    <section class="section ac-section">
+      <div class="container">
+        <h2 class="ac-section-title">Participating Authors</h2>
+
+        <div class="ac-grid">
+          {authors.map((a) => (
+            <article class="ac-card reveal">
+              <div class="ac-card-photo">
+                <img src={a.photo} alt={a.name} loading="lazy" />
+              </div>
+              <div class="ac-card-body">
+                <h3 class="ac-name">{a.name}</h3>
+                {a.subtitle && <p class="ac-subtitle">{a.subtitle}</p>}
+                <p class="ac-bio">{a.bio}</p>
+                <div class="ac-links">
+                  {a.link && <a href={a.link} target="_blank" rel="noopener" class="ac-link">🌐 {a.linkLabel}</a>}
+                  {a.link2 && <a href={a.link2} target="_blank" rel="noopener" class="ac-link">👍 {a.link2Label}</a>}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PANEL ── -->
+    <section class="section ac-section ac-panel-section">
+      <div class="container">
+        <h2 class="ac-section-title">Panel: Writers on the Road to Publication</h2>
+        <p class="ac-section-sub">Q&amp;A about their writing journey · 2:00 PM – 3:00 PM</p>
+
+        <div class="ac-grid ac-grid--panel">
+          {panelists.map((p) => (
+            <article class="ac-card reveal">
+              <div class="ac-card-photo">
+                <img src={p.photo} alt={p.name} loading="lazy" />
+              </div>
+              <div class="ac-card-body">
+                <h3 class="ac-name">{p.name}</h3>
+                <p class="ac-bio">{p.bio}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <Footer />
+
+</BaseLayout>
+
+<style is:global>
+
+  /* ── Hero ── */
+  .ac-hero {
+    background: var(--navy);
+    color: var(--white);
+    padding: 72px 0 56px;
+    text-align: center;
+  }
+  .ac-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 14px;
+  }
+  .ac-hero-sub {
+    font-size: 18px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.75);
+    max-width: 620px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* ── Sections ── */
+  .ac-section { background: var(--cream); }
+  .ac-schedule-section { background: var(--white); }
+  .ac-panel-section { background: var(--cream); border-top: 1px solid var(--border); }
+
+  .ac-section-title {
+    font-family: var(--font-display);
+    font-size: clamp(26px, 3.5vw, 34px);
+    font-weight: 700;
+    color: var(--navy);
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .ac-section-sub {
+    text-align: center;
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 32px;
+  }
+
+  /* ── Schedule Table ── */
+  .ac-schedule-table {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+  }
+  .ac-schedule-row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 4px 16px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ac-schedule-row:last-child { border-bottom: none; }
+  .ac-schedule-row--highlight {
+    background: #fdf3e0;
+  }
+  .ac-schedule-time {
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 14px;
+    grid-row: span 2;
+    align-self: center;
+  }
+  .ac-schedule-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--navy);
+  }
+  .ac-schedule-row--highlight .ac-schedule-name { color: #8a5a00; }
+  .ac-schedule-desc {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  @media (max-width: 480px) {
+    .ac-schedule-row { grid-template-columns: 90px 1fr; padding: 12px 14px; }
+  }
+
+  .ac-drawing-note {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 14px;
+    color: var(--navy);
+    font-weight: 600;
+  }
+
+  /* ── Grid ── */
+  .ac-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
+  }
+  .ac-grid--panel {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* ── Card ── */
+  .ac-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.22s, transform 0.22s;
+  }
+  .ac-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-4px);
+  }
+
+  .ac-card-photo {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--cream);
+    flex-shrink: 0;
+  }
+  .ac-card-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+  }
+
+  .ac-card-body {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+  .ac-name {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.2;
+    margin: 0;
+  }
+  .ac-subtitle {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue, #1e40af);
+    margin: -4px 0 0;
+  }
+  .ac-bio {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin: 0;
+  }
+  .ac-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 4px;
+  }
+  .ac-link {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--navy);
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .ac-link:hover { background: var(--border); }
+
+</style>

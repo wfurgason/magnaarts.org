@@ -26,6 +26,22 @@ const concertTickets = _parkSnap.docs
     };
   });
 
+function slugify(str: string): string {
+  return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+// ── Server-side: build "What's Happening" bullet list for the festival section ──
+const _featuresSnap = await adminDb.collection('festival_features')
+  .where('eventId', '==', 'arts-festival-2026')
+  .get();
+const _featureTitles = Array.from(
+  new Set(_featuresSnap.docs.map(d => (d.data() as any).featureTitle || 'Untitled'))
+).sort((a, b) => (a as string).localeCompare(b as string)) as string[];
+const festivalWhatsHappening = [
+  { title: 'Live Music – Main Stage', anchor: 'main-stage' },
+  ...(_featureTitles.map(title => ({ title, anchor: slugify(title) }))),
+];
+
 const firebaseConfig = {
   apiKey:    import.meta.env.PUBLIC_FIREBASE_API_KEY,
   authDomain:import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -74,6 +90,7 @@ const programs = [
       { label: 'Attendance', value: '5,000 – 7,000' },
       { label: 'Features', value: 'Live music, fine arts contest, vendors, performers' },
     ],
+    whatsHappening: festivalWhatsHappening,
     link: '/events/arts-festival-2026',
     linkLabel: 'Festival Details →',
   },
@@ -240,12 +257,14 @@ const programs = [
             ))}
             {p.id === 'festival' && (
               <div class="events-glance">
-                <h3 class="glance-heading">Festival Lineup</h3>
-                <div id="fest-glance-loading" class="glance-loading">Loading lineup…</div>
-                <ul id="fest-glance-list" class="glance-list" style="display:none"></ul>
-                <div id="fest-glance-empty" class="glance-empty" style="display:none">
-                  Lineup coming soon — <a href="/events">check back closer to the festival</a>.
-                </div>
+                <h3 class="glance-heading">What's Happening</h3>
+                <ul class="glance-list whats-happening-list">
+                  {p.whatsHappening.map((item: any) => (
+                    <li>
+                      <a href={`${p.link}#${item.anchor}`} class="whats-happening-link">{item.title}</a>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -416,7 +435,6 @@ const programs = [
       const openMicEvents  = [];
       const artNightEvents = [];
       const writingGroupEvents = [];
-      const festivalItems  = [];
 
       snap.forEach(doc => {
         const d       = doc.data();
@@ -437,19 +455,6 @@ const programs = [
           artNightEvents.push(item);
         } else if (d.eventType === 'writing_group') {
           writingGroupEvents.push(item);
-        } else if (d.eventType === 'arts_festival') {
-          // Expand each assigned band slot into its own ticket
-          const festDate = dateObj;
-          (d.bands || []).forEach(b => {
-            if (!b.bandId) return; // skip empty slots
-            festivalItems.push({
-              id:      doc.id + '-slot' + b.slot,
-              rawDate: festDate.toISOString(),
-              time:    b.time || '',
-              title:   b.bandName || 'TBA',
-              type:    'arts_festival',
-            });
-          });
         }
       });
 
@@ -468,16 +473,13 @@ const programs = [
       // Writing Group glance
       renderGlance('wg-glance-loading', 'wg-glance-list', 'wg-glance-empty', writingGroupEvents);
 
-      // Arts Festival lineup
-      renderGlance('fest-glance-loading', 'fest-glance-list', 'fest-glance-empty', festivalItems);
-
     } catch (err) {
       // Fail silently — show empty state for both
-      ['glance-loading', 'om-glance-loading', 'an-glance-loading', 'wg-glance-loading', 'fest-glance-loading'].forEach(id => {
+      ['glance-loading', 'om-glance-loading', 'an-glance-loading', 'wg-glance-loading'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
-      ['glance-empty', 'om-glance-empty', 'an-glance-empty', 'wg-glance-empty', 'fest-glance-empty'].forEach(id => {
+      ['glance-empty', 'om-glance-empty', 'an-glance-empty', 'wg-glance-empty'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'block';
       });
@@ -801,6 +803,29 @@ const programs = [
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .whats-happening-list li {
+    padding-left: 18px;
+    position: relative;
+  }
+  .whats-happening-list li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--amber);
+    font-weight: 700;
+  }
+  .whats-happening-link {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .whats-happening-link:hover {
+    color: var(--amber);
+    text-decoration: underline;
   }
 
 </style>

@@ -74,6 +74,10 @@ function extractEmbedSrc(val: string | null): string | null {
   return m ? m[1] : null;
 }
 
+function slugify(str: string): string {
+  return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 const vendorTypeIcon: Record<string, string> = {
   'Individual Artist': '🎨',
   'Food Vendor': '🌮',
@@ -112,6 +116,7 @@ if (isFestival) {
   festivalFeatureGroups = Object.entries(grouped)
     .map(([title, entries]) => ({
       title,
+      slug: slugify(title),
       entries: entries.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.name || '').localeCompare(b.name || '')),
     }))
     .sort((a, b) => a.title.localeCompare(b.title));
@@ -407,7 +412,7 @@ const venueAddress = event.venueAddress || '';
 
           <!-- Band Profiles -->
           {(event.bands || []).filter((b: any) => b.bandId).length > 0 && (
-            <div class="festival-section reveal">
+            <div class="festival-section reveal" id="main-stage">
               <h2 class="festival-section-heading">🎸 Main Stage Lineup</h2>
               <div class="band-profiles">
                 {(event.bands as any[])
@@ -447,7 +452,7 @@ const venueAddress = event.venueAddress || '';
           )}
 
           {(event.bands || []).filter((b: any) => b.bandId).length === 0 && (
-            <div class="festival-section reveal">
+            <div class="festival-section reveal" id="main-stage">
               <h2 class="festival-section-heading">🎸 Main Stage Lineup</h2>
               <p class="coming-soon">Band lineup being announced soon — check back!</p>
             </div>
@@ -455,7 +460,7 @@ const venueAddress = event.venueAddress || '';
 
           <!-- Festival Feature groups (chalk artists, car show, etc.) -->
           {festivalFeatureGroups.map(group => (
-            <div class="festival-section reveal">
+            <div class="festival-section reveal" id={group.slug}>
               <h2 class="festival-section-heading">🎨 {group.title}</h2>
               <div class="vendor-list">
                 {group.entries.map((entry: any) => (

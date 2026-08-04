@@ -16,7 +16,10 @@ try {
 
   const apps = getApps();
   adminApp = apps.length === 0
-    ? initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) })
+    ? initializeApp({
+        credential: cert({ projectId, clientEmail, privateKey }),
+        storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+      })
     : apps[0];
 
 } catch (e) {

@@ -201,6 +201,30 @@ body {
   font-size: 1.75rem; font-weight: 700;
   color: var(--admin-navy); margin: 0;
 }
+.page-header-title-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+/* ── Applications Open/Closed Toggle ──────────── */
+.btn-toggle-applications {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.4rem 0.9rem; border-radius: 20px; font-size: 0.8rem;
+  font-weight: 600; cursor: pointer; font-family: inherit;
+  border: 1px solid var(--admin-border); background: var(--admin-surface);
+  transition: all 0.15s;
+}
+.btn-toggle-applications .toggle-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.btn-toggle-applications.is-open {
+  color: var(--admin-green); border-color: #bbf0c7; background: #ecfdf3;
+}
+.btn-toggle-applications.is-open .toggle-dot { background: var(--admin-green); }
+.btn-toggle-applications.is-open:hover { border-color: var(--admin-green); }
+.btn-toggle-applications.is-closed {
+  color: var(--admin-red); border-color: #f5c2c2; background: #fef2f2;
+}
+.btn-toggle-applications.is-closed .toggle-dot { background: var(--admin-red); }
+.btn-toggle-applications.is-closed:hover { border-color: var(--admin-red); }
+.btn-toggle-applications:disabled { opacity: 0.6; cursor: default; }
 
 /* ── Filter Tabs ───────────────────────────── */
 .filter-tabs { display: flex; gap: 0.375rem; flex-wrap: wrap; }

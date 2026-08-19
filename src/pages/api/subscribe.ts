@@ -34,6 +34,7 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const data = await request.json();
     const email = data.email?.toString().trim().toLowerCase() ?? '';
+    const interest = typeof data.interest === 'string' && data.interest.trim() ? data.interest.trim() : null;
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return new Response(JSON.stringify({ error: 'Valid email required.' }), { status: 400 });
@@ -64,7 +65,11 @@ export const POST: APIRoute = async ({ request }) => {
       }
       // Resend confirmation for pending — reset subscribedAt for a fresh 48-hour window
       const token = sub.token;
-      await existing.docs[0].ref.update({ subscribedAt: new Date() });
+      const updates: Record<string, any> = { subscribedAt: new Date() };
+      // Only add an interest tag if one was passed and the record doesn't already have one —
+      // never overwrite an existing tag, and never tag a general (untagged) signup.
+      if (interest && !sub.interest) updates.interest = interest;
+      await existing.docs[0].ref.update(updates);
       await sendConfirmationEmail(email, token);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
@@ -76,6 +81,7 @@ export const POST: APIRoute = async ({ request }) => {
       token,
       subscribedAt: new Date(),
       confirmedAt: null,
+      interest,
     });
 
     await sendConfirmationEmail(email, token);

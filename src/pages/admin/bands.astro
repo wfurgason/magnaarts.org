@@ -1,8 +1,10 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminDb } from '../../lib/firebase-admin';
+import { getBandApplicationsOpen } from '../../lib/site-settings';
 
 const user = Astro.locals.user;
+const applicationsOpen = await getBandApplicationsOpen();
 
 const filterParam = Astro.url.searchParams.get('filter') || 'all';
 
@@ -89,7 +91,18 @@ const approvedArtistIds = new Set<string>(approvedArtistsSnap.docs.map(d => d.id
 
 <AdminLayout title="Band Applications" user={user}>
   <div class="page-header">
-    <h1>Band Applications</h1>
+    <div class="page-header-title-row">
+      <h1>Band Applications</h1>
+      <button
+        type="button"
+        id="toggle-applications-btn"
+        class:list={['btn-toggle-applications', applicationsOpen ? 'is-open' : 'is-closed']}
+        data-open={applicationsOpen ? 'true' : 'false'}
+      >
+        <span class="toggle-dot"></span>
+        {applicationsOpen ? 'Applications Open' : 'Applications Closed'}
+      </button>
+    </div>
     <div class="filter-tabs">
       {filters.map(f => (
         <a

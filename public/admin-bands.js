@@ -348,6 +348,27 @@ function bandsInit() {
     });
   });
 
+  // Toggle band applications open/closed
+  var toggleAppsBtn = document.getElementById('toggle-applications-btn');
+  if (toggleAppsBtn) {
+    toggleAppsBtn.addEventListener('click', async function() {
+      var isOpen = toggleAppsBtn.dataset.open === 'true';
+      var msg = isOpen
+        ? 'Close band applications? The public form will stop accepting submissions until you reopen it.'
+        : 'Reopen band applications? The public form will start accepting submissions again.';
+      if (!confirm(msg)) return;
+
+      toggleAppsBtn.disabled = true;
+      var res = await fetch('/api/admin/toggle-band-applications', { method: 'POST' });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert('Failed to update applications status.');
+        toggleAppsBtn.disabled = false;
+      }
+    });
+  }
+
   // Unassign
   document.querySelectorAll('.unassign-btn').forEach(function(btn) {
     btn.addEventListener('click', async function() {

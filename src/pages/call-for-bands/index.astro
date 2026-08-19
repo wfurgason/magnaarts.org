@@ -3,6 +3,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
+import { getBandApplicationsOpen } from '../../lib/site-settings';
+
+const applicationsOpen = await getBandApplicationsOpen();
 
 const firebaseConfig = {
   apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -73,6 +76,8 @@ const firebaseConfig = {
     <section class="section form-section">
       <div class="container form-outer">
 
+        {applicationsOpen ? (
+        <>
         <div class="form-intro reveal">
           <h2>Band Application</h2>
           <p>Fill out all required fields, upload a promotional photo and your tech rider, and hit submit. We review every application and will be in touch within two weeks.</p>
@@ -326,6 +331,24 @@ const firebaseConfig = {
           </div>
 
         </form>
+        </>
+        ) : (
+        <div class="closed-state reveal">
+          <div class="closed-icon">🎤</div>
+          <h2>Applications Are Currently Closed</h2>
+          <p>
+            We're not accepting new band applications for Music in the Park right now,
+            but we'd love to hear from you next time we open the call. Join our mailing
+            list and we'll email you the moment applications reopen.
+          </p>
+
+          <form id="bands-signup-form" class="closed-signup-form" novalidate>
+            <input type="email" id="bands-signup-email" name="email" placeholder="you@email.com" required />
+            <button type="submit" class="btn btn-gold">Notify Me</button>
+          </form>
+          <p id="bands-signup-status" class="signup-status" hidden></p>
+        </div>
+        )}
       </div>
     </section>
 
@@ -333,6 +356,8 @@ const firebaseConfig = {
 
   <Footer />
 
+  {applicationsOpen && (
+  <>
   <!-- Inject Firebase config from server-side env vars -->
   <script define:vars={{ firebaseConfig }}>
     window.__FIREBASE_CONFIG__ = firebaseConfig;
@@ -524,6 +549,53 @@ const firebaseConfig = {
       }
     }); // end submit listener
   </script>
+  </>
+  )}
+
+  {!applicationsOpen && (
+  <script>
+    const bandsSignupForm = document.getElementById('bands-signup-form');
+    const bandsSignupStatus = document.getElementById('bands-signup-status');
+    if (bandsSignupForm) {
+      bandsSignupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const emailInput = document.getElementById('bands-signup-email');
+        const email = emailInput.value.trim();
+        const btn = bandsSignupForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = 'Submitting…';
+        bandsSignupStatus.hidden = true;
+        try {
+          const res = await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, interest: 'bands' }),
+          });
+          const data = await res.json().catch(() => ({}));
+          bandsSignupStatus.hidden = false;
+          if (res.ok) {
+            bandsSignupStatus.textContent = "Check your email to confirm — we'll let you know when applications reopen!";
+            bandsSignupStatus.className = 'signup-status signup-success';
+            bandsSignupForm.reset();
+          } else if (data.error === 'already_subscribed') {
+            bandsSignupStatus.textContent = "You're already on the list!";
+            bandsSignupStatus.className = 'signup-status signup-success';
+          } else {
+            bandsSignupStatus.textContent = 'Something went wrong. Please try again.';
+            bandsSignupStatus.className = 'signup-status signup-error';
+          }
+        } catch (err) {
+          bandsSignupStatus.hidden = false;
+          bandsSignupStatus.textContent = 'Something went wrong. Please try again.';
+          bandsSignupStatus.className = 'signup-status signup-error';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Notify Me';
+        }
+      });
+    }
+  </script>
+  )}
 
 </BaseLayout>
 
@@ -950,6 +1022,69 @@ const firebaseConfig = {
     margin-top: 6px;
   }
 
+  /* ── CLOSED STATE ── */
+  .closed-state {
+    text-align: center;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 56px 32px;
+  }
+
+  .closed-icon { font-size: 40px; margin-bottom: 16px; }
+
+  .closed-state h2 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 12px;
+  }
+
+  .closed-state p {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.65;
+    max-width: 480px;
+    margin: 0 auto 28px;
+  }
+
+  .closed-signup-form {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .closed-signup-form input[type="email"] {
+    flex: 1;
+    min-width: 220px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--text);
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    outline: none;
+  }
+
+  .closed-signup-form input[type="email"]:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(37,99,176,0.12);
+  }
+
+  .signup-status {
+    margin-top: 14px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .signup-success { color: #065f46; }
+  .signup-error { color: #991b1b; }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 680px) {
     .field-row { grid-template-columns: 1fr; }
@@ -957,5 +1092,6 @@ const firebaseConfig = {
     .series-strip-inner { gap: 20px; }
     .form-footer { flex-direction: column; align-items: flex-start; }
     .submit-btn { width: 100%; text-align: center; }
+    .closed-signup-form { flex-direction: column; }
   }
 </style>

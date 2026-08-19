@@ -469,6 +469,7 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
 | `mailingList` | Email subscribers; fields: `email`, `status` (`pending` / `confirmed`), `token`, `subscribedAt`, `confirmedAt`; double opt-in via confirmation email |
 | `artists` | Local artist profiles; fields: `band_name`, `artistType` (`music` / `visual`), `genre`, `bio`, `photo_url`, `email`, `website`, `music_link`, `social_instagram`, `social_facebook`, `uid`, `status` (`pending_review` / `approved` / `rejected`), `visible`, `registeredAt`; subcollections: `tracks` (music artists), `images` (visual artists) |
 | `admin_users` | Per-admin MFA data; fields: `totpSecret` (AES-256-GCM encrypted), `totpEnrolled` (boolean); keyed by Firebase Auth UID |
+| `settings` | Site-wide toggles; one doc per feature area. `settings/bands` — `applicationsOpen` (boolean, default `true`) controls whether `/call-for-bands` accepts submissions |
 
 ### Planned collections (Phase 4–5)
 
@@ -586,6 +587,14 @@ Preview URLs are generated for every branch and pull request.
 ---
 
 ## Recent Changes
+
+### August 18, 2026 — Band applications open/closed toggle
+- Added a `settings/bands` Firestore doc (`applicationsOpen: boolean`, defaults to `true`) and a `getBandApplicationsOpen()` helper (`src/lib/site-settings.ts`)
+- New admin route `POST /api/admin/toggle-band-applications` flips the flag (session-cookie protected)
+- `/admin/bands` now shows an Open/Closed pill next to the page title; clicking it confirms, then toggles and reloads
+- `/call-for-bands` reads `applicationsOpen` server-side: when closed, the application form (and its Firebase-dependent client script) doesn't render at all — visitors instead see a "not currently accepting applications" message with an email signup
+- The closed-state signup posts to the existing `/api/subscribe` endpoint with `interest: 'bands'`; `subscribe.ts` now accepts and stores an optional `interest` field on `mailingList` docs (only applied to new signups, or to existing pending signups that don't already have a tag — general subscribers are never retroactively tagged)
+- All existing links to `/call-for-bands` (Header, Footer, `present.astro`) are plain `<a href>` links, so they automatically reflect the closed state via the server-side check on the destination page — no other submission entry point writes to `band_applications`
 
 ### May 23, 2026 — Mailing list 48-hour confirmation expiry + auto-purge
 - `confirm.ts`: tokens older than 48 hours now redirect to `/confirm?error=expired` instead of confirming

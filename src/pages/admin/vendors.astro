@@ -1,8 +1,10 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminDb } from '../../lib/firebase-admin';
+import { getVendorApplicationsOpen } from '../../lib/site-settings';
 
 const user = Astro.locals.user;
+const applicationsOpen = await getVendorApplicationsOpen();
 const filterParam = Astro.url.searchParams.get('filter') || 'all';
 
 const snap = await adminDb.collection('vendor_applications')
@@ -87,9 +89,20 @@ function calcTotal(v: Vendor): number {
 <AdminLayout title="Vendor Applications" user={user}>
 
   <div class="page-header">
-    <div>
-      <h1>Vendor Applications</h1>
-      <p class="page-sub">Magna Main Street Arts Festival · August 15, 2026</p>
+    <div class="page-header-title-row">
+      <div>
+        <h1>Vendor Applications</h1>
+        <p class="page-sub">Magna Main Street Arts Festival · August 15, 2026</p>
+      </div>
+      <button
+        type="button"
+        id="toggle-vendor-applications-btn"
+        class:list={['btn-toggle-applications', applicationsOpen ? 'is-open' : 'is-closed']}
+        data-open={applicationsOpen ? 'true' : 'false'}
+      >
+        <span class="toggle-dot"></span>
+        {applicationsOpen ? 'Applications Open' : 'Applications Closed'}
+      </button>
     </div>
   </div>
 
@@ -490,6 +503,27 @@ function calcTotal(v: Vendor): number {
     const VENDOR_DATA_MAP: Record<string, any> = JSON.parse(
       document.getElementById('vendor-data-map')?.textContent || '{}'
     );
+
+    // ── Toggle vendor applications open/closed ─────────────────────────────
+    const toggleVendorAppsBtn = document.getElementById('toggle-vendor-applications-btn') as HTMLButtonElement | null;
+    if (toggleVendorAppsBtn) {
+      toggleVendorAppsBtn.addEventListener('click', async () => {
+        const isOpen = toggleVendorAppsBtn.dataset.open === 'true';
+        const msg = isOpen
+          ? 'Close vendor applications? The public form will stop accepting submissions until you reopen it.'
+          : 'Reopen vendor applications? The public form will start accepting submissions again.';
+        if (!confirm(msg)) return;
+
+        toggleVendorAppsBtn.disabled = true;
+        const res = await fetch('/api/admin/toggle-vendor-applications', { method: 'POST' });
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          alert('Failed to update applications status.');
+          toggleVendorAppsBtn.disabled = false;
+        }
+      });
+    }
 
     // ── Space inline editing (header badge + paid-notice) ─────────────────
     function attachSpaceEditor(el: Element) {

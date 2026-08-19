@@ -469,7 +469,7 @@ PROPOSE → REVIEW → ASSIGN SPONSOR → PLAN → PUBLISH → RUN → REPORT
 | `mailingList` | Email subscribers; fields: `email`, `status` (`pending` / `confirmed`), `token`, `subscribedAt`, `confirmedAt`; double opt-in via confirmation email |
 | `artists` | Local artist profiles; fields: `band_name`, `artistType` (`music` / `visual`), `genre`, `bio`, `photo_url`, `email`, `website`, `music_link`, `social_instagram`, `social_facebook`, `uid`, `status` (`pending_review` / `approved` / `rejected`), `visible`, `registeredAt`; subcollections: `tracks` (music artists), `images` (visual artists) |
 | `admin_users` | Per-admin MFA data; fields: `totpSecret` (AES-256-GCM encrypted), `totpEnrolled` (boolean); keyed by Firebase Auth UID |
-| `settings` | Site-wide toggles; one doc per feature area. `settings/bands` — `applicationsOpen` (boolean, default `true`) controls whether `/call-for-bands` accepts submissions |
+| `settings` | Site-wide toggles; one doc per feature area. `settings/bands` — `applicationsOpen` (boolean, default `true`) controls whether `/call-for-bands` accepts submissions. `settings/vendors` — same pattern, controls whether `/vendor-application` accepts submissions |
 
 ### Planned collections (Phase 4–5)
 
@@ -587,6 +587,14 @@ Preview URLs are generated for every branch and pull request.
 ---
 
 ## Recent Changes
+
+### August 19, 2026 — Vendor applications open/closed toggle
+- Same pattern as the band applications toggle below, applied to vendors: `settings/vendors` Firestore doc (`applicationsOpen: boolean`, defaults to `true`) with a `getVendorApplicationsOpen()` helper (`src/lib/site-settings.ts`)
+- New admin route `POST /api/admin/toggle-vendor-applications` flips the flag (session-cookie protected)
+- `/admin/vendors` now shows an Open/Closed pill next to the page title; clicking it confirms, then toggles and reloads (handler lives inline in `vendors.astro`'s existing script block rather than a separate JS file, since vendors has no `admin-vendors.js`)
+- `/vendor-application` reads `applicationsOpen` server-side: when closed, the application form (and its Firebase-dependent client script) doesn't render at all — visitors instead see a "not currently accepting applications" message with an email signup
+- The closed-state signup posts to the existing `/api/subscribe` endpoint with `interest: 'vendors'`, reusing the same `mailingList` collection and `subscribe.ts` interest-tagging logic added for bands
+- All existing links to `/vendor-application` (Footer, `present.astro`, the vendor admin page's own reference note) are plain `<a href>` links, so they automatically reflect the closed state via the server-side check — no other submission entry point writes to `vendor_applications`
 
 ### August 18, 2026 — Band applications open/closed toggle
 - Added a `settings/bands` Firestore doc (`applicationsOpen: boolean`, defaults to `true`) and a `getBandApplicationsOpen()` helper (`src/lib/site-settings.ts`)

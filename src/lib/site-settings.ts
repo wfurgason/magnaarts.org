@@ -17,3 +17,21 @@ export async function getBandApplicationsOpen(): Promise<boolean> {
     return true;
   }
 }
+
+/**
+ * Reads settings/vendors.applicationsOpen.
+ * Defaults to true (open) if the doc doesn't exist yet or on any read error,
+ * so a missing/misconfigured settings doc never accidentally blocks the
+ * public vendor-application form.
+ */
+export async function getVendorApplicationsOpen(): Promise<boolean> {
+  try {
+    const snap = await adminDb.collection('settings').doc('vendors').get();
+    if (!snap.exists) return true;
+    const data = snap.data();
+    return data?.applicationsOpen !== false;
+  } catch (e) {
+    console.warn('getVendorApplicationsOpen: failed to read settings/vendors, defaulting to open:', (e as Error).message);
+    return true;
+  }
+}

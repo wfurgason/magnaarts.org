@@ -3,6 +3,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
+import { getVendorApplicationsOpen } from '../../lib/site-settings';
+
+const applicationsOpen = await getVendorApplicationsOpen();
 
 const firebaseConfig = {
   apiKey:            import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -98,6 +101,8 @@ const firebaseConfig = {
     <section class="section form-section">
       <div class="container form-outer">
 
+        {applicationsOpen ? (
+        <>
         <div class="form-intro reveal">
           <h2>Vendor Application</h2>
           <p>Fill out all required fields and submit. We'll review your application and follow up with a PayPal invoice if accepted.</p>
@@ -291,6 +296,24 @@ const firebaseConfig = {
           </div>
 
         </form>
+        </>
+        ) : (
+        <div class="closed-state reveal">
+          <div class="closed-icon">🎪</div>
+          <h2>Applications Are Currently Closed</h2>
+          <p>
+            We're not accepting new vendor applications for Arts Council Events right now,
+            but we'd love to hear from you next time we open the call. Join our mailing
+            list and we'll email you the moment applications reopen.
+          </p>
+
+          <form id="vendors-signup-form" class="closed-signup-form" novalidate>
+            <input type="email" id="vendors-signup-email" name="email" placeholder="you@email.com" required />
+            <button type="submit" class="btn btn-gold">Notify Me</button>
+          </form>
+          <p id="vendors-signup-status" class="signup-status" hidden></p>
+        </div>
+        )}
       </div>
     </section>
 
@@ -298,6 +321,8 @@ const firebaseConfig = {
 
   <Footer />
 
+  {applicationsOpen && (
+  <>
   <script define:vars={{ firebaseConfig }}>
     window.__FIREBASE_CONFIG__ = firebaseConfig;
   </script>
@@ -463,6 +488,53 @@ const firebaseConfig = {
       }
     });
   </script>
+  </>
+  )}
+
+  {!applicationsOpen && (
+  <script>
+    const vendorsSignupForm = document.getElementById('vendors-signup-form');
+    const vendorsSignupStatus = document.getElementById('vendors-signup-status');
+    if (vendorsSignupForm) {
+      vendorsSignupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const emailInput = document.getElementById('vendors-signup-email');
+        const email = emailInput.value.trim();
+        const btn = vendorsSignupForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = 'Submitting…';
+        vendorsSignupStatus.hidden = true;
+        try {
+          const res = await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, interest: 'vendors' }),
+          });
+          const data = await res.json().catch(() => ({}));
+          vendorsSignupStatus.hidden = false;
+          if (res.ok) {
+            vendorsSignupStatus.textContent = "Check your email to confirm — we'll let you know when applications reopen!";
+            vendorsSignupStatus.className = 'signup-status signup-success';
+            vendorsSignupForm.reset();
+          } else if (data.error === 'already_subscribed') {
+            vendorsSignupStatus.textContent = "You're already on the list!";
+            vendorsSignupStatus.className = 'signup-status signup-success';
+          } else {
+            vendorsSignupStatus.textContent = 'Something went wrong. Please try again.';
+            vendorsSignupStatus.className = 'signup-status signup-error';
+          }
+        } catch (err) {
+          vendorsSignupStatus.hidden = false;
+          vendorsSignupStatus.textContent = 'Something went wrong. Please try again.';
+          vendorsSignupStatus.className = 'signup-status signup-error';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Notify Me';
+        }
+      });
+    }
+  </script>
+  )}
 
 </BaseLayout>
 
@@ -604,11 +676,75 @@ const firebaseConfig = {
   .drop-action-remove { color: #991b1b; border-color: #fca5a5; }
   .drop-action-remove:hover { background: #fee2e2; border-color: #f87171; }
 
+  /* ── CLOSED STATE ── */
+  .closed-state {
+    text-align: center;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 56px 32px;
+  }
+
+  .closed-icon { font-size: 40px; margin-bottom: 16px; }
+
+  .closed-state h2 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 12px;
+  }
+
+  .closed-state p {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.65;
+    max-width: 480px;
+    margin: 0 auto 28px;
+  }
+
+  .closed-signup-form {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .closed-signup-form input[type="email"] {
+    flex: 1;
+    min-width: 220px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--text);
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    outline: none;
+  }
+
+  .closed-signup-form input[type="email"]:focus {
+    border-color: #c87e0a;
+    box-shadow: 0 0 0 3px rgba(200,126,10,0.12);
+  }
+
+  .signup-status {
+    margin-top: 14px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .signup-success { color: #065f46; }
+  .signup-error { color: #991b1b; }
+
   @media (max-width: 680px) {
     .field-row { grid-template-columns: 1fr; }
     .form-group { padding: 20px 16px; }
     .info-strip-inner { gap: 20px; }
     .form-footer { flex-direction: column; align-items: flex-start; }
     .submit-btn { width: 100%; text-align: center; }
+    .closed-signup-form { flex-direction: column; }
   }
 </style>

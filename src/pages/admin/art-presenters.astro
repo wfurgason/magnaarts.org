@@ -154,18 +154,16 @@ if (filterParam !== 'all') {
             {(p.status === 'approved') && (
               <>
                 <button class="btn btn-primary" data-action="contacted" data-id={p.id}>Mark Contacted</button>
-                <button class="btn btn-success" data-action="scheduled" data-id={p.id}>Mark Scheduled</button>
                 <button class="btn btn-danger" data-action="rejected" data-id={p.id}>Reject</button>
               </>
             )}
             {(p.status === 'contacted') && (
               <>
-                <button class="btn btn-success" data-action="scheduled" data-id={p.id}>Mark Scheduled</button>
                 <button class="btn btn-danger" data-action="rejected" data-id={p.id}>Reject</button>
               </>
             )}
             {(p.status === 'scheduled') && (
-              <span class="muted" style="font-size:13px">Scheduled ✓</span>
+              <span class="muted" style="font-size:13px">Scheduled ✓ (assign/unassign from Plan Events)</span>
             )}
             {(p.status === 'rejected') && (
               <button class="btn btn-success" data-action="pending" data-id={p.id}>Restore to Pending</button>

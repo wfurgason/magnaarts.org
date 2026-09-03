@@ -306,12 +306,19 @@ if (Astro.request.method === 'POST') {
     const presenterId   = form.get('presenterId')?.toString();
     const presenterName = form.get('presenterName')?.toString();
     if (shellId && presenterId) {
-      await adminDb.collection('art_night_events').doc(shellId).update({
+      const batch = adminDb.batch();
+      batch.update(adminDb.collection('art_night_events').doc(shellId), {
         presenterId,
         presenterName,
         presenterConfirmed: false,
         status: 'presenter_assigned',
       });
+      batch.update(adminDb.collection('art_class_submissions').doc(presenterId), {
+        status:          'scheduled',
+        assignedShellId: shellId,
+        assignedAt:      FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
       flashMsg  = `${presenterName} assigned as presenter.`;
       flashType = 'success';
     }
@@ -321,12 +328,24 @@ if (Astro.request.method === 'POST') {
   if (action === 'unassign_presenter') {
     const shellId = form.get('shellId')?.toString();
     if (shellId) {
-      await adminDb.collection('art_night_events').doc(shellId).update({
+      const shellRef         = adminDb.collection('art_night_events').doc(shellId);
+      const shellSnap        = await shellRef.get();
+      const priorPresenterId = shellSnap.data()?.presenterId;
+      const batch = adminDb.batch();
+      batch.update(shellRef, {
         presenterId:        null,
         presenterName:      null,
         presenterConfirmed: false,
         status:             'shell',
       });
+      if (priorPresenterId) {
+        batch.update(adminDb.collection('art_class_submissions').doc(priorPresenterId), {
+          status:          'contacted',
+          assignedShellId: null,
+          assignedAt:      null,
+        });
+      }
+      await batch.commit();
       flashMsg  = 'Presenter removed.';
       flashType = 'success';
     }

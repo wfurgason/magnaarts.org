@@ -1,13 +1,15 @@
 import type { APIRoute } from 'astro';
 import { adminDb } from '../../lib/firebase-admin';
-import { Resend } from 'resend';
 import { randomUUID } from 'crypto';
-
-const resend = new Resend(import.meta.env.RESEND_API_KEY);
+import { checkBotId } from 'botid/server';
+import { sendConfirmationEmail, tryConsumeDailySignupCap } from '../../lib/mailing-list';
 
 // In-memory per-IP rate limit: 1 accepted submission per hour.
-// Resets on cold start/redeploy — this is meant to blunt bursts of
-// bot signups, not act as a hard/persistent cap.
+// Resets on cold start/redeploy, and Vercel can run multiple parallel
+// instances under load — so this only blunts simple single-source bursts.
+// It is NOT sufficient against a distributed attack using many different
+// IPs; see tryConsumeDailySignupCap() in lib/mailing-list.ts for the
+// cross-instance safety net that actually protects the Resend quota.
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const lastSubmissionByIp = new Map<string, number>();
 
@@ -51,6 +53,15 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
 
+    // BotID catches the distributed "many different IPs" case the per-IP
+    // limiter above can't — every request there looks like a first-time
+    // visitor. Same silent-success behavior on detection: no signal, no
+    // DB write, no email.
+    const botCheck = await checkBotId({ advancedOptions: { headers: request.headers } });
+    if (botCheck.isBot) {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
     // Check for existing subscriber
     const existing = await adminDb
       .collection('mailingList')
@@ -63,14 +74,24 @@ export const POST: APIRoute = async ({ request }) => {
       if (sub.status === 'confirmed') {
         return new Response(JSON.stringify({ error: 'already_subscribed' }), { status: 409 });
       }
-      // Resend confirmation for pending — reset subscribedAt for a fresh 48-hour window
-      const token = sub.token;
-      const updates: Record<string, any> = { subscribedAt: new Date() };
-      // Only add an interest tag if one was passed and the record doesn't already have one —
-      // never overwrite an existing tag, and never tag a general (untagged) signup.
-      if (interest && !sub.interest) updates.interest = interest;
-      await existing.docs[0].ref.update(updates);
-      await sendConfirmationEmail(email, token);
+      // Already pending — merge in an interest tag if one was passed and the
+      // record doesn't already have one, but never auto-resend the
+      // confirmation email or reset the 48-hour window on a repeat
+      // submission. A resend now only happens via an explicit admin action
+      // (the "Resend" button on /admin/mailing-list), so a flood of repeat
+      // submissions for the same address can't burn through the email quota.
+      if (interest && !sub.interest) {
+        await existing.docs[0].ref.update({ interest });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
+    // Brand-new signup — enforce the hard daily cap before writing/emailing.
+    const allowed = await tryConsumeDailySignupCap();
+    if (!allowed) {
+      // Same silent-success behavior as the other guards above, so an
+      // automated submitter gets no signal that anything was blocked.
+      console.warn('subscribe: daily signup cap reached, silently dropping new signup');
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     }
 
@@ -92,26 +113,3 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response(JSON.stringify({ error: 'Server error.' }), { status: 500 });
   }
 };
-
-async function sendConfirmationEmail(email: string, token: string) {
-  const confirmUrl = `${import.meta.env.SITE_URL}/api/confirm?token=${token}`;
-  await resend.emails.send({
-    from: 'Magna Arts Council <noreply@magnaarts.org>',
-    to: email,
-    subject: 'Confirm your subscription — Magna Arts Council',
-    html: `
-      <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto;">
-        <h2 style="color: #1a1a2e;">Almost there!</h2>
-        <p>Thanks for signing up for updates from Magna Arts Council. Click the button below to confirm your email address.</p>
-        <p style="text-align: center; margin: 32px 0;">
-          <a href="${confirmUrl}"
-             style="background:#1a1a2e; color:#fff; padding:14px 28px; border-radius:6px; text-decoration:none; font-weight:bold;">
-            Confirm Subscription
-          </a>
-        </p>
-        <p style="font-size: 0.85em; color: #666;">If you didn't sign up for this, you can safely ignore this email.</p>
-        <p style="font-size: 0.85em; color: #666;">Or copy this link: ${confirmUrl}</p>
-      </div>
-    `,
-  });
-}

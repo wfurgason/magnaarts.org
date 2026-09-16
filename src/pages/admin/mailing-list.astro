@@ -94,6 +94,7 @@ function fmt(ts: any) {
               <td>{fmt(s.subscribedAt)}</td>
               <td>{s.status === 'confirmed' ? fmt(s.confirmedAt) : '—'}</td>
               <td>
+                {s.status === 'pending' && <button class="btn-xs btn-resend resend-btn" data-id={s.id}>Resend</button>}
                 <button class="btn-xs btn-danger delete-btn" data-id={s.id}>Remove</button>
               </td>
             </tr>
@@ -202,6 +203,7 @@ function fmt(ts: any) {
       cursor: pointer;
     }
     .btn-xs.btn-danger { background: #b52626; color: #fff; }
+    .btn-xs.btn-resend { background: #1a2456; color: #fff; margin-right: 6px; }
     .btn-xs:hover { opacity: .85; }
     .btn-xs:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -240,6 +242,39 @@ function fmt(ts: any) {
           document.getElementById('row-' + id)?.remove();
         } else {
           alert('Failed to remove subscriber.');
+          (btn as HTMLButtonElement).disabled = false;
+        }
+      });
+    });
+
+    // Resend confirmation
+    document.querySelectorAll('.resend-btn').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var id = (btn as HTMLButtonElement).dataset.id;
+        (btn as HTMLButtonElement).disabled = true;
+        var originalText = (btn as HTMLButtonElement).textContent;
+        (btn as HTMLButtonElement).textContent = 'Sending…';
+        try {
+          var res = await fetch('/api/admin/mailing-list-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'resend-confirmation', id: id }),
+          });
+          var data = await res.json();
+          if (res.ok) {
+            (btn as HTMLButtonElement).textContent = 'Sent!';
+            setTimeout(function() {
+              (btn as HTMLButtonElement).textContent = originalText;
+              (btn as HTMLButtonElement).disabled = false;
+            }, 2000);
+          } else {
+            alert(data.error || 'Failed to resend confirmation.');
+            (btn as HTMLButtonElement).textContent = originalText;
+            (btn as HTMLButtonElement).disabled = false;
+          }
+        } catch {
+          alert('Failed to resend confirmation.');
+          (btn as HTMLButtonElement).textContent = originalText;
           (btn as HTMLButtonElement).disabled = false;
         }
       });

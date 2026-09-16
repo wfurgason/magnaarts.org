@@ -86,6 +86,16 @@ const schema = {
     <!-- JSON-LD: Organization -->
     <script type="application/ld+json" set:html={JSON.stringify(schema)} />
 
+    <!-- BotID: invisible bot protection for the mailing-list signup endpoint
+         (see /api/subscribe). Requires the proxy rewrites in vercel.json —
+         see MAILING-LIST-ABUSE-FIX-PLAN.md. -->
+    <script>
+      import { initBotId } from 'botid/client/core';
+      initBotId({
+        protect: [{ path: '/api/subscribe', method: 'POST' }],
+      });
+    </script>
+
     <slot name="head" />
   </head>
   <body>
